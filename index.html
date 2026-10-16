@@ -61,6 +61,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .route .time{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
 .route .dist{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
 .route .eta{grid-column:1 / -1;color:var(--muted);font-size:13px}
+.voice-row{display:flex;gap:8px;align-items:center}
+.voice-row label{color:var(--muted);font-size:13px}
+.voice-row select{flex:1;min-width:0;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
 .hint{color:var(--muted);font-size:13px;line-height:1.45;margin:0}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-weight:500}
@@ -157,13 +160,14 @@ body.navmode .panel,body.navmode .search{display:none}
       <button class="btn" id="play">▶ Демо-проезд</button>
       <button class="btn" id="share">Поделиться</button>
     </div>
+    <div class="voice-row"><label for="voiceSel">Голос</label><select id="voiceSel"></select><button class="btn" id="voiceTest" type="button">▶</button></div>
     <details class="steps" id="steps" hidden><summary>Как ехать</summary><ol id="stepsList"></ol></details>
     <div class="row">
       <button class="btn" id="swap">Поменять местами</button>
       <button class="btn" id="reset">Сбросить</button>
     </div>
     <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
-    <p class="hint" style="font-size:12px">Версия 0.3.0</p>
+    <p class="hint" style="font-size:12px">Версия 0.3.1</p>
   </div>
 </section>
 
@@ -650,8 +654,20 @@ body.navmode .panel,body.navmode .search{display:none}
 
   // ---------- Голос ----------
   let ruVoice = null;
-  function pickVoice(){ const v = speechSynthesis?.getVoices?.() || []; ruVoice = v.find(x => /^ru/i.test(x.lang)) || null; }
-  if ('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  // Выбор голоса из голосов, установленных на телефоне (русские и казахские)
+  function pickVoice(){
+    const all = speechSynthesis?.getVoices?.() || [];
+    const list = all.filter(x => /^(ru|kk)/i.test(x.lang));
+    let saved = null; try{ saved = localStorage.getItem('voiceURI'); }catch{}
+    ruVoice = list.find(x => x.voiceURI === saved) || list.find(x => /^ru/i.test(x.lang)) || null;
+    const sel = $('#voiceSel'); if (!sel) return;
+    sel.innerHTML = list.length
+      ? list.map(v => `<option value="${esc(v.voiceURI)}"${v === ruVoice ? ' selected' : ''}>${esc(v.name)} · ${/^kk/i.test(v.lang) ? 'қазақша' : 'русский'}</option>`).join('')
+      : '<option>Голос телефона по умолчанию</option>';
+  }
+  if ('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; setTimeout(pickVoice, 800); }
+  $('#voiceSel').onchange = e => { try{ localStorage.setItem('voiceURI', e.target.value); }catch{} pickVoice(); };
+  $('#voiceTest').onclick = () => { const was = muted; muted = false; speak('Через 300 метров поверните направо на проспект Абая.'); muted = was; };
   function unlockSpeech(){ try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }catch{} }
   function speak(text){
     if (muted || !('speechSynthesis' in window) || !text) return;
