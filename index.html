@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Карта Астаны</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+/* Макет: карта на весь экран, поиск сверху слева, панель маршрута под ним (на телефоне снизу), кнопки слоёв справа */
+:root{
+  --bg:#f3f6f8; --surface:#ffffff; --fg:#14202b; --muted:#5d6c79; --line:#dbe3e9;
+  --accent:#0a8f8a; --accent-ink:#ffffff; --from:#1f9d55; --to:#d63c3c;
+  --shadow:0 6px 24px rgba(16,32,48,.14);
+  --font:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f161d; --surface:#18222c; --fg:#e7eef3; --muted:#93a3b0; --line:#2a3743;
+    --accent:#20b8b0; --accent-ink:#06201f; --shadow:0 6px 24px rgba(0,0,0,.45); color-scheme:dark }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);font-size:15px;color:var(--fg);background:var(--bg)}
+#map{position:fixed;inset:0}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.search{position:fixed;z-index:5;top:calc(12px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));width:min(380px,calc(100vw - 24px))}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:6px 6px 6px 14px}
+.search-box input{flex:1;min-width:0;border:0;background:transparent;font:inherit;color:var(--fg);padding:8px 0;outline:none}
+.brand{font-weight:700;color:var(--accent);letter-spacing:.02em}
+.icon-btn{border:0;background:transparent;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+.icon-btn:hover{background:var(--bg)}
+.results{margin-top:6px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);max-height:50vh;overflow-y:auto}
+.results button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 14px;border-bottom:1px solid var(--line)}
+.results button:last-child{border-bottom:0}
+.results button:hover{background:var(--bg)}
+.results .t{font-weight:600}
+.results .s{color:var(--muted);font-size:13px;margin-top:2px}
+.results .empty{padding:12px 14px;color:var(--muted)}
+
+.panel{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:calc(76px + env(safe-area-inset-top,0px));
+  width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 100px);overflow-y:auto;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px;display:grid;gap:12px}
+.panel h2{margin:0;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.panel-head{display:flex;justify-content:space-between;align-items:center}
+.body{display:grid;gap:12px}
+.pt{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;min-height:44px}
+.pt .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.pt .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt .lbl.ph{color:var(--muted)}
+.pt.active{border-color:var(--accent)}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--bg);padding:4px;border-radius:12px}
+.modes button{border:0;background:transparent;border-radius:9px;padding:8px 4px;font-weight:500;color:var(--muted)}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.routes{display:grid;gap:6px}
+.route{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:transparent;text-align:left;width:100%}
+.route[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.route .time{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.route .dist{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.route .eta{grid-column:1 / -1;color:var(--muted);font-size:13px}
+.hint{color:var(--muted);font-size:13px;line-height:1.45;margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.err{color:var(--to);font-size:13px;margin:0}
+details.steps{border:1px solid var(--line);border-radius:12px;padding:0 12px}
+details.steps summary{cursor:pointer;padding:10px 0;font-weight:600}
+details.steps ol{margin:0 0 10px;padding-left:20px;display:grid;gap:6px;font-size:14px}
+details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
+
+.tools{position:fixed;z-index:4;right:max(12px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));display:grid;gap:8px}
+.tool{width:48px;height:48px;border:0;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:13px}
+.tool.on{background:var(--accent);color:var(--accent-ink)}
+
+.toast{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:calc(100vw - 32px)}
+.drive{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:10px 12px 10px 16px;display:flex;gap:14px;align-items:center}
+.drive b{font-variant-numeric:tabular-nums}
+
+.maplibregl-popup-content{font-family:var(--font);border-radius:12px;padding:12px 14px;background:var(--surface);color:var(--fg)}
+.maplibregl-popup-tip{border-top-color:var(--surface)!important;border-bottom-color:var(--surface)!important}
+.pop-t{font-weight:600;margin-bottom:8px;max-width:240px}
+
+.pin{width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);position:relative}
+.pin::after{content:attr(data-l);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:700 10px/1 var(--font)}
+.pin.pulse::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid currentColor;animation:ring 1.8s ease-out infinite}
+@keyframes ring{from{transform:scale(.5);opacity:.9}to{transform:scale(1.4);opacity:0}}
+.car{width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid #0a8f8a;box-shadow:0 0 0 6px rgba(10,143,138,.25)}
+
+@media (max-width:700px){
+  .panel{top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));left:max(10px,env(safe-area-inset-left,0px));width:calc(100vw - 20px);max-height:55vh}
+  .panel.collapsed .body{display:none}
+  .tools{top:calc(70px + env(safe-area-inset-top,0px))}
+  .search{width:calc(100vw - 20px);left:max(10px,env(safe-area-inset-left,0px))}
+  .toast,.drive{bottom:auto;top:calc(70px + env(safe-area-inset-top,0px))}
+}
+@media (min-width:701px){ #collapse{display:none} }
+@media (prefers-reduced-motion: reduce){ .pin.pulse::before{animation:none} }
+</style>
+</head>
+<body>
+<div id="map" aria-label="Карта Астаны"></div>
+
+<div class="search">
+  <div class="search-box">
+    <span class="brand">Астана</span>
+    <input id="q" type="search" placeholder="Адрес, улица или место" autocomplete="off">
+    <button class="icon-btn" id="clearQ" aria-label="Очистить поиск" hidden>✕</button>
+  </div>
+  <div class="results" id="results" hidden></div>
+</div>
+
+<div class="tools">
+  <button class="tool on" id="t3d" title="Переключить 3D / 2D">3D</button>
+  <button class="tool" id="tSat" title="Спутник">Спут</button>
+  <button class="tool" id="tGeo" title="Где я">◎</button>
+</div>
+
+<section class="panel" id="panel">
+  <div class="panel-head">
+    <h2>Маршрут</h2>
+    <button class="icon-btn" id="collapse" aria-label="Свернуть панель">▾</button>
+  </div>
+  <div class="body">
+    <div class="pt active" id="ptFrom"><span class="dot" style="background:var(--from)"></span><span class="lbl ph" id="fromLbl">Откуда — нажмите на карту</span><button class="icon-btn" data-clear="from" aria-label="Убрать точку А" hidden>✕</button></div>
+    <div class="pt" id="ptTo"><span class="dot" style="background:var(--to)"></span><span class="lbl ph" id="toLbl">Куда</span><button class="icon-btn" data-clear="to" aria-label="Убрать точку Б" hidden>✕</button></div>
+    <div class="modes" role="group" aria-label="Способ передвижения">
+      <button data-mode="car" aria-pressed="true">Авто</button>
+      <button data-mode="foot" aria-pressed="false">Пешком</button>
+      <button data-mode="bike" aria-pressed="false">Вело</button>
+    </div>
+    <div class="routes" id="routes"></div>
+    <p class="err" id="err" hidden></p>
+    <div class="row" id="routeActions" hidden>
+      <button class="btn primary" id="play">▶ Проехать маршрут</button>
+      <button class="btn" id="share">Поделиться</button>
+    </div>
+    <details class="steps" id="steps" hidden><summary>Как ехать</summary><ol id="stepsList"></ol></details>
+    <div class="row">
+      <button class="btn" id="swap">Поменять местами</button>
+      <button class="btn" id="reset">Сбросить</button>
+    </div>
+    <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
+  </div>
+</section>
+
+<div class="drive" id="drive" hidden><span>Осталось <b id="driveLeft">—</b></span><button class="btn" id="stopDrive">Стоп</button></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  // ---------- Настройки ----------
+  const CENTER = [71.4304, 51.1282];
+  const BOUNDS = [[70.95, 50.85], [71.95, 51.40]];
+  const VIEWBOX = '71.20,51.30,71.75,50.95';
+  const BBOX = '71.20,50.95,71.75,51.30';
+  const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+  const ROUTER = { car:'routed-car', foot:'routed-foot', bike:'routed-bike' };
+  const PITCH_3D = 55;
+
+  const $ = s => document.querySelector(s);
+  const state = { from:null, to:null, mode:'car', routes:[], active:0, sat:false, d3:true };
+  let markerFrom = null, markerTo = null, geoMarker = null, popup = null;
+
+  if (typeof maplibregl === 'undefined'){
+    document.body.insertAdjacentHTML('beforeend','<div class="toast" style="top:40%;bottom:auto">Библиотека карты не загрузилась. Проверьте интернет и обновите страницу.</div>');
+    return;
+  }
+
+  // ---------- Карта ----------
+  const FALLBACK = { version:8, sources:{ osm:{ type:'raster', tileSize:256, maxzoom:19,
+    tiles:['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], attribution:'© OpenStreetMap' } },
+    layers:[{ id:'osm', type:'raster', source:'osm' }] };
+  const map = new maplibregl.Map({
+    container:'map', style:STYLE, center:CENTER, zoom:14.5, pitch:PITCH_3D, bearing:-20, maxPitch:75,
+    maxBounds:BOUNDS, attributionControl:{ compact:true }
+  });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch:true }), 'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({ unit:'metric' }), 'bottom-left');
+
+  let styleOk = false, usedFallback = false, hashApplied = false;
+  map.on('styledata', () => { styleOk = true; });
+  map.on('error', e => {
+    console.warn('map error', e?.error);
+    if (!styleOk && !usedFallback){ usedFallback = true; map.setStyle(FALLBACK); toast('Векторная карта недоступна, включил упрощённую.'); }
+  });
+
+  map.on('style.load', () => {
+    const style = map.getStyle();
+    const firstSymbol = style.layers.find(l => l.type === 'symbol')?.id;
+
+    map.addSource('sat', { type:'raster', tileSize:256, maxzoom:19,
+      tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], attribution:'Снимки © Esri' });
+    map.addLayer({ id:'sat', type:'raster', source:'sat', layout:{ visibility: state.sat ? 'visible' : 'none' } }, firstSymbol);
+
+    style.layers.filter(l => l.type === 'fill-extrusion').forEach(l => map.removeLayer(l.id));
+    const vecSource = Object.keys(style.sources).find(k => style.sources[k].type === 'vector');
+    if (vecSource) map.addLayer({
+      id:'b3d', type:'fill-extrusion', source:vecSource, 'source-layer':'building', minzoom:13,
+      layout:{ visibility: state.d3 ? 'visible' : 'none' },
+      paint:{
+        'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#d9dee3',30,'#c3ccd4',80,'#a9b8c6',200,'#7f97ad'],
+        'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,14.5,['coalesce',['get','render_height'],8]],
+        'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
+        'fill-extrusion-opacity':0.9
+      }
+    }, firstSymbol);
+
+    // Стрелка направления для маршрута (рисуется кодом, без внешних картинок)
+    if (!map.hasImage('arrow')) map.addImage('arrow', makeArrow(), { pixelRatio:2 });
+
+    map.addSource('route', { type:'geojson', data:emptyFC(), lineMetrics:true });
+    map.addSource('alts', { type:'geojson', data:emptyFC() });
+    map.addLayer({ id:'alts', type:'line', source:'alts', layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color':'#8a9aa8', 'line-width':6, 'line-opacity':0.7 } });
+    // свечение
+    map.addLayer({ id:'route-glow', type:'line', source:'route', layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color':'#00ffd0', 'line-width':['interpolate',['linear'],['zoom'],10,18,16,30], 'line-opacity':0.45, 'line-blur':8 } });
+    // белая обводка
+    map.addLayer({ id:'route-casing', type:'line', source:'route', layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-color':'#0b1f2a', 'line-width':['interpolate',['linear'],['zoom'],10,9,16,17] } });
+    // основная линия: градиент от зелёной точки А к красной точке Б
+    map.addLayer({ id:'route', type:'line', source:'route', layout:{ 'line-cap':'round','line-join':'round' },
+      paint:{ 'line-width':['interpolate',['linear'],['zoom'],10,6,16,12],
+        'line-gradient':['interpolate',['linear'],['line-progress'],0,'#00e676',0.55,'#00e5ff',1,'#ff1744'] } });
+    // бегущие штрихи — показывают движение к точке Б
+    map.addLayer({ id:'route-flow', type:'line', source:'route', layout:{ 'line-cap':'butt','line-join':'round' },
+      paint:{ 'line-color':'#ffffff', 'line-opacity':0.85,
+        'line-width':['interpolate',['linear'],['zoom'],10,1.5,16,3], 'line-dasharray':DASHES[0] } });
+    // стрелки вдоль линии
+    map.addLayer({ id:'route-arrows', type:'symbol', source:'route',
+      layout:{ 'symbol-placement':'line', 'symbol-spacing':['interpolate',['linear'],['zoom'],10,50,16,90],
+        'icon-image':'arrow', 'icon-size':['interpolate',['linear'],['zoom'],10,0.8,16,1.25],
+        'icon-allow-overlap':true, 'icon-ignore-placement':true, 'icon-rotation-alignment':'map' } });
+
+    if (state.routes.length) selectRoute(state.active);
+    if (!hashApplied){ hashApplied = true; applyHash(); }
+  });
+
+  map.on('click', 'alts', e => { e.preventDefault(); const i = e.features[0]?.properties?.idx; if (i != null) selectRoute(+i); });
+  map.on('mouseenter', 'alts', () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', 'alts', () => map.getCanvas().style.cursor = '');
+
+  map.on('click', e => {
+    if (e.defaultPrevented || driving) return;
+    const p = { lng:e.lngLat.lng, lat:e.lngLat.lat };
+    if (!state.from) setPoint('from', p);
+    else if (!state.to) setPoint('to', p);
+    else { setPoint('to', null, true); setPoint('from', p); }
+  });
+
+  // ---------- Анимация штрихов ----------
+  const DASHES = [
+    [0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],
+    [0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]
+  ];
+  let dashStep = -1;
+  function animateDashes(t){
+    const step = Math.floor(t / 70) % DASHES.length;
+    if (step !== dashStep && map.getLayer('route-flow') && state.routes.length){
+      map.setPaintProperty('route-flow', 'line-dasharray', DASHES[step]); dashStep = step;
+    }
+    requestAnimationFrame(animateDashes);
+  }
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(animateDashes);
+
+  function makeArrow(){
+    const s = 48, c = document.createElement('canvas'); c.width = c.height = s;
+    const g = c.getContext('2d');
+    g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = '#ffffff';
+    g.beginPath(); g.moveTo(16, 10); g.lineTo(32, 24); g.lineTo(16, 38); g.stroke();
+    return g.getImageData(0, 0, s, s);
+  }
+
+  // ---------- 3D / 2D ----------
+  function set3D(on){
+    state.d3 = on;
+    const b = $('#t3d'); b.textContent = on ? '3D' : '2D'; b.classList.toggle('on', on);
+    if (map.getLayer('b3d')) map.setLayoutProperty('b3d', 'visibility', on ? 'visible' : 'none');
+    if (on){ map.dragRotate.enable(); map.touchZoomRotate.enableRotation(); map.touchPitch.enable(); map.setMaxPitch(75); }
+    else { map.dragRotate.disable(); map.touchZoomRotate.disableRotation(); map.touchPitch.disable(); }
+    map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: on ? -20 : 0, duration:700 });
+    if (!on) setTimeout(() => map.setMaxPitch(0), 720);
+  }
+  $('#t3d').onclick = () => set3D(!state.d3);
+
+  $('#tSat').onclick = function(){
+    state.sat = !state.sat; this.classList.toggle('on', state.sat);
+    if (map.getLayer('sat')) map.setLayoutProperty('sat', 'visibility', state.sat ? 'visible' : 'none');
+  };
+
+  // ---------- Точки А и Б ----------
+  function makePin(color, letter, pulse){
+    const el = document.createElement('div');
+    el.className = 'pin' + (pulse ? ' pulse' : '');
+    el.style.background = color; el.style.color = color; el.dataset.l = letter;
+    return el;
+  }
+  async function setPoint(kind, p, silent){
+    const lbl = $('#' + kind + 'Lbl');
+    const clearBtn = document.querySelector(`[data-clear="${kind}"]`);
+    let m = kind === 'from' ? markerFrom : markerTo;
+    if (!p){
+      state[kind] = null; if (m) m.remove();
+      if (kind === 'from') markerFrom = null; else markerTo = null;
+      lbl.textContent = kind === 'from' ? 'Откуда — нажмите на карту' : 'Куда';
+      lbl.classList.add('ph'); clearBtn.hidden = true;
+      if (!silent){ clearRoute(); highlight(); }
+      return;
+    }
+    state[kind] = { ...p, name: p.name || 'Определяю адрес…' };
+    if (!m){
+      m = new maplibregl.Marker({ element: kind === 'from' ? makePin('#1f9d55', 'А', false) : makePin('#d63c3c', 'Б', true), draggable:true })
+        .setLngLat([p.lng, p.lat]).addTo(map);
+      m.on('dragend', () => { const ll = m.getLngLat(); setPoint(kind, { lng:ll.lng, lat:ll.lat }); });
+      if (kind === 'from') markerFrom = m; else markerTo = m;
+    } else m.setLngLat([p.lng, p.lat]);
+    lbl.textContent = state[kind].name; lbl.classList.remove('ph'); clearBtn.hidden = false;
+    highlight();
+    if (!p.name){
+      const name = await reverse(p);
+      if (state[kind] && state[kind].lng === p.lng){ state[kind].name = name; lbl.textContent = name; }
+    }
+    buildRoute();
+  }
+  function highlight(){
+    $('#ptFrom').classList.toggle('active', !state.from);
+    $('#ptTo').classList.toggle('active', !!state.from && !state.to);
+  }
+  document.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => setPoint(b.dataset.clear, null));
+  $('#reset').onclick = () => { stopDrive(); setPoint('to', null, true); setPoint('from', null); history.replaceState(null, '', location.pathname); };
+  $('#swap').onclick = () => {
+    const a = state.from, b = state.to; if (!a && !b) return;
+    setPoint('from', null, true); setPoint('to', null, true);
+    if (b) setPoint('from', b); if (a) setPoint('to', a);
+  };
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    state.mode = b.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    buildRoute();
+  });
+
+  // ---------- Маршрут ----------
+  let routeReq = 0;
+  async function buildRoute(){
+    if (!state.from || !state.to) return;
+    stopDrive();
+    const id = ++routeReq, { from:a, to:b } = state;
+    const url = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/` +
+      `${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+    $('#routes').innerHTML = '<p class="hint">Строю маршрут…</p>'; showErr('');
+    try{
+      const j = await (await fetch(url)).json();
+      if (id !== routeReq) return;
+      if (j.code !== 'Ok' || !j.routes?.length) throw new Error('Маршрут между этими точками не найден. Передвиньте точку ближе к дороге.');
+      state.routes = j.routes; selectRoute(0, true); writeHash();
+    }catch(err){
+      if (id !== routeReq) return;
+      clearRoute(); showErr(/fetch|network/i.test(err.message) ? 'Нет связи с сервером маршрутов. Проверьте интернет и повторите.' : err.message);
+    }
+  }
+  function selectRoute(i, fit){
+    state.active = i;
+    const main = state.routes[i]; if (!main) return;
+    map.getSource('route')?.setData({ type:'FeatureCollection', features:[{ type:'Feature', geometry:main.geometry, properties:{} }] });
+    map.getSource('alts')?.setData({ type:'FeatureCollection', features: state.routes
+      .map((r, k) => ({ type:'Feature', geometry:r.geometry, properties:{ idx:k } })).filter((_, k) => k !== i) });
+    $('#routes').innerHTML = state.routes.map((r, k) => `
+      <button class="route" data-r="${k}" aria-pressed="${k === i}">
+        <span class="time">${fmtTime(r.duration)}</span><span class="dist">${fmtDist(r.distance)}${k === 0 ? ' · быстрый' : ''}</span>
+        <span class="eta">Прибытие в ${arrival(r.duration)}</span>
+      </button>`).join('');
+    document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => selectRoute(+b.dataset.r));
+    $('#routeActions').hidden = false;
+    renderSteps(main);
+    if (fit) fitRoute(main);
+  }
+  function fitRoute(r){
+    const c = r.geometry.coordinates, bb = new maplibregl.LngLatBounds(c[0], c[0]);
+    c.forEach(p => bb.extend(p));
+    const mobile = innerWidth <= 700;
+    map.fitBounds(bb, { padding: mobile ? { top:90, bottom:innerHeight * 0.45, left:30, right:70 } : { top:80, bottom:60, left:420, right:90 }, maxZoom:16, duration:800 });
+  }
+  function clearRoute(){
+    state.routes = []; $('#routes').innerHTML = ''; $('#routeActions').hidden = true; $('#steps').hidden = true;
+    map.getSource('route')?.setData(emptyFC()); map.getSource('alts')?.setData(emptyFC());
+  }
+  function showErr(t){ const e = $('#err'); e.textContent = t; e.hidden = !t; }
+
+  // ---------- Пошаговые подсказки ----------
+  const DIR = { left:'налево', right:'направо', 'slight left':'плавно налево', 'slight right':'плавно направо',
+    'sharp left':'резко налево', 'sharp right':'резко направо', uturn:'на разворот', straight:'прямо' };
+  function stepText(s){
+    const m = s.maneuver || {}, d = DIR[m.modifier] || '', on = s.name ? ` на ${s.name}` : '';
+    switch (m.type){
+      case 'depart': return `Начните движение${s.name ? ' по ' + s.name : ''}`;
+      case 'arrive': return 'Вы на месте';
+      case 'roundabout': case 'rotary': case 'roundabout turn': return `На кольце ${m.exit ? m.exit + '-й съезд' : 'съезд'}${on}`;
+      case 'exit roundabout': case 'exit rotary': return `Съезд с кольца${on}`;
+      case 'fork': return `На развилке держитесь ${m.modifier?.includes('left') ? 'левее' : 'правее'}${on}`;
+      case 'merge': return `Перестройтесь${on}`;
+      case 'on ramp': return `Въезд${on}`;
+      case 'off ramp': return `Съезд${on}`;
+      case 'end of road': return `В конце дороги ${d}${on}`;
+      case 'continue': case 'new name': return m.modifier === 'uturn' ? 'Развернитесь' : `Продолжайте${s.name ? ' по ' + s.name : ' прямо'}`;
+      default: return m.modifier === 'uturn' ? 'Развернитесь' : `Поверните ${d}${on}`.replace('Поверните прямо', 'Прямо');
+    }
+  }
+  function renderSteps(r){
+    const steps = (r.legs || []).flatMap(l => l.steps || []);
+    const list = steps.filter((s, k) => k === 0 || k === steps.length - 1 || s.distance > 0);
+    $('#stepsList').innerHTML = list.map(s => `<li>${esc(stepText(s))}${s.distance > 0 ? ` <span>· ${fmtDist(s.distance)}</span>` : ''}</li>`).join('');
+    $('#steps').hidden = !list.length;
+  }
+
+  // ---------- «Проехать маршрут»: камера едет от А к Б ----------
+  let driving = false, driveRaf = 0, carMarker = null;
+  $('#play').onclick = () => driving ? stopDrive() : startDrive();
+  $('#stopDrive').onclick = stopDrive;
+  function startDrive(){
+    const r = state.routes[state.active]; if (!r) return;
+    const pts = r.geometry.coordinates, cum = [0];
+    for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + dist(pts[k - 1], pts[k]));
+    const total = cum[cum.length - 1];
+    const durMs = Math.min(40000, Math.max(12000, total * 1.2));
+    driving = true; $('#play').textContent = '■ Остановить'; $('#drive').hidden = false;
+    if (innerWidth <= 700) $('#panel').classList.add('collapsed');
+    if (!state.d3) set3D(true);
+    const el = document.createElement('div'); el.className = 'car';
+    carMarker = new maplibregl.Marker({ element:el }).setLngLat(pts[0]).addTo(map);
+    let t0 = null, bearing = map.getBearing();
+    const frame = ts => {
+      if (!driving) return;
+      if (t0 === null) t0 = ts;
+      const k = Math.min(1, (ts - t0) / durMs), d = k * total;
+      const p = along(pts, cum, d), ahead = along(pts, cum, Math.min(total, d + 120));
+      const target = brng(p, ahead);
+      let delta = ((target - bearing + 540) % 360) - 180; bearing += delta * 0.08;
+      carMarker.setLngLat(p);
+      map.jumpTo({ center:p, bearing, pitch:62, zoom:16.3 });
+      $('#driveLeft').textContent = `${fmtDist(total - d)} · ${fmtTime(r.duration * (1 - k))}`;
+      if (k < 1) driveRaf = requestAnimationFrame(frame); else { stopDrive(); toast('Вы на месте'); fitRoute(r); }
+    };
+    map.flyTo({ center:pts[0], zoom:16.3, pitch:62, duration:1200 });
+    setTimeout(() => { if (driving) driveRaf = requestAnimationFrame(frame); }, 1250);
+  }
+  function stopDrive(){
+    if (!driving) return;
+    driving = false; cancelAnimationFrame(driveRaf);
+    carMarker?.remove(); carMarker = null;
+    $('#play').textContent = '▶ Проехать маршрут'; $('#drive').hidden = true;
+  }
+  function along(pts, cum, d){
+    let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+    const seg = cum[i] - cum[i - 1] || 1, t = (d - cum[i - 1]) / seg;
+    return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * t, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * t];
+  }
+  function dist(a, b){
+    const R = 6371000, r = Math.PI / 180, dLat = (b[1] - a[1]) * r, dLng = (b[0] - a[0]) * r;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function brng(a, b){
+    const r = Math.PI / 180, y = Math.sin((b[0] - a[0]) * r) * Math.cos(b[1] * r);
+    const x = Math.cos(a[1] * r) * Math.sin(b[1] * r) - Math.sin(a[1] * r) * Math.cos(b[1] * r) * Math.cos((b[0] - a[0]) * r);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+
+  // ---------- Поделиться маршрутом (ссылка с точками) ----------
+  function writeHash(){
+    if (!state.from || !state.to) return;
+    const f = p => p.lng.toFixed(6) + ',' + p.lat.toFixed(6);
+    history.replaceState(null, '', `#r=${f(state.from)}~${f(state.to)}~${state.mode}`);
+  }
+  function applyHash(){
+    const m = location.hash.match(/^#r=([\d.]+),([\d.]+)~([\d.]+),([\d.]+)~(car|foot|bike)$/);
+    if (!m) return;
+    state.mode = m[5];
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === m[5]));
+    setPoint('from', { lng:+m[1], lat:+m[2] });
+    setPoint('to', { lng:+m[3], lat:+m[4] });
+  }
+  $('#share').onclick = async () => {
+    writeHash();
+    try{ await navigator.clipboard.writeText(location.href); toast('Ссылка на маршрут скопирована'); }
+    catch{ toast('Скопируйте ссылку из адресной строки'); }
+  };
+
+  // ---------- Поиск ----------
+  const q = $('#q'), res = $('#results'); let tmr = null, searchReq = 0;
+  q.addEventListener('input', () => {
+    $('#clearQ').hidden = !q.value; clearTimeout(tmr);
+    if (q.value.trim().length < 3){ res.hidden = true; return; }
+    tmr = setTimeout(search, 450);
+  });
+  q.addEventListener('keydown', e => { if (e.key === 'Enter'){ clearTimeout(tmr); search(); } if (e.key === 'Escape') res.hidden = true; });
+  $('#clearQ').onclick = () => { q.value = ''; res.hidden = true; $('#clearQ').hidden = true; q.focus(); };
+
+  async function search(){
+    const text = q.value.trim(); if (!text) return;
+    const id = ++searchReq;
+    try{
+      const list = await searchPhoton(text).catch(() => searchNominatim(text));
+      if (id !== searchReq) return;
+      res.hidden = false;
+      if (!list.length){ res.innerHTML = '<div class="empty">Ничего не нашлось в Астане. Попробуйте «Кабанбай батыра 53» или название места.</div>'; return; }
+      res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}</div><div class="s">${esc(sub(it))}</div></button>`).join('');
+      res.querySelectorAll('button').forEach(b => b.onclick = () => pick(list[+b.dataset.k]));
+    }catch{ res.hidden = false; res.innerHTML = '<div class="empty">Поиск недоступен. Проверьте интернет.</div>'; }
+  }
+  async function searchPhoton(text){
+    const c = map.getCenter();
+    const r = await fetch(`https://photon.komoot.io/api/?limit=8&lang=default&bbox=${BBOX}&lat=${c.lat}&lon=${c.lng}&q=${encodeURIComponent(text)}`);
+    if (!r.ok) throw new Error('photon');
+    return ((await r.json()).features || []).map(photonToItem);
+  }
+  async function searchNominatim(text){
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&accept-language=ru&viewbox=${VIEWBOX}&bounded=1&q=${encodeURIComponent(text)}`);
+    if (!r.ok) throw new Error('nominatim');
+    return r.json();
+  }
+  function photonToItem(f){
+    const p = f.properties || {};
+    return { lon:f.geometry.coordinates[0], lat:f.geometry.coordinates[1],
+      name: p.type === 'house' ? '' : (p.name || ''),
+      display_name:[p.name, p.street, p.housenumber, p.district, p.city].filter(Boolean).join(', '),
+      address:{ road:p.street, house_number:p.housenumber, suburb:p.district || p.locality, city:p.city } };
+  }
+  function pick(it){
+    res.hidden = true; q.value = title(it);
+    const p = { lng:+it.lon, lat:+it.lat, name:title(it) };
+    map.flyTo({ center:[p.lng, p.lat], zoom:17, duration:900 });
+    showPopup(p);
+  }
+  function showPopup(p){
+    popup?.remove();
+    const el = document.createElement('div');
+    el.innerHTML = `<div class="pop-t">${esc(p.name)}</div><div class="row">
+      <button class="btn" data-a="from">Отсюда</button><button class="btn primary" data-a="to">Сюда</button></div>`;
+    el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { popup.remove(); setPoint(b.dataset.a, p); $('#panel').classList.remove('collapsed'); });
+    popup = new maplibregl.Popup({ offset:14, maxWidth:'280px' }).setLngLat([p.lng, p.lat]).setDOMContent(el).addTo(map);
+  }
+  function title(it){
+    const a = it.address || {}, street = a.road || a.pedestrian || a.street;
+    if (it.name && it.name !== street) return it.name;
+    if (street) return street + (a.house_number ? ', ' + a.house_number : '');
+    return (it.display_name || '').split(',')[0] || 'Точка на карте';
+  }
+  function sub(it){
+    const a = it.address || {};
+    return [a.road && it.name ? a.road + (a.house_number ? ' ' + a.house_number : '') : null, a.suburb || a.city_district, 'Астана'].filter(Boolean).join(', ');
+  }
+  async function reverse(p){
+    try{
+      const j = await (await fetch(`https://photon.komoot.io/reverse?lang=default&lat=${p.lat}&lon=${p.lng}`)).json();
+      if (j.features?.length) return title(photonToItem(j.features[0]));
+    }catch{}
+    try{
+      const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=ru&lat=${p.lat}&lon=${p.lng}`)).json();
+      return j && !j.error ? title(j) : coords(p);
+    }catch{ return coords(p); }
+  }
+
+  // ---------- Геолокация ----------
+  $('#tGeo').onclick = () => {
+    if (!navigator.geolocation) return toast('Браузер не умеет определять местоположение.');
+    toast('Определяю, где вы…');
+    navigator.geolocation.getCurrentPosition(pos => {
+      const p = { lng:pos.coords.longitude, lat:pos.coords.latitude };
+      const [[w, s], [e, n]] = BOUNDS;
+      if (p.lng < w || p.lng > e || p.lat < s || p.lat > n) return toast('Вы сейчас за пределами Астаны.');
+      geoMarker?.remove();
+      geoMarker = new maplibregl.Marker({ element:makePin('#2f7de1', '', true) }).setLngLat([p.lng, p.lat]).addTo(map);
+      map.flyTo({ center:[p.lng, p.lat], zoom:16 });
+      if (!state.from) setPoint('from', { ...p, name:'Моё местоположение' });
+      toast('');
+    }, () => toast('Нет доступа к геолокации. Разрешите её в настройках браузера.'), { enableHighAccuracy:true, timeout:10000 });
+  };
+  $('#collapse').onclick = () => $('#panel').classList.toggle('collapsed');
+
+  // ---------- Мелочи ----------
+  let toastT;
+  function toast(t){ const el = $('#toast'); clearTimeout(toastT); el.textContent = t; el.hidden = !t; if (t) toastT = setTimeout(() => el.hidden = true, 3500); }
+  function fmtTime(s){ const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' мин' : Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин'; }
+  function fmtDist(m){ return m < 1000 ? Math.round(m / 10) * 10 + ' м' : (m / 1000).toFixed(1).replace('.', ',') + ' км'; }
+  function arrival(s){ return new Date(Date.now() + s * 1000).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' }); }
+  function coords(p){ return p.lat.toFixed(5) + ', ' + p.lng.toFixed(5); }
+  function emptyFC(){ return { type:'FeatureCollection', features:[] }; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+})();
+</script>
+</body>
+</html>
