@@ -165,7 +165,8 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
   background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
 body.navmode .sky{opacity:1}
 body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
-body.navmode .tools{display:none}
+body.navmode .tools{top:calc(84px + env(safe-area-inset-top,0px))}
+body.navmode #tGeo{display:none}
 .zoom{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:calc(76px + env(safe-area-inset-top,0px));display:grid;gap:8px}
 @media (max-width:700px){ .zoom{top:calc(70px + env(safe-area-inset-top,0px))} }
 @media (min-width:701px){ body:not(.navmode) .zoom{left:auto;right:calc(max(12px,env(safe-area-inset-right,0px)) + 56px);top:calc(12px + env(safe-area-inset-top,0px))} }
@@ -191,6 +192,7 @@ body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .nav .nav-turn{color:var(--fg)}
 body.night .nav{background:rgba(15,22,34,.72);color:#e7eef3}
 body.night .tool{background:rgba(15,22,34,.6);color:#e7eef3}
+body.night .tool.on{background:var(--accent);color:var(--accent-ink)}
 body.night .nav .nav-turn{color:#e7eef3}
 body.night .nav .btn{background:#182231;color:#e7eef3;border-color:#2a3647}
 body.night .nav .btn.stop{background:#e53935;border-color:#e53935;color:#fff}
@@ -256,7 +258,7 @@ body.navmode .panel,body.navmode .search{display:none}
     <div class="routes" id="routes"></div>
     <p class="err" id="err" hidden></p>
     <div class="row" id="routeActions" hidden>
-      <button class="btn primary" id="go">🚗 Поехать</button>
+      <button class="btn primary" id="go">🚗 Поехали</button>
       <button class="btn" id="play">▶ Демо</button>
       <button class="btn" id="share">Поделиться</button>
       <button class="btn" id="reset">Сбросить</button>
@@ -275,10 +277,10 @@ body.navmode .panel,body.navmode .search{display:none}
     <label class="set-check"><input type="checkbox" id="setNight"> Ночной неоновый режим в поездке</label>
     <details class="set-help"><summary>Как пользоваться</summary>
       <p>Карта сама находит, где вы, — это точка А. Выберите точку Б: найдите адрес в поиске или нажмите на карту. Точки можно перетаскивать, ⇅ меняет их местами.</p>
-      <p>«Поехать» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
+      <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.9.2</p>
+    <p class="set-ver">Версия 0.9.3</p>
   </div>
 </div>
 
@@ -437,6 +439,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (map.getLayer('b3d')) map.setLayoutProperty('b3d', 'visibility', on ? 'visible' : 'none');
     if (on){ map.dragRotate.enable(); map.touchZoomRotate.enableRotation(); map.touchPitch.enable(); map.setMaxPitch(75); }
     else { map.dragRotate.disable(); map.touchZoomRotate.disableRotation(); map.touchPitch.disable(); }
+    if (driving){ if (on) map.setMaxPitch(85); if (nav.shown) camTo(nav.shown, nav.heading, 500); return; }
     map.easeTo({ pitch: on ? PITCH_3D : 0, bearing: on ? -20 : 0, duration:700 });
     if (!on) setTimeout(() => map.setMaxPitch(0), 720);
   }
@@ -572,7 +575,7 @@ body.navmode .panel,body.navmode .search{display:none}
   }
 
   // ---------- Навигатор: машинка, слежение по GPS, голосовые подсказки ----------
-  // Один и тот же «движок» работает и с настоящим GPS («Поехать»), и с демо-проездом.
+  // Один и тот же «движок» работает и с настоящим GPS («Поехали»), и с демо-проездом.
   let driving = false, demo = false, carMarker = null, watchId = null, demoRaf = 0, wakeLock = null;
   let follow = true, muted = false;
   const nav = { pts:[], cum:[], total:0, dur:0, steps:[], idx:0, said:{}, off:0, lastPos:null, heading:0, shown:null, anim:0, rerouting:false };
@@ -635,11 +638,10 @@ body.navmode .panel,body.navmode .search{display:none}
     driving = true;
     document.body.classList.add('navmode');
     $('#play').textContent = demo ? '■ Остановить' : '▶ Демо-проезд';
-    $('#go').textContent = demo ? '🚗 Поехать' : '■ Завершить';
+    $('#go').textContent = demo ? '🚗 Поехали' : '■ Завершить';
     $('#nav').hidden = false; $('#navTop').hidden = false; $('#navCenter').hidden = true;
     applyNight(night); routeNavStyle(true); declutter(true);
     if (innerWidth <= 700) $('#panel').classList.add('collapsed');
-    if (!state.d3) set3D(true);
     map.setMaxPitch(85); loadCams();
     carMarker?.remove();
     carMarker = new maplibregl.Marker({ element:carElement(), rotationAlignment:'map', pitchAlignment:'map' }).setLngLat(nav.pts[0]).addTo(map);
@@ -660,7 +662,7 @@ body.navmode .panel,body.navmode .search{display:none}
     speechSynthesis?.cancel();
     stop3DCar(); carMarker?.remove(); carMarker = null;
     document.body.classList.remove('navmode');
-    $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехать';
+    $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехали';
     $('#nav').hidden = true; $('#navTop').hidden = true; exitHud(); $('#navCam').hidden = true;
     applyNight(false); routeNavStyle(false); declutter(false); showCamSign(null);
     map.easeTo({ padding:{ top:0, bottom:0, left:0, right:0 }, pitch:state.d3 ? PITCH_3D : 0, duration:600 }); setTimeout(() => map.setMaxPitch(state.d3 ? 75 : 0), 650); $('#spd').classList.remove('over');
@@ -828,7 +830,8 @@ body.navmode .panel,body.navmode .search{display:none}
   ];
   let viewIdx = 0; try{ viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === localStorage.getItem('navView'))); }catch{}
   let zoomOff = 0;   // кнопки +/− во время поездки сдвигают масштаб вида
-  const view = () => { const v = VIEWS[viewIdx]; return { ...v, zoom: v.zoom + zoomOff }; };
+  // в режиме 2D камера смотрит сверху, но по-прежнему поворачивается по ходу движения
+  const view = () => { const v = VIEWS[viewIdx]; return { ...v, raw:v.pitch, pitch: state.d3 ? v.pitch : 0, zoom: v.zoom + zoomOff }; };
   // Машина всегда видна: ставим её чуть выше нижней панели навигатора (а не под ней)
   function camPad(){
     const v = view(), H = innerHeight;
@@ -844,11 +847,11 @@ body.navmode .panel,body.navmode .search{display:none}
   $('#navView').onclick = () => {
     viewIdx = (viewIdx + 1) % VIEWS.length; try{ localStorage.setItem('navView', view().id); }catch{}
     toast('Вид: ' + view().name); follow = true;
-    if (nav.shown) camTo(nav.shown, view().pitch ? nav.heading : 0, 600);
+    if (nav.shown) camTo(nav.shown, nav.heading, 600);
   };
   function camTo(p, heading, ms){
     const v = view();
-    map.easeTo({ center:p, bearing:v.pitch ? heading : 0, pitch:v.pitch, zoom:v.zoom, duration:ms, easing:t => t, padding:camPad() });
+    map.easeTo({ center:p, bearing:v.raw ? heading : 0, pitch:v.pitch, zoom:v.zoom, duration:ms, easing:t => t, padding:camPad() });
   }
 
   // Демо: машинка едет по маршруту быстрее реального времени, с голосом
@@ -864,7 +867,7 @@ body.navmode .panel,body.navmode .search{display:none}
       const h = brng(p, ahead);
       camBearing += (((h - camBearing + 540) % 360) - 180) * 0.06;
       carMarker?.setLngLat(p).setRotation(h);
-      map.jumpTo({ center:p, bearing:view().pitch ? camBearing : 0, pitch:view().pitch, zoom:view().zoom, padding:camPad() });
+      map.jumpTo({ center:p, bearing:view().raw ? camBearing : 0, pitch:view().pitch, zoom:view().zoom, padding:camPad() });
       if (ts - lastFix > 200){ lastFix = ts; nav.lastPos = null; nav.heading = h; onFix({ lng:p[0], lat:p[1], speed:SPEED, heading:h }); }
       if (d < nav.total && driving) demoRaf = requestAnimationFrame(frame);
     };
