@@ -274,13 +274,14 @@ body.navmode .panel,body.navmode .search{display:none}
       <div class="voice-row"><select id="voiceSel"></select><button class="btn" id="voiceTest" type="button" aria-label="Послушать">▶</button></div></div>
     <div class="set-row"><label for="setView">Вид в поездке</label>
       <select id="setView"><option value="chase">За машиной</option><option value="classic">Классика</option><option value="top">Сверху</option></select></div>
-    <label class="set-check"><input type="checkbox" id="setNight"> Ночной неоновый режим в поездке</label>
+    <div class="set-row"><label for="setTheme">Тёмная карта</label>
+      <select id="setTheme"><option value="auto">Авто — вечером и ночью</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
     <details class="set-help"><summary>Как пользоваться</summary>
       <p>Карта сама находит, где вы, — это точка А. Выберите точку Б: найдите адрес в поиске или нажмите на карту. Точки можно перетаскивать, ⇅ меняет их местами.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.9.3</p>
+    <p class="set-ver">Версия 1.0.0</p>
   </div>
 </div>
 
@@ -358,12 +359,16 @@ body.navmode .panel,body.navmode .search{display:none}
       id:'b3d', type:'fill-extrusion', source:vecSource, 'source-layer':'building', minzoom:13,
       layout:{ visibility: state.d3 ? 'visible' : 'none' },
       paint:{
-        'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#d9dee3',30,'#c3ccd4',80,'#a9b8c6',200,'#7f97ad'],
+        'fill-extrusion-color':['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#efe9df',12,'#e7e2da',30,'#dde3ea',70,'#c7d6e8',150,'#a7c1e0',260,'#8fb0d8'],
+        'fill-extrusion-vertical-gradient':true,
         'fill-extrusion-height':['interpolate',['linear'],['zoom'],13,0,14.5,['coalesce',['get','render_height'],8]],
         'fill-extrusion-base':['coalesce',['get','render_min_height'],0],
-        'fill-extrusion-opacity':0.9
+        'fill-extrusion-opacity':0.96
       }
     }, firstSymbol);
+
+    // Мягкий свет сбоку: у домов появляются светлые и тёмные стороны, как в 2GIS
+    try{ map.setLight({ anchor:'viewport', color:'#ffffff', intensity:0.38, position:[1.4, 205, 40] }); }catch{}
 
     // Стрелка направления для маршрута (рисуется кодом, без внешних картинок)
     if (!map.hasImage('arrow')) map.addImage('arrow', makeArrow(), { pixelRatio:2 });
@@ -393,6 +398,7 @@ body.navmode .panel,body.navmode .search{display:none}
         'icon-allow-overlap':true, 'icon-ignore-placement':true, 'icon-rotation-alignment':'map' } });
 
     if (state.routes.length) selectRoute(state.active);
+    nightSaved = null; if (night) applyNight(true);
     if (!hashApplied){ hashApplied = true; applyHash(); if (!state.from) locateMe(true); }
   });
 
@@ -664,7 +670,7 @@ body.navmode .panel,body.navmode .search{display:none}
     document.body.classList.remove('navmode');
     $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехали';
     $('#nav').hidden = true; $('#navTop').hidden = true; exitHud(); $('#navCam').hidden = true;
-    applyNight(false); routeNavStyle(false); declutter(false); showCamSign(null);
+    routeNavStyle(false); declutter(false); showCamSign(null);
     map.easeTo({ padding:{ top:0, bottom:0, left:0, right:0 }, pitch:state.d3 ? PITCH_3D : 0, duration:600 }); setTimeout(() => map.setMaxPitch(state.d3 ? 75 : 0), 650); $('#spd').classList.remove('over');
   }
 
@@ -1016,39 +1022,41 @@ body.navmode .panel,body.navmode .search{display:none}
     threeLoading = new Promise((ok, no) => {
       const sc = document.createElement('script');
       sc.src = 'https://unpkg.com/three@0.147.0/build/three.min.js';
-      sc.onload = ok; sc.onerror = no; document.head.appendChild(sc);
+      sc.onload = () => { const e = document.createElement('script'); e.src = 'https://unpkg.com/three@0.147.0/examples/js/environments/RoomEnvironment.js'; e.onload = ok; e.onerror = ok; document.head.appendChild(e); };
+      sc.onerror = no; document.head.appendChild(sc);
     });
     return threeLoading;
   }
   function buildCar(T){
     const g = new T.Group();
-    const paint = new T.MeshStandardMaterial({ color:0xffc400, metalness:0.15, roughness:0.35 });   // жёлтый спорткар
-    const black = new T.MeshStandardMaterial({ color:0x0d0d0f, metalness:0.3, roughness:0.5 });
-    const tyre = new T.MeshStandardMaterial({ color:0x111111, roughness:0.9 });
-    const rim = new T.MeshStandardMaterial({ color:0xc9ced6, metalness:0.9, roughness:0.25 });
-    const glass = new T.MeshStandardMaterial({ color:0x0b1a2a, metalness:0.8, roughness:0.08 });
-    // обтекаемый профиль: длина по z (минус — перёд), высота по y; скругляем фаской
-    const side = (pts, width, mat, bevel = 0.1) => {
-      const sh = new T.Shape(); pts.forEach(([z, y], i) => i ? sh.lineTo(z, y) : sh.moveTo(z, y));
-      const geo = new T.ExtrudeGeometry(sh, { depth:width - 2 * bevel, bevelEnabled:bevel > 0, bevelSize:bevel, bevelThickness:bevel, bevelSegments:5, curveSegments:8 });
+    const paint = new T.MeshPhysicalMaterial({ color:0xf2b400, metalness:0.25, roughness:0.28, clearcoat:1, clearcoatRoughness:0.1 });
+    const black = new T.MeshStandardMaterial({ color:0x0d0d0f, metalness:0.4, roughness:0.4 });
+    const tyre = new T.MeshStandardMaterial({ color:0x121212, roughness:0.9 });
+    const rim = new T.MeshStandardMaterial({ color:0xd0d5dd, metalness:1, roughness:0.2 });
+    const glass = new T.MeshPhysicalMaterial({ color:0x0a1420, metalness:0.9, roughness:0.05, clearcoat:1 });
+    // плавный боковой профиль (длина по z, минус — перёд; высота по y), вытянутый на ширину и скруглённый фаской
+    const side = (draw, width, mat, bevel) => {
+      const sh = new T.Shape(); draw(sh);
+      const geo = new T.ExtrudeGeometry(sh, { depth:width - 2 * bevel, bevelEnabled:true, bevelSize:bevel, bevelThickness:bevel, bevelSegments:6, curveSegments:14 });
       geo.rotateY(-Math.PI / 2); geo.translate((width - 2 * bevel) / 2, 0, 0);
       const m = new T.Mesh(geo, mat); g.add(m); return m;
     };
-    side([[-2.3,0.32],[-2.36,0.5],[-2.25,0.66],[-1.6,0.78],[-0.95,0.86],[1.85,0.9],[2.3,0.84],[2.36,0.56],[2.3,0.32]], 1.9, paint, 0.14);   // кузов
-    side([[-0.95,0.84],[-0.2,1.2],[0.65,1.22],[1.75,0.9]], 1.62, glass, 0.12);                                              // кабина-стекло
-    side([[-0.12,1.2],[-0.02,1.27],[0.55,1.28],[0.68,1.22]], 1.5, paint, 0.06);                                             // крыша
+    side(sh => { sh.moveTo(-2.3,0.3); sh.lineTo(-2.38,0.48); sh.quadraticCurveTo(-2.42,0.7,-2.15,0.73); sh.quadraticCurveTo(-1.5,0.8,-0.95,0.87);
+      sh.lineTo(1.65,0.92); sh.quadraticCurveTo(2.36,0.92,2.4,0.66); sh.lineTo(2.36,0.3); sh.lineTo(-2.3,0.3); }, 1.9, paint, 0.15);                // кузов
+    side(sh => { sh.moveTo(-0.98,0.86); sh.quadraticCurveTo(-0.45,1.2,-0.08,1.23); sh.lineTo(0.72,1.24); sh.quadraticCurveTo(1.45,1.2,1.78,0.9); sh.lineTo(-0.98,0.86); }, 1.64, glass, 0.12); // стекло
+    side(sh => { sh.moveTo(-0.06,1.22); sh.quadraticCurveTo(0.33,1.31,0.7,1.23); sh.lineTo(-0.06,1.22); }, 1.52, paint, 0.05);  // крыша
     const add = (geo, mat, x, y, z) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
-    add(new T.BoxGeometry(1.8, 0.06, 0.34), black, 0, 1.12, 2.2);                                   // антикрыло
-    [-0.6, 0.6].forEach(x => add(new T.BoxGeometry(0.06, 0.24, 0.12), black, x, 1.0, 2.2));
-    add(new T.BoxGeometry(1.2, 0.16, 0.06), black, 0, 0.45, -2.52);                                  // решётка
-    add(new T.BoxGeometry(1.96, 0.1, 3.0), black, 0, 0.34, 0.05);                                    // пороги
-    const tyreG = new T.CylinderGeometry(0.37, 0.37, 0.3, 24); tyreG.rotateZ(Math.PI / 2);
-    const rimG = new T.CylinderGeometry(0.24, 0.24, 0.32, 16); rimG.rotateZ(Math.PI / 2);
-    [[-0.92, -1.42], [0.92, -1.42], [-0.92, 1.42], [0.92, 1.42]].forEach(([x, z]) => { add(tyreG, tyre, x, 0.37, z); add(rimG, rim, x, 0.37, z); });
-    const head = new T.MeshStandardMaterial({ color:0xffffff, emissive:0xeaf6ff, emissiveIntensity:1.4 });
-    const tail = new T.MeshStandardMaterial({ color:0xff2030, emissive:0xff1020, emissiveIntensity:1.8 });
-    [-0.62, 0.62].forEach(x => { add(new T.BoxGeometry(0.5, 0.08, 0.06), head, x, 0.66, -2.47); });
-    add(new T.BoxGeometry(1.7, 0.09, 0.06), tail, 0, 0.74, 2.5);                                    // светящаяся полоса сзади
+    add(new T.BoxGeometry(1.8, 0.05, 0.34), black, 0, 1.12, 2.2);                                    // антикрыло
+    [-0.6, 0.6].forEach(x => add(new T.BoxGeometry(0.05, 0.24, 0.1), black, x, 1.0, 2.2));
+    add(new T.BoxGeometry(1.1, 0.14, 0.05), black, 0, 0.44, -2.53);                                  // решётка
+    add(new T.BoxGeometry(1.98, 0.09, 3.0), black, 0, 0.34, 0.05);                                   // пороги
+    const tyreG = new T.CylinderGeometry(0.38, 0.38, 0.3, 28); tyreG.rotateZ(Math.PI / 2);
+    const rimG = new T.CylinderGeometry(0.25, 0.25, 0.32, 20); rimG.rotateZ(Math.PI / 2);
+    [[-0.93, -1.42], [0.93, -1.42], [-0.93, 1.42], [0.93, 1.42]].forEach(([x, z]) => { add(tyreG, tyre, x, 0.38, z); add(rimG, rim, x, 0.38, z); });
+    const head = new T.MeshStandardMaterial({ color:0xffffff, emissive:0xeaf6ff, emissiveIntensity:1.6 });
+    const tail = new T.MeshStandardMaterial({ color:0xff2030, emissive:0xff1020, emissiveIntensity:2 });
+    [-0.62, 0.62].forEach(x => add(new T.BoxGeometry(0.5, 0.08, 0.05), head, x, 0.64, -2.5));
+    add(new T.BoxGeometry(1.72, 0.08, 0.05), tail, 0, 0.74, 2.53);                                   // светящаяся полоса сзади
     return g;
   }
   async function start3DCar(){
@@ -1064,6 +1072,8 @@ body.navmode .panel,body.navmode .search{display:none}
         this.car = buildCar(T); this.scene.add(this.car);
         this.renderer = new T.WebGLRenderer({ canvas:m.getCanvas(), context:gl, antialias:true });
         this.renderer.autoClear = false;
+        // отражения на кузове и стёклах (глянец, как у настоящей машины)
+        try{ if (T.RoomEnvironment){ const pm = new T.PMREMGenerator(this.renderer); this.scene.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture; pm.dispose(); this.renderer.resetState(); } }catch(e){ console.warn('env', e); }
       },
       render(gl, matrix){
         if (!carMarker) return;
@@ -1090,7 +1100,12 @@ body.navmode .panel,body.navmode .search{display:none}
   function stop3DCar(){ try{ if (map.getLayer('car3d')) map.removeLayer('car3d'); }catch{} car3d = null; }
 
   // ---------- Ночной неоновый режим навигатора, широкая «дорожка» маршрута, полосы, знак камеры ----------
-  let night = true; try{ night = localStorage.getItem('navNight') !== '0'; }catch{}
+  // Тёмная карта: auto (с 19:00 до 7:00), on, off
+  let theme = 'auto'; try{ theme = localStorage.getItem('mapTheme') || 'auto'; }catch{}
+  const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 19 || h < 7; })());
+  let night = isDarkNow();
+  function setTheme(t){ theme = t; try{ localStorage.setItem('mapTheme', t); }catch{} night = isDarkNow(); applyNight(night); }
+  setInterval(() => { if (theme === 'auto' && isDarkNow() !== night){ night = isDarkNow(); applyNight(night); } }, 60000);
   let nightSaved = null, routeSaved = null;
   const OWN = ['route','route-glow','route-casing','route-flow','route-arrows','alts','sat','cams'];
   const NIGHT_PROPS = { background:['background-color'], fill:['fill-color'], line:['line-color'], symbol:['text-color','text-halo-color'], 'fill-extrusion':['fill-extrusion-color'] };
@@ -1099,7 +1114,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (pr === 'text-color') return '#c9d4e3';
     if (pr === 'text-halo-color') return '#0a0f1a';
     if (l.type === 'background') return '#0a0f1a';
-    if (l.type === 'fill-extrusion') return ['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#1b2534',60,'#24344a',200,'#35506f'];
+    if (l.type === 'fill-extrusion') return ['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#1d2840',40,'#25385a',120,'#2f4d7d',250,'#3a63a3'];
     if (/water/.test(id)) return '#0b2238';
     if (l.type === 'fill') return /park|grass|wood|forest|landcover|green|garden/.test(id) ? '#0d1a16' : '#111827';
     if (/motorway|trunk|primary/.test(id)) return '#3b4759';
@@ -1109,6 +1124,7 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   function applyNight(on){
     document.body.classList.toggle('night', !!on);
+    try{ map.setLight({ anchor:'viewport', color: on ? '#a9bcff' : '#ffffff', intensity: on ? 0.32 : 0.38, position:[1.4, 205, 40] }); }catch{}
     $('#navNight').textContent = on ? '☀' : '🌙';
     const st = map.getStyle(); if (!st) return;
     if (on && !nightSaved){
@@ -1124,7 +1140,7 @@ body.navmode .panel,body.navmode .search{display:none}
       nightSaved = null;
     }
   }
-  $('#navNight').onclick = () => { night = !night; try{ localStorage.setItem('navNight', night ? '1' : '0'); }catch{} applyNight(night); };
+  $('#navNight').onclick = () => setTheme(night ? 'off' : 'on');
 
   // Маршрут в навигаторе: широкая неоновая «дорожка» по полосе, как в навигаторах с видом от водителя
   let declutterSaved = null;
@@ -1416,14 +1432,14 @@ body.navmode .panel,body.navmode .search{display:none}
 
   // ---------- Настройки ----------
   function openSettings(){
-    $('#setView').value = view().id; $('#setNight').checked = night;
+    $('#setView').value = view().id; $('#setTheme').value = theme;
     renderVoices(); $('#settings').hidden = false;
   }
   $('#tSet').onclick = openSettings;
   $('#setClose').onclick = () => $('#settings').hidden = true;
   $('#settings').onclick = e => { if (e.target.id === 'settings') $('#settings').hidden = true; };
   $('#setView').onchange = e => { viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === e.target.value)); try{ localStorage.setItem('navView', view().id); }catch{} };
-  $('#setNight').onchange = e => { night = e.target.checked; try{ localStorage.setItem('navNight', night ? '1' : '0'); }catch{} if (driving) applyNight(night); };
+  $('#setTheme').onchange = e => setTheme(e.target.value);
 
   // ---------- Мелочи ----------
   let toastT;
