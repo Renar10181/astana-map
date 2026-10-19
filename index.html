@@ -12,7 +12,8 @@
 /* Макет: карта на весь экран, поиск сверху слева, панель маршрута под ним (на телефоне снизу), кнопки слоёв справа */
 :root{
   --bg:#f3f6f8; --surface:#ffffff; --fg:#14202b; --muted:#5d6c79; --line:#dbe3e9;
-  --accent:#0a8f8a; --accent-ink:#ffffff; --from:#1f9d55; --to:#d63c3c;
+  --accent:#0a8f8a; --accent-ink:#ffffff; --from:#1f9d55; --to:#7c4dff;
+  --glass:color-mix(in srgb,var(--surface) 78%,transparent);
   --shadow:0 6px 24px rgba(16,32,48,.14);
   --font:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
 }
@@ -29,7 +30,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .search{position:fixed;z-index:5;top:calc(12px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));width:min(380px,calc(100vw - 24px))}
-.search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:6px 6px 6px 14px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--glass);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);border-radius:14px;box-shadow:var(--shadow);padding:6px 6px 6px 14px}
 .search-box input{flex:1;min-width:0;border:0;background:transparent;font:inherit;color:var(--fg);padding:8px 0;outline:none}
 .brand{font-weight:700;color:var(--accent);letter-spacing:.02em}
 .icon-btn{border:0;background:transparent;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
@@ -44,7 +45,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
 .panel{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:calc(76px + env(safe-area-inset-top,0px));
   width:min(380px,calc(100vw - 24px));max-height:calc(100vh - 100px);overflow-y:auto;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px;display:grid;gap:12px}
-.panel{background:color-mix(in srgb,var(--surface) 80%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);padding:12px;gap:10px}
+.panel{background:var(--glass);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);padding:12px;gap:10px}
 .ab{display:flex;gap:6px;align-items:center}
 .ab-fields{flex:1;min-width:0;display:grid;gap:6px;grid-template-columns:minmax(0,1fr)}
 .ab .pt{min-height:40px;padding:6px 8px;background:color-mix(in srgb,var(--surface) 70%,transparent)}
@@ -104,7 +105,7 @@ details.steps ol{margin:0 0 10px;padding-left:20px;display:grid;gap:6px;font-siz
 details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 
 .tools{position:fixed;z-index:4;right:max(12px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));display:grid;gap:8px}
-.tool{width:48px;height:48px;border:0;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:13px}
+.tool{width:48px;height:48px;border:0;border-radius:12px;background:var(--glass);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);box-shadow:var(--shadow);font-weight:700;font-size:13px}
 .tool.on{background:var(--accent);color:var(--accent-ink)}
 
 .toast{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));
@@ -132,7 +133,7 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 @keyframes puff{0%{transform:translate(0,-6px) scale(.4);opacity:.95}100%{transform:translate(var(--dx,6px),26px) scale(1.9);opacity:0}}
 .p2{--dx:-7px}.p3{--dx:2px}
 .nav{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 20px));
-  background:color-mix(in srgb,var(--surface) 84%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:14px;box-shadow:var(--shadow);padding:8px 12px;display:grid;gap:2px}
+  background:var(--glass);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);border-radius:14px;box-shadow:var(--shadow);padding:8px 12px;display:grid;gap:2px}
 .nav-top{display:flex;justify-content:space-between;align-items:baseline}
 .nav-turn{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
 .speedo{display:flex;align-items:center;gap:8px}
@@ -175,7 +176,7 @@ body.navmode .zoom{top:calc(84px + env(safe-area-inset-top,0px))}
 .carwrap.three .car-svg,.carwrap.three::before{display:none}
 body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .navtop{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 20px));
-  background:rgba(15,107,69,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.3);padding:8px 12px;display:grid;gap:6px}
+  background:rgba(15,107,69,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.3);padding:8px 12px;display:grid;gap:6px}
 .nt-main{display:flex;align-items:center;gap:14px}
 .nt-arrow{font:700 32px/1 var(--font);min-width:34px;text-align:center}
 .nt-text{min-width:0;flex:1}
@@ -188,7 +189,8 @@ body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .nt-lanes span.on{opacity:1}
 .nav .nav-street{display:none}
 .nav .nav-turn{color:var(--fg)}
-body.night .nav{background:rgba(15,22,34,.84);color:#e7eef3}
+body.night .nav{background:rgba(15,22,34,.72);color:#e7eef3}
+body.night .tool{background:rgba(15,22,34,.6);color:#e7eef3}
 body.night .nav .nav-turn{color:#e7eef3}
 body.night .nav .btn{background:#182231;color:#e7eef3;border-color:#2a3647}
 body.night .nav .btn.stop{background:#e53935;border-color:#e53935;color:#fff}
@@ -276,7 +278,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <p>«Поехать» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.9.1</p>
+    <p class="set-ver">Версия 0.9.2</p>
   </div>
 </div>
 
@@ -377,7 +379,7 @@ body.navmode .panel,body.navmode .search{display:none}
     // основная линия: градиент от зелёной точки А к красной точке Б
     map.addLayer({ id:'route', type:'line', source:'route', layout:{ 'line-cap':'round','line-join':'round' },
       paint:{ 'line-width':['interpolate',['linear'],['zoom'],10,6,16,12],
-        'line-gradient':['interpolate',['linear'],['line-progress'],0,'#00e676',0.55,'#00e5ff',1,'#ff1744'] } });
+        'line-gradient':['interpolate',['linear'],['line-progress'],0,'#00e676',0.55,'#00e5ff',1,'#7c4dff'] } });
     // бегущие штрихи — показывают движение к точке Б
     map.addLayer({ id:'route-flow', type:'line', source:'route', layout:{ 'line-cap':'butt','line-join':'round' },
       paint:{ 'line-color':'#ffffff', 'line-opacity':0.85,
@@ -466,7 +468,7 @@ body.navmode .panel,body.navmode .search{display:none}
     }
     state[kind] = { ...p, name: p.name || 'Определяю адрес…' };
     if (!m){
-      m = new maplibregl.Marker({ element: kind === 'from' ? makePin('#1f9d55', 'А', false) : makePin('#d63c3c', 'Б', true), draggable:true })
+      m = new maplibregl.Marker({ element: kind === 'from' ? makePin('#1f9d55', 'А', false) : makePin('#7c4dff', 'Б', true), draggable:true })
         .setLngLat([p.lng, p.lat]).addTo(map);
       m.on('dragend', () => { const ll = m.getLngLat(); setPoint(kind, { lng:ll.lng, lat:ll.lat }); });
       if (kind === 'from') markerFrom = m; else markerTo = m;
@@ -1143,7 +1145,7 @@ body.navmode .panel,body.navmode .search{display:none}
       routeSaved = [['route','line-width'],['route','line-gradient'],['route-casing','line-width'],['route-casing','line-color'],['route-glow','line-width'],['route-glow','line-opacity']]
         .map(([id, pr]) => [id, pr, map.getLayer(id) ? map.getPaintProperty(id, pr) : undefined]);
       set('route', 'line-width', ['interpolate',['exponential',2],['zoom'],13,4,20,80]);
-      set('route', 'line-gradient', ['interpolate',['linear'],['line-progress'],0,'#00ffa3',0.85,'#00e5ff',1,'#ff2d55']);
+      set('route', 'line-gradient', ['interpolate',['linear'],['line-progress'],0,'#00ffa3',0.85,'#00e5ff',1,'#b388ff']);
       set('route-casing', 'line-width', ['interpolate',['exponential',2],['zoom'],13,6,20,96]);
       set('route-casing', 'line-color', '#03140e');
       set('route-glow', 'line-width', ['interpolate',['exponential',2],['zoom'],13,18,20,200]);
