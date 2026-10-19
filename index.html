@@ -49,7 +49,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .ab-fields{flex:1;min-width:0;display:grid;gap:6px;grid-template-columns:minmax(0,1fr)}
 .ab .pt{min-height:40px;padding:6px 8px;background:color-mix(in srgb,var(--surface) 70%,transparent)}
 .pt-l{width:22px;height:22px;border-radius:50%;color:#fff;display:grid;place-items:center;font:700 12px/1 var(--font);flex:none}
-.swap{font-size:20px;width:36px;height:36px;flex:none}
+.swap{font-size:18px;width:30px;height:30px;flex:none;margin-top:18px}
 .modes button{padding:7px 4px}
 #routeActions{grid-template-columns:repeat(3,1fr)!important}
 .sheet{position:fixed;inset:0;z-index:30;background:rgba(5,10,18,.45);display:grid;align-items:end;justify-items:center}
@@ -75,7 +75,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 #routeActions #go{grid-column:1 / -1;font-size:17px;padding:12px}
 #routeActions .btn{padding:8px 4px}
 .voice-row select{width:100%;text-overflow:ellipsis}
-.pt-cap{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:2px 0 -6px 4px}
+.pt-cap{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:2px 0 -2px 4px}
 .pt{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;min-height:44px}
 .pt .dot{width:12px;height:12px;border-radius:50%;flex:none}
 .pt .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -232,8 +232,10 @@ body.navmode .panel,body.navmode .search{display:none}
   <div class="body">
     <div class="ab">
       <div class="ab-fields">
-        <div class="pt active" id="ptFrom"><span class="pt-l" style="background:var(--from)">А</span><span class="lbl ph" id="fromLbl">Определяю ваше место…</span><button class="icon-btn" data-clear="from" aria-label="Убрать точку А" hidden>✕</button></div>
-        <div class="pt" id="ptTo"><span class="pt-l" style="background:var(--to)">Б</span><span class="lbl ph" id="toLbl">Куда едем? Поиск или нажмите на карту</span><button class="icon-btn" data-clear="to" aria-label="Убрать точку Б" hidden>✕</button></div>
+        <div class="pt-cap"><b style="color:var(--from)">А</b> · Откуда</div>
+        <div class="pt active" id="ptFrom"><span class="pt-l" style="background:var(--from)">А</span><span class="lbl ph" id="fromLbl">Определяю…</span><button class="icon-btn" data-clear="from" aria-label="Убрать точку А" hidden>✕</button></div>
+        <div class="pt-cap"><b style="color:var(--to)">Б</b> · Куда</div>
+        <div class="pt" id="ptTo"><span class="pt-l" style="background:var(--to)">Б</span><span class="lbl ph" id="toLbl">Адрес или точка на карте</span><button class="icon-btn" data-clear="to" aria-label="Убрать точку Б" hidden>✕</button></div>
       </div>
       <button class="icon-btn swap" id="swap" aria-label="Поменять А и Б местами" title="Поменять местами">⇅</button>
     </div>
@@ -267,7 +269,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <p>«Поехать» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.8.0</p>
+    <p class="set-ver">Версия 0.8.1</p>
   </div>
 </div>
 
@@ -451,7 +453,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (!p){
       state[kind] = null; if (m) m.remove();
       if (kind === 'from') markerFrom = null; else markerTo = null;
-      lbl.textContent = kind === 'from' ? 'Нажмите на карту или найдите адрес' : 'Куда едем? Поиск или нажмите на карту';
+      lbl.textContent = 'Адрес или точка на карте';
       lbl.classList.add('ph'); clearBtn.hidden = true;
       if (!silent){ clearRoute(); highlight(); }
       return;
@@ -1027,8 +1029,6 @@ body.navmode .panel,body.navmode .search{display:none}
     const tail = new T.MeshStandardMaterial({ color:0xff2030, emissive:0xff1020, emissiveIntensity:1.5 });
     [-0.58, 0.58].forEach(x => { add(new T.BoxGeometry(0.46, 0.13, 0.08), head, x, 0.7, -2.36); add(new T.BoxGeometry(0.46, 0.14, 0.08), tail, x, 0.8, 2.36); });
     add(new T.BoxGeometry(1.5, 0.1, 0.08), dark, 0, 0.45, 2.36);                                  // задний бампер
-    const sh = new T.Mesh(new T.PlaneGeometry(2.5, 5.2), new T.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.35 }));
-    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.02; g.add(sh);
     return g;
   }
   async function start3DCar(){
@@ -1362,16 +1362,16 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   function locateMe(auto){
     const lbl = $('#fromLbl');
-    if (!navigator.geolocation){ if (auto && !state.from) lbl.textContent = 'Нажмите на карту или найдите адрес'; return toast('Браузер не умеет определять местоположение.'); }
+    if (!navigator.geolocation){ if (auto && !state.from) lbl.textContent = 'Адрес или точка на карте'; return toast('Браузер не умеет определять местоположение.'); }
     if (!auto) toast('Определяю, где вы…');
     navigator.geolocation.getCurrentPosition(pos => {
       const p = { lng:pos.coords.longitude, lat:pos.coords.latitude };
       if (!inAstana(p)){
-        if (!state.from){ lbl.textContent = 'Нажмите на карту или найдите адрес'; }
+        if (!state.from){ lbl.textContent = 'Адрес или точка на карте'; }
         return toast('Вы сейчас за пределами Астаны — поставьте точку А на карте.');
       }
       showMe(p);
-      if (!state.from || state.from.me){ setPoint('from', { ...p, name:'📍 Моё местоположение', me:true }); }
+      if (!state.from || state.from.me){ setPoint('from', { ...p, name:'Моё местоположение', me:true }); }
       if (!state.to) map.flyTo({ center:[p.lng, p.lat], zoom:16, duration:auto ? 1200 : 800 });
       toast(auto ? 'Вы здесь. Теперь выберите, куда ехать' : '');
       // дальше синяя точка сама следует за человеком
@@ -1379,7 +1379,7 @@ body.navmode .panel,body.navmode .search{display:none}
         const pp = { lng:q.coords.longitude, lat:q.coords.latitude }; if (inAstana(pp)) showMe(pp);
       }, () => {}, { enableHighAccuracy:false, maximumAge:15000 });
     }, () => {
-      if (!state.from) lbl.textContent = 'Нажмите на карту или найдите адрес';
+      if (!state.from) lbl.textContent = 'Адрес или точка на карте';
       toast(auto ? 'Разрешите доступ к местоположению — так карта сама найдёт, где вы' : 'Нет доступа к геолокации. Разрешите её в настройках браузера.');
     }, { enableHighAccuracy:true, timeout:10000, maximumAge:30000 });
   }
