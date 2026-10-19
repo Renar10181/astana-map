@@ -165,10 +165,13 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 body.navmode .sky{opacity:1}
 body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
 body.navmode .tools{display:none}
-.zoom{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:45%;display:grid;gap:8px}
-.zoom .tool{width:44px;height:44px;font-size:24px;font-weight:600}
+.zoom{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:calc(76px + env(safe-area-inset-top,0px));display:grid;gap:8px}
+@media (max-width:700px){ .zoom{top:calc(70px + env(safe-area-inset-top,0px))} }
+@media (min-width:701px){ body:not(.navmode) .zoom{left:auto;right:calc(max(12px,env(safe-area-inset-right,0px)) + 56px);top:calc(12px + env(safe-area-inset-top,0px))} }
+.zoom .tool{width:48px;height:48px;font-size:24px;font-weight:600}
+#tSet{font-size:22px}
 .ph-btns{display:flex;gap:2px;align-items:center}
-body.navmode .zoom{top:auto;bottom:calc(var(--navh,190px) + 24px)}
+body.navmode .zoom{top:calc(84px + env(safe-area-inset-top,0px))}
 .carwrap.three .car-svg,.carwrap.three::before{display:none}
 body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .navtop{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 20px));
@@ -221,7 +224,7 @@ body.navmode .panel,body.navmode .search{display:none}
   <div class="results" id="results" hidden></div>
 </div>
 
-<div class="zoom" aria-label="Масштаб"><button class="tool" id="zIn" aria-label="Приблизить">+</button><button class="tool" id="zOut" aria-label="Отдалить">−</button></div>
+<div class="zoom" aria-label="Масштаб и настройки"><button class="tool" id="zIn" aria-label="Приблизить">+</button><button class="tool" id="zOut" aria-label="Отдалить">−</button><button class="tool" id="tSet" aria-label="Настройки" title="Настройки">⚙</button></div>
 <div class="tools">
   <button class="tool on" id="t3d" title="Переключить 3D / 2D">3D</button>
   <button class="tool" id="tSat" title="Спутник">Спут</button>
@@ -231,7 +234,7 @@ body.navmode .panel,body.navmode .search{display:none}
 <section class="panel" id="panel">
   <div class="panel-head">
     <h2>Маршрут</h2>
-    <div class="ph-btns"><button class="icon-btn" id="tSet" aria-label="Настройки" title="Настройки" style="font-size:20px">⚙</button><button class="icon-btn" id="collapse" aria-label="Свернуть панель">▾</button></div>
+    <button class="icon-btn" id="collapse" aria-label="Свернуть панель">▾</button>
   </div>
   <div class="body">
     <div class="ab">
@@ -273,7 +276,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <p>«Поехать» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.9.0</p>
+    <p class="set-ver">Версия 0.9.1</p>
   </div>
 </div>
 
