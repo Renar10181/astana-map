@@ -127,8 +127,13 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .hud-bar .btn{background:#111;color:#ddd;border-color:#333}
 .nav-street{font-size:17px;font-weight:600}
 .nav-left{color:var(--muted);font-variant-numeric:tabular-nums}
-.nav-btns{margin-top:6px}
-.nav-btns .btn{flex:1}
+.nav-btns{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
+.nav-btns .btn{flex:1 1 52px;padding:8px 4px}
+.nav-btns .btn.stop{flex-basis:100%;background:#e53935;border-color:#e53935;color:#fff}
+.nav-cam{justify-self:start;background:#e53935;color:#fff;font-weight:700;border-radius:999px;padding:4px 12px;font-variant-numeric:tabular-nums}
+.sky{position:fixed;left:0;right:0;top:0;height:24vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
+  background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
+body.navmode .sky{opacity:1}
 body.navmode .panel,body.navmode .search{display:none}
 
 @media (max-width:700px){
@@ -144,6 +149,7 @@ body.navmode .panel,body.navmode .search{display:none}
 </head>
 <body>
 <div id="map" aria-label="Карта Астаны"></div>
+<div class="sky" aria-hidden="true"></div>
 
 <div class="search">
   <div class="search-box">
@@ -187,7 +193,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <button class="btn" id="reset">Сбросить</button>
     </div>
     <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
-    <p class="hint" style="font-size:12px">Версия 0.4.0</p>
+    <p class="hint" style="font-size:12px">Версия 0.5.0</p>
   </div>
 </section>
 
@@ -196,7 +202,8 @@ body.navmode .panel,body.navmode .search{display:none}
     <div class="speedo"><div class="spd" id="spd"><b id="navSpeed">0</b><small>км/ч</small></div><div class="limit" id="limit" hidden><span id="limitVal">60</span></div></div></div>
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
-  <div class="row nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navStop">Завершить</button></div>
+  <div class="nav-cam" id="navCam" hidden>📷</div>
+  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navCamAdd" aria-label="Отметить камеру здесь">📷+</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Завершить</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -544,11 +551,12 @@ body.navmode .panel,body.navmode .search{display:none}
     $('#nav').hidden = false; $('#navCenter').hidden = true;
     if (innerWidth <= 700) $('#panel').classList.add('collapsed');
     if (!state.d3) set3D(true);
+    map.setMaxPitch(85); loadCams();
     carMarker?.remove();
     carMarker = new maplibregl.Marker({ element:carElement(), rotationAlignment:'map', pitchAlignment:'map' }).setLngLat(nav.pts[0]).addTo(map);
     try{ wakeLock = await navigator.wakeLock?.request('screen'); }catch{}
     const first = nav.steps[0];
-    speak(`Поехали. ${spokenDist(nav.total)}, примерно ${fmtTime(nav.dur).replace('ч', 'час').replace('мин', 'минут')}. ${first ? stepText(first.s) : ''}`);
+    speak(say('start', { dist:nav.total, dur:nav.dur, s:first?.s }));
     if (demo) runDemo();
     else watchId = navigator.geolocation.watchPosition(p => onFix({ lng:p.coords.longitude, lat:p.coords.latitude,
         speed:p.coords.speed, heading:p.coords.heading }), () => toast('Сигнал GPS потерян'), { enableHighAccuracy:true, maximumAge:1000, timeout:15000 });
@@ -563,7 +571,8 @@ body.navmode .panel,body.navmode .search{display:none}
     carMarker?.remove(); carMarker = null;
     document.body.classList.remove('navmode');
     $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехать';
-    $('#nav').hidden = true; exitHud(); $('#spd').classList.remove('over');
+    $('#nav').hidden = true; exitHud(); $('#navCam').hidden = true;
+    map.easeTo({ padding:{ top:0, bottom:0, left:0, right:0 }, pitch:state.d3 ? PITCH_3D : 0, duration:600 }); setTimeout(() => map.setMaxPitch(state.d3 ? 75 : 0), 650); $('#spd').classList.remove('over');
   }
 
   function loadRoute(r){
@@ -572,6 +581,7 @@ body.navmode .panel,body.navmode .search{display:none}
     nav.total = nav.cum[nav.cum.length - 1]; nav.dur = r.duration; nav.idx = 0;
     // ограничения скорости по участкам маршрута (из данных OpenStreetMap)
     nav.maxspeed = (r.legs || []).flatMap(l => l.annotation?.maxspeed || []);
+    attachCams();
     const steps = (r.legs || []).flatMap(l => l.steps || []);
     nav.steps = steps.map((s, k) => ({ s, k, at: k === 0 ? 0 : project(s.maneuver.location, 0, true).along }));
   }
@@ -579,7 +589,7 @@ body.navmode .panel,body.navmode .search{display:none}
   // Перестроить маршрут от текущего места (при старте и если съехали с маршрута)
   async function reroute(here, announce){
     if (nav.rerouting) return; nav.rerouting = true;
-    if (announce) speak('Вы ушли с маршрута. Перестраиваю.');
+    if (announce) speak(say('off'));
     try{
       const b = state.to;
       const url = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/${here.lng},${here.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true&annotations=true`;
@@ -635,13 +645,14 @@ body.navmode .panel,body.navmode .search{display:none}
       if (s.maneuver.type === 'arrive'){
         if (d < T[2] + 20) arrive();
       } else {
-        if (d <= T[0] && d > T[1] && !nav.said[key + 'a'] && next.at - nav.steps[next.k - 1]?.at > T[0]){ nav.said[key + 'a'] = 1; speak(`Через ${spokenDist(d)} ${lowerFirst(stepText(s))}`); }
-        if (d <= T[1] && d > T[2] && !nav.said[key + 'b']){ nav.said[key + 'b'] = 1; speak(`Через ${spokenDist(d)} ${lowerFirst(stepText(s))}`); }
-        if (d <= T[2] && !nav.said[key + 'c']){ nav.said[key + 'c'] = 1; speak(`Сейчас ${lowerFirst(stepText(s))}`); }
+        if (d <= T[0] && d > T[1] && !nav.said[key + 'a'] && next.at - nav.steps[next.k - 1]?.at > T[0]){ nav.said[key + 'a'] = 1; speak(say('ahead', { d, s })); }
+        if (d <= T[1] && d > T[2] && !nav.said[key + 'b']){ nav.said[key + 'b'] = 1; speak(say('ahead', { d, s })); }
+        if (d <= T[2] && !nav.said[key + 'c']){ nav.said[key + 'c'] = 1; speak(say('now', { s })); }
       }
     } else if (left < 40) arrive();
     const tLeft = nav.total ? nav.dur * left / nav.total : 0;
     $('#navLeft').textContent = `${fmtDist(left)} · ${fmtTime(tLeft)} · прибытие ${arrival(tLeft)}`;
+    checkCams(along);
     // ---- спидометр и ограничение скорости ----
     const lim = limitAt(nav.idx);
     const kmh = demo ? Math.max(0, (lim.v || 60) - 3 + Math.round(Math.sin(Date.now() / 1500) * 4)) : Math.round(speed * 3.6);
@@ -669,7 +680,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (over){
       if (!overSince) overSince = now;
       if (now - overSince > 2000 && now - lastBeep > 6000 && !demo){ lastBeep = now; beep(); }
-      if (now - overSince > 2500 && now - overSaid > 45000){ overSaid = now; speak(`Внимание, ограничение ${lim.v}`); }
+      if (now - overSince > 2500 && now - overSaid > 45000){ overSaid = now; speak(say('limit', { v:lim.v })); }
     } else overSince = 0;
   }
   let actx = null;
@@ -702,7 +713,7 @@ body.navmode .panel,body.navmode .search{display:none}
   $('#hudExit').onclick = exitHud;
   $('#hudInner').ondblclick = exitHud;
 
-  function arrive(){ if (nav.said.arrived) return; nav.said.arrived = 1; speak('Вы прибыли. Хорошего дня!'); toast('Вы на месте'); setTimeout(stopDrive, 2500); }
+  function arrive(){ if (nav.said.arrived) return; nav.said.arrived = 1; speak(say('arrive')); toast('Вы на месте'); setTimeout(stopDrive, 2500); }
 
   // Плавное движение машинки между точками GPS
   function glide(a, b, h0, h1){
@@ -715,16 +726,30 @@ body.navmode .panel,body.navmode .search{display:none}
     };
     nav.anim = requestAnimationFrame(step);
   }
+  // Вид камеры: «за машиной» (как в навигаторах), «классика», «сверху»
+  const VIEWS = [
+    { id:'chase', name:'За машиной', pitch:76, zoom:17.7, low:0.56 },
+    { id:'classic', name:'Классика', pitch:58, zoom:16.6, low:0.35 },
+    { id:'top', name:'Сверху', pitch:0, zoom:16, low:0.2 },
+  ];
+  let viewIdx = 0; try{ viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === localStorage.getItem('navView'))); }catch{}
+  const view = () => VIEWS[viewIdx];
+  function camPad(){ const v = view(); return innerWidth <= 700 ? { top:innerHeight * v.low, bottom:0, left:0, right:0 } : { top:innerHeight * v.low, bottom:0, left:380, right:0 }; }
+  $('#navView').onclick = () => {
+    viewIdx = (viewIdx + 1) % VIEWS.length; try{ localStorage.setItem('navView', view().id); }catch{}
+    toast('Вид: ' + view().name); follow = true;
+    if (nav.shown) camTo(nav.shown, view().pitch ? nav.heading : 0, 600);
+  };
   function camTo(p, heading, ms){
-    map.easeTo({ center:p, bearing:heading, pitch:60, zoom:Math.max(map.getZoom(), 16.5), duration:ms, easing:t => t,
-      padding: innerWidth <= 700 ? { top:innerHeight * 0.35, bottom:0, left:0, right:0 } : { top:200, bottom:0, left:380, right:0 } });
+    const v = view();
+    map.easeTo({ center:p, bearing:v.pitch ? heading : 0, pitch:v.pitch, zoom:v.zoom, duration:ms, easing:t => t, padding:camPad() });
   }
 
   // Демо: машинка едет по маршруту быстрее реального времени, с голосом
   function runDemo(){
     const SPEED = state.mode === 'car' ? 70 : 12; // м/с в демо (ускорено)
     let t0 = null, camBearing = map.getBearing(), lastFix = 0;
-    map.flyTo({ center:nav.pts[0], zoom:16.5, pitch:62, duration:1000 });
+    map.flyTo({ center:nav.pts[0], zoom:view().zoom, pitch:view().pitch, padding:camPad(), duration:1000 });
     const frame = ts => {
       if (!driving) return;
       if (t0 === null) t0 = ts;
@@ -733,7 +758,7 @@ body.navmode .panel,body.navmode .search{display:none}
       const h = brng(p, ahead);
       camBearing += (((h - camBearing + 540) % 360) - 180) * 0.06;
       carMarker?.setLngLat(p).setRotation(h);
-      map.jumpTo({ center:p, bearing:camBearing, pitch:62, zoom:16.5 });
+      map.jumpTo({ center:p, bearing:view().pitch ? camBearing : 0, pitch:view().pitch, zoom:view().zoom, padding:camPad() });
       if (ts - lastFix > 200){ lastFix = ts; nav.lastPos = null; nav.heading = h; onFix({ lng:p[0], lat:p[1], speed:SPEED, heading:h }); }
       if (d < nav.total && driving) demoRaf = requestAnimationFrame(frame);
     };
@@ -757,29 +782,181 @@ body.navmode .panel,body.navmode .search{display:none}
     return best;
   }
 
-  // ---------- Голос ----------
-  let ruVoice = null;
-  // Выбор голоса из голосов, установленных на телефоне (русские и казахские)
-  function pickVoice(){
-    const all = speechSynthesis?.getVoices?.() || [];
-    const list = all.filter(x => /^(ru|kk)/i.test(x.lang));
-    let saved = null; try{ saved = localStorage.getItem('voiceURI'); }catch{}
-    ruVoice = list.find(x => x.voiceURI === saved) || list.find(x => /^ru/i.test(x.lang)) || null;
-    const sel = $('#voiceSel'); if (!sel) return;
-    sel.innerHTML = list.length
-      ? list.map(v => `<option value="${esc(v.voiceURI)}"${v === ruVoice ? ' selected' : ''}>${esc(v.name)} · ${/^kk/i.test(v.lang) ? 'қазақша' : 'русский'}</option>`).join('')
-      : '<option>Голос телефона по умолчанию</option>';
+  // ---------- Голос: телефон или облачные голоса Azure (русский и казахский) ----------
+  const AZURE = [
+    { id:'az:kk-KZ-AigulNeural',    name:'Айгүл · қазақша, әйел', lang:'kk' },
+    { id:'az:kk-KZ-DauletNeural',   name:'Дәулет · қазақша, ер',  lang:'kk' },
+    { id:'az:ru-RU-SvetlanaNeural', name:'Светлана · русский, жен.', lang:'ru' },
+    { id:'az:ru-RU-DariyaNeural',   name:'Дарья · русский, жен.',    lang:'ru' },
+    { id:'az:ru-RU-DmitryNeural',   name:'Дмитрий · русский, муж.',  lang:'ru' },
+  ];
+  let azureOk = false, voiceId = '', devVoice = null;
+  try{ voiceId = localStorage.getItem('voiceId') || ''; }catch{}
+  fetch('/api/tts?ping=1').then(r => r.ok ? r.json() : { ok:false }).then(j => { azureOk = !!j.ok; renderVoices(); }).catch(() => {});
+  function renderVoices(){
+    const dev = (speechSynthesis?.getVoices?.() || []).filter(x => /^(ru|kk)/i.test(x.lang));
+    const opts = [];
+    if (azureOk) AZURE.forEach(v => opts.push({ id:v.id, name:v.name }));
+    dev.forEach(v => opts.push({ id:'dev:' + v.voiceURI, name:`${v.name} · телефон` }));
+    if (!opts.length) opts.push({ id:'dev:', name:'Голос телефона' });
+    if (!opts.some(o => o.id === voiceId)) voiceId = opts[0].id;
+    devVoice = dev.find(v => 'dev:' + v.voiceURI === voiceId) || dev.find(v => /^ru/i.test(v.lang)) || null;
+    const sel = $('#voiceSel');
+    sel.innerHTML = opts.map(o => `<option value="${esc(o.id)}"${o.id === voiceId ? ' selected' : ''}>${esc(o.name)}</option>`).join('')
+      + (azureOk ? '' : '<option disabled>Казахские и мужские голоса — после подключения Azure</option>');
   }
-  if ('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; setTimeout(pickVoice, 800); }
-  $('#voiceSel').onchange = e => { try{ localStorage.setItem('voiceURI', e.target.value); }catch{} pickVoice(); };
-  $('#voiceTest').onclick = () => { const was = muted; muted = false; speak('Через 300 метров поверните направо на проспект Абая.'); muted = was; };
-  function unlockSpeech(){ try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }catch{} }
-  function speak(text){
-    if (muted || !('speechSynthesis' in window) || !text) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ru-RU'; if (ruVoice) u.voice = ruVoice; u.rate = 1.02;
+  if ('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = renderVoices; setTimeout(renderVoices, 800); }
+  renderVoices();
+  $('#voiceSel').onchange = e => { voiceId = e.target.value; try{ localStorage.setItem('voiceId', voiceId); }catch{} renderVoices(); };
+  $('#voiceTest').onclick = () => { unlockSpeech(); const was = muted; muted = false; speak(say('test')); muted = was; };
+  const voiceLang = () => voiceId.startsWith('az:kk') ? 'kk' : 'ru';
+
+  // Фразы навигатора на двух языках
+  const DIR_KK = { left:'солға', right:'оңға', 'slight left':'сәл солға', 'slight right':'сәл оңға', 'sharp left':'күрт солға', 'sharp right':'күрт оңға', straight:'тура' };
+  function stepKk(s){
+    const m = s.maneuver || {}, d = DIR_KK[m.modifier] || '', nm = s.name ? `, ${s.name}` : '';
+    if (m.modifier === 'uturn') return 'Кері бұрылыңыз';
+    switch (m.type){
+      case 'depart': return s.name ? `${s.name} бойымен жүре бастаңыз` : 'Жүре бастаңыз';
+      case 'arrive': return 'Сіз межелі жерге жеттіңіз';
+      case 'roundabout': case 'rotary': case 'roundabout turn': return `Айналма жолда ${m.exit || 1}-шығысқа шығыңыз${nm}`;
+      case 'exit roundabout': case 'exit rotary': return `Айналма жолдан шығыңыз${nm}`;
+      case 'fork': return `Айрықта ${m.modifier?.includes('left') ? 'сол' : 'оң'} жаққа ұстаңыз${nm}`;
+      case 'merge': return `Ағынға қосылыңыз${nm}`;
+      case 'on ramp': return `Кіреберіс жолға шығыңыз${nm}`;
+      case 'off ramp': return `Шығу жолына бұрылыңыз${nm}`;
+      case 'end of road': return `Жолдың соңында ${d} бұрылыңыз${nm}`;
+      case 'continue': case 'new name': return `Тура жүре беріңіз${nm}`;
+      default: return d === 'тура' || !d ? `Тура жүріңіз${nm}` : `${d[0].toUpperCase() + d.slice(1)} бұрылыңыз${nm}`;
+    }
+  }
+  function distKk(m){
+    if (m < 1000){ const r = m < 100 ? Math.round(m / 10) * 10 : Math.round(m / 50) * 50; return `${r} метрден`; }
+    return `${String(Math.round(m / 100) / 10).replace('.', ',')} километрден`;
+  }
+  function say(kind, o = {}){
+    const ru = {
+      start: () => `Поехали. ${spokenDist(o.dist)}, примерно ${fmtTime(o.dur).replace('ч', 'час').replace('мин', 'минут')}. ${o.s ? stepText(o.s) : ''}`,
+      ahead: () => `Через ${spokenDist(o.d)} ${lowerFirst(stepText(o.s))}`,
+      now: () => `Сейчас ${lowerFirst(stepText(o.s))}`,
+      off: () => 'Вы ушли с маршрута. Перестраиваю.',
+      limit: () => `Внимание, ограничение ${o.v}`,
+      camera: () => `Через ${spokenDist(o.d)} камера${o.v ? ', ограничение ' + o.v : ''}`,
+      arrive: () => 'Вы прибыли. Хорошего дня!',
+      test: () => 'Через 300 метров поверните направо на проспект Абая.',
+    }[kind]();
+    const kk = {
+      start: () => `Жолға шықтық. ${distKk(o.dist).replace('ден', '')}, шамамен ${Math.max(1, Math.round(o.dur / 60))} минут. ${o.s ? stepKk(o.s) : ''}`,
+      ahead: () => `${distKk(o.d)} кейін ${lowerFirst(stepKk(o.s))}`,
+      now: () => `Қазір ${lowerFirst(stepKk(o.s))}`,
+      off: () => 'Сіз маршруттан шығып кеттіңіз. Жаңа маршрут құрып жатырмын.',
+      limit: () => `Назар аударыңыз, жылдамдық шегі ${o.v}`,
+      camera: () => `${distKk(o.d)} кейін камера${o.v ? ', жылдамдық шегі ' + o.v : ''}`,
+      arrive: () => 'Сіз межелі жерге жеттіңіз. Сәтті күн!',
+      test: () => '300 метрден кейін оңға бұрылыңыз, Абай даңғылы.',
+    }[kind]();
+    return { ru, kk };
+  }
+
+  // Проигрывание: очередь фраз, чтобы подсказки не перебивали друг друга
+  const audioEl = new Audio(); audioEl.preload = 'auto';
+  const queue = []; let speaking = false;
+  function silentWav(){
+    const n = 800, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([b], { type:'audio/wav' }));
+  }
+  function unlockSpeech(){
+    try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }catch{}
+    try{ audioEl.src = silentWav(); audioEl.play().catch(() => {}); }catch{}
+  }
+  function speak(phrase){
+    if (muted || !phrase) return;
+    const p = typeof phrase === 'string' ? { ru:phrase, kk:phrase } : phrase;
+    queue.push(p); if (queue.length > 3) queue.shift();
+    if (!speaking) next();
+  }
+  async function next(){
+    const p = queue.shift(); if (!p){ speaking = false; return; }
+    speaking = true;
+    if (voiceId.startsWith('az:') && azureOk){
+      const v = voiceId.slice(3), text = v.startsWith('kk') ? p.kk : p.ru;
+      try{
+        const r = await fetch(`/api/tts?v=${encodeURIComponent(v)}&t=${encodeURIComponent(text)}`);
+        if (!r.ok) throw 0;
+        audioEl.src = URL.createObjectURL(await r.blob());
+        audioEl.onended = audioEl.onerror = () => next();
+        await audioEl.play();
+        return;
+      }catch{ /* нет связи — говорим голосом телефона */ }
+    }
+    if (!('speechSynthesis' in window)){ speaking = false; return; }
+    const u = new SpeechSynthesisUtterance(p.ru);
+    u.lang = 'ru-RU'; if (devVoice) u.voice = devVoice; u.rate = 1.02;
+    u.onend = u.onerror = () => next();
     speechSynthesis.speak(u);
   }
+
+  // ---------- Камеры: OpenStreetMap + отметки водителей ----------
+  let cams = [], camsLoaded = false;
+  async function loadCams(){
+    if (camsLoaded) return; camsLoaded = true;
+    const out = [];
+    try{
+      const q = '[out:json][timeout:25];(node["highway"="speed_camera"](50.85,70.95,51.40,71.95);node["enforcement"="maxspeed"](50.85,70.95,51.40,71.95););out;';
+      const j = await (await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:'data=' + encodeURIComponent(q),
+        headers:{ 'Content-Type':'application/x-www-form-urlencoded' } })).json();
+      (j.elements || []).forEach(e => out.push({ lng:e.lon, lat:e.lat, v:parseInt(e.tags?.maxspeed) || 0, src:'osm' }));
+    }catch{}
+    try{
+      const j = await (await fetch('/api/cameras')).json();
+      (j.items || []).forEach(c => { if (!out.some(o => dist([o.lng, o.lat], [c.lng, c.lat]) < 60)) out.push({ lng:c.lng, lat:c.lat, v:0, src:'user', votes:c.votes }); });
+    }catch{}
+    cams = out; drawCams();
+    if (driving) attachCams();
+  }
+  function drawCams(){
+    const fc = { type:'FeatureCollection', features: cams.map(c => ({ type:'Feature', geometry:{ type:'Point', coordinates:[c.lng, c.lat] }, properties:{ v:c.v || '' } })) };
+    if (map.getSource('cams')) return map.getSource('cams').setData(fc);
+    if (!map.hasImage('cam')) map.addImage('cam', camIcon(), { pixelRatio:2 });
+    map.addSource('cams', { type:'geojson', data:fc });
+    map.addLayer({ id:'cams', type:'symbol', source:'cams', minzoom:11,
+      layout:{ 'icon-image':'cam', 'icon-size':['interpolate',['linear'],['zoom'],11,0.55,16,1], 'icon-allow-overlap':true } });
+  }
+  function camIcon(){
+    const s = 56, c = document.createElement('canvas'); c.width = c.height = s; const g = c.getContext('2d');
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(28, 28, 26, 0, 7); g.fill();
+    g.fillStyle = '#e53935'; g.beginPath(); g.arc(28, 28, 22, 0, 7); g.fill();
+    g.fillStyle = '#ffffff'; g.fillRect(13, 21, 22, 15); g.beginPath(); g.moveTo(35, 25); g.lineTo(44, 20); g.lineTo(44, 37); g.lineTo(35, 32); g.fill();
+    g.fillStyle = '#e53935'; g.beginPath(); g.arc(24, 28.5, 4, 0, 7); g.fill();
+    return g.getImageData(0, 0, s, s);
+  }
+  // какие камеры стоят прямо на маршруте и где
+  function attachCams(){
+    nav.cams = [];
+    if (state.mode !== 'car' || !nav.pts.length) return;
+    cams.forEach((c, i) => { const pr = project([c.lng, c.lat], 0, true); if (pr.dist < 35) nav.cams.push({ i, at:pr.along, v:c.v }); });
+    nav.cams.sort((a, b) => a.at - b.at);
+  }
+  function checkCams(along){
+    const c = (nav.cams || []).find(x => x.at > along - 5);
+    const badge = $('#navCam');
+    if (!c || c.at - along > 1500){ badge.hidden = true; return; }
+    const d = c.at - along;
+    badge.hidden = false; badge.textContent = `📷 ${fmtDist(Math.max(0, d))}${c.v ? ' · ' + c.v : ''}`;
+    if (d <= 400 && !nav.said['cam' + c.i]){ nav.said['cam' + c.i] = 1; speak(say('camera', { d, v:c.v })); }
+  }
+  $('#navCamAdd').onclick = async () => {
+    const p = nav.shown || (state.from && [state.from.lng, state.from.lat]); if (!p) return;
+    try{
+      const r = await fetch('/api/cameras', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:p[0], lat:p[1] }) });
+      if (!r.ok) throw 0;
+      cams.push({ lng:p[0], lat:p[1], v:0, src:'user' }); drawCams(); attachCams();
+      toast('Спасибо! Камера отмечена для всех водителей');
+    }catch{ toast('Отметки камер пока не сохраняются — нужно включить хранилище'); }
+  };
+
   function spokenDist(m){
     if (m < 1000){ const r = m < 100 ? Math.round(m / 10) * 10 : Math.round(m / 50) * 50; return `${r} метров`; }
     const km = Math.round(m / 100) / 10, whole = Number.isInteger(km);
