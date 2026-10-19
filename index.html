@@ -134,6 +134,32 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .sky{position:fixed;left:0;right:0;top:0;height:24vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
   background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
 body.navmode .sky{opacity:1}
+body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
+body.navmode .tools{display:none}
+.navtop{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 20px));
+  background:#0f6b45;color:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.35);padding:12px 14px;display:grid;gap:8px}
+.nt-main{display:flex;align-items:center;gap:14px}
+.nt-arrow{font:700 46px/1 var(--font);min-width:46px;text-align:center}
+.nt-text{min-width:0;flex:1}
+.navtop>*{min-width:0}
+.nt-main{min-width:0}
+.nt-dist{font:700 30px/1.05 var(--font);font-variant-numeric:tabular-nums}
+.nt-street{font-size:16px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt-lanes{display:flex;justify-content:center;gap:4px;background:#0a4a30;border-radius:10px;padding:4px}
+.nt-lanes span{font:700 24px/1.2 var(--font);min-width:34px;text-align:center;opacity:.3}
+.nt-lanes span.on{opacity:1}
+.nav .nav-street{display:none}
+.nav .nav-turn{color:var(--fg)}
+body.night .nav{background:#0f1622;color:#e7eef3}
+body.night .nav .nav-turn{color:#e7eef3}
+body.night .nav .btn{background:#182231;color:#e7eef3;border-color:#2a3647}
+body.night .nav .btn.stop{background:#e53935;border-color:#e53935;color:#fff}
+body.night .spd{background:#0f1622}
+.camsign{background:#fff;color:#111;border-radius:12px;padding:5px 8px;box-shadow:0 4px 14px rgba(0,0,0,.4);text-align:center;font-family:var(--font)}
+.cs-row{display:flex;gap:6px;align-items:center;justify-content:center}
+.cs-cam{font-size:20px}
+.cs-lim{width:34px;height:34px;border-radius:50%;border:5px solid #e53935;display:grid;place-items:center;font:700 14px/1 var(--font)}
+.cs-d{font:700 14px/1.2 var(--font);font-variant-numeric:tabular-nums}
 body.navmode .panel,body.navmode .search{display:none}
 
 @media (max-width:700px){
@@ -193,17 +219,21 @@ body.navmode .panel,body.navmode .search{display:none}
       <button class="btn" id="reset">Сбросить</button>
     </div>
     <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
-    <p class="hint" style="font-size:12px">Версия 0.5.0</p>
+    <p class="hint" style="font-size:12px">Версия 0.6.0</p>
   </div>
 </section>
 
+<div class="navtop" id="navTop" hidden>
+  <div class="nt-main"><span class="nt-arrow" id="ntArrow">↑</span><div class="nt-text"><div class="nt-dist" id="ntDist">—</div><div class="nt-street" id="ntStreet">Строю маршрут…</div></div></div>
+  <div class="nt-lanes" id="ntLanes" hidden></div>
+</div>
 <div class="nav" id="nav" hidden>
   <div class="nav-top"><span class="nav-turn" id="navTurn">↑</span>
     <div class="speedo"><div class="spd" id="spd"><b id="navSpeed">0</b><small>км/ч</small></div><div class="limit" id="limit" hidden><span id="limitVal">60</span></div></div></div>
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
-  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navCamAdd" aria-label="Отметить камеру здесь">📷+</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Завершить</button></div>
+  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navCamAdd" aria-label="Отметить камеру здесь">📷+</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Завершить</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -548,7 +578,8 @@ body.navmode .panel,body.navmode .search{display:none}
     document.body.classList.add('navmode');
     $('#play').textContent = demo ? '■ Остановить' : '▶ Демо-проезд';
     $('#go').textContent = demo ? '🚗 Поехать' : '■ Завершить';
-    $('#nav').hidden = false; $('#navCenter').hidden = true;
+    $('#nav').hidden = false; $('#navTop').hidden = false; $('#navCenter').hidden = true;
+    applyNight(night); routeNavStyle(true);
     if (innerWidth <= 700) $('#panel').classList.add('collapsed');
     if (!state.d3) set3D(true);
     map.setMaxPitch(85); loadCams();
@@ -571,7 +602,8 @@ body.navmode .panel,body.navmode .search{display:none}
     carMarker?.remove(); carMarker = null;
     document.body.classList.remove('navmode');
     $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехать';
-    $('#nav').hidden = true; exitHud(); $('#navCam').hidden = true;
+    $('#nav').hidden = true; $('#navTop').hidden = true; exitHud(); $('#navCam').hidden = true;
+    applyNight(false); routeNavStyle(false); showCamSign(null);
     map.easeTo({ padding:{ top:0, bottom:0, left:0, right:0 }, pitch:state.d3 ? PITCH_3D : 0, duration:600 }); setTimeout(() => map.setMaxPitch(state.d3 ? 75 : 0), 650); $('#spd').classList.remove('over');
   }
 
@@ -638,9 +670,9 @@ body.navmode .panel,body.navmode .search{display:none}
     const next = nav.steps.find(st => st.k > 0 && st.at > along + 8);
     if (next){
       const d = next.at - along, s = next.s, key = next.k;
-      $('#navTurn').textContent = `${arrowFor(s)} ${fmtDist(d)}`;
+      $('#ntArrow').textContent = arrowFor(s); $('#ntDist').textContent = fmtDist(d); renderLanes(s, d);
       $('#hudArrow').textContent = arrowFor(s); $('#hudDist').textContent = fmtDist(d);
-      $('#navStreet').textContent = stepText(s);
+      $('#ntStreet').textContent = stepText(s);
       const T = state.mode === 'car' ? [700, 250, 60] : [150, 50, 15];
       if (s.maneuver.type === 'arrive'){
         if (d < T[2] + 20) arrive();
@@ -651,7 +683,8 @@ body.navmode .panel,body.navmode .search{display:none}
       }
     } else if (left < 40) arrive();
     const tLeft = nav.total ? nav.dur * left / nav.total : 0;
-    $('#navLeft').textContent = `${fmtDist(left)} · ${fmtTime(tLeft)} · прибытие ${arrival(tLeft)}`;
+    $('#navTurn').textContent = fmtTime(tLeft);
+    $('#navLeft').textContent = `${fmtDist(left)} · прибытие ${arrival(tLeft)}`;
     checkCams(along);
     // ---- спидометр и ограничение скорости ----
     const lim = limitAt(nav.idx);
@@ -898,6 +931,83 @@ body.navmode .panel,body.navmode .search{display:none}
     speechSynthesis.speak(u);
   }
 
+  // ---------- Ночной неоновый режим навигатора, широкая «дорожка» маршрута, полосы, знак камеры ----------
+  let night = true; try{ night = localStorage.getItem('navNight') !== '0'; }catch{}
+  let nightSaved = null, routeSaved = null;
+  const OWN = ['route','route-glow','route-casing','route-flow','route-arrows','alts','sat','cams'];
+  const NIGHT_PROPS = { background:['background-color'], fill:['fill-color'], line:['line-color'], symbol:['text-color','text-halo-color'], 'fill-extrusion':['fill-extrusion-color'] };
+  function nightColor(l, pr){
+    const id = (l.id + ' ' + (l['source-layer'] || '')).toLowerCase();
+    if (pr === 'text-color') return '#c9d4e3';
+    if (pr === 'text-halo-color') return '#0a0f1a';
+    if (l.type === 'background') return '#0a0f1a';
+    if (l.type === 'fill-extrusion') return ['interpolate',['linear'],['coalesce',['get','render_height'],8],0,'#1b2534',60,'#24344a',200,'#35506f'];
+    if (/water/.test(id)) return '#0b2238';
+    if (l.type === 'fill') return /park|grass|wood|forest|landcover|green|garden/.test(id) ? '#0d1a16' : '#111827';
+    if (/motorway|trunk|primary/.test(id)) return '#3b4759';
+    if (/road|highway|transport|street|bridge|tunnel|path|track/.test(id)) return '#262f3e';
+    if (/rail/.test(id)) return '#2a2f3a';
+    return '#1e2533';
+  }
+  function applyNight(on){
+    document.body.classList.toggle('night', !!on);
+    $('#navNight').textContent = on ? '☀' : '🌙';
+    const st = map.getStyle(); if (!st) return;
+    if (on && !nightSaved){
+      nightSaved = [];
+      st.layers.forEach(l => {
+        if (OWN.includes(l.id)) return;
+        (NIGHT_PROPS[l.type] || []).forEach(pr => {
+          try{ nightSaved.push([l.id, pr, map.getPaintProperty(l.id, pr)]); map.setPaintProperty(l.id, pr, nightColor(l, pr)); }catch{}
+        });
+      });
+    } else if (!on && nightSaved){
+      nightSaved.forEach(([id, pr, v]) => { try{ if (map.getLayer(id)) map.setPaintProperty(id, pr, v); }catch{} });
+      nightSaved = null;
+    }
+  }
+  $('#navNight').onclick = () => { night = !night; try{ localStorage.setItem('navNight', night ? '1' : '0'); }catch{} applyNight(night); };
+
+  // Маршрут в навигаторе: широкая неоновая «дорожка» по полосе, как в навигаторах с видом от водителя
+  function routeNavStyle(on){
+    const set = (id, pr, v) => { try{ if (map.getLayer(id)) map.setPaintProperty(id, pr, v); }catch{} };
+    if (on && !routeSaved){
+      routeSaved = [['route','line-width'],['route','line-gradient'],['route-casing','line-width'],['route-casing','line-color'],['route-glow','line-width'],['route-glow','line-opacity']]
+        .map(([id, pr]) => [id, pr, map.getLayer(id) ? map.getPaintProperty(id, pr) : undefined]);
+      set('route', 'line-width', ['interpolate',['exponential',2],['zoom'],13,5,20,110]);
+      set('route', 'line-gradient', ['interpolate',['linear'],['line-progress'],0,'#00ffa3',0.85,'#00e5ff',1,'#ff2d55']);
+      set('route-casing', 'line-width', ['interpolate',['exponential',2],['zoom'],13,8,20,130]);
+      set('route-casing', 'line-color', '#03140e');
+      set('route-glow', 'line-width', ['interpolate',['exponential',2],['zoom'],13,22,20,260]);
+      set('route-glow', 'line-opacity', 0.55);
+    } else if (!on && routeSaved){
+      routeSaved.forEach(([id, pr, v]) => set(id, pr, v)); routeSaved = null;
+    }
+  }
+
+  // Подсказка по полосам (если в данных OSM есть разметка полос)
+  const LANE_ICON = { left:'↰', 'slight left':'↖', 'sharp left':'↰', straight:'↑', right:'↱', 'slight right':'↗', 'sharp right':'↱', uturn:'↶', none:'↑' };
+  function renderLanes(s, d){
+    const lanes = s?.intersections?.[0]?.lanes, box = $('#ntLanes');
+    if (!lanes || lanes.length < 2 || d > 900){ box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = lanes.map(l => `<span class="${l.valid ? 'on' : ''}">${LANE_ICON[l.indications?.[0]] || '↑'}</span>`).join('');
+  }
+
+  // Знак камеры прямо над дорогой впереди
+  let camSign = null, camSignIdx = -1;
+  function showCamSign(c, d){
+    if (!c){ camSign?.remove(); camSign = null; camSignIdx = -1; return; }
+    if (camSignIdx !== c.i){
+      camSign?.remove();
+      const el = document.createElement('div'); el.className = 'camsign';
+      el.innerHTML = `<div class="cs-row"><span class="cs-cam">📷</span>${c.v ? `<span class="cs-lim">${c.v}</span>` : ''}</div><div class="cs-d"></div>`;
+      camSign = new maplibregl.Marker({ element:el, anchor:'bottom', offset:[0, -20] }).setLngLat([cams[c.i].lng, cams[c.i].lat]).addTo(map);
+      camSignIdx = c.i;
+    }
+    camSign.getElement().querySelector('.cs-d').textContent = fmtDist(Math.max(0, d));
+  }
+
   // ---------- Камеры: OpenStreetMap + отметки водителей ----------
   let cams = [], camsLoaded = false;
   async function loadCams(){
@@ -942,8 +1052,9 @@ body.navmode .panel,body.navmode .search{display:none}
   function checkCams(along){
     const c = (nav.cams || []).find(x => x.at > along - 5);
     const badge = $('#navCam');
-    if (!c || c.at - along > 1500){ badge.hidden = true; return; }
+    if (!c || c.at - along > 1500){ badge.hidden = true; showCamSign(null); return; }
     const d = c.at - along;
+    showCamSign(c, d);
     badge.hidden = false; badge.textContent = `📷 ${fmtDist(Math.max(0, d))}${c.v ? ' · ' + c.v : ''}`;
     if (d <= 400 && !nav.said['cam' + c.i]){ nav.said['cam' + c.i] = 1; speak(say('camera', { d, v:c.v })); }
   }
