@@ -275,13 +275,13 @@ body.navmode .panel,body.navmode .search{display:none}
     <div class="set-row"><label for="setView">Вид в поездке</label>
       <select id="setView"><option value="chase">За машиной</option><option value="classic">Классика</option><option value="top">Сверху</option></select></div>
     <div class="set-row"><label for="setTheme">Тёмная карта</label>
-      <select id="setTheme"><option value="auto">Авто — вечером и ночью</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
+      <select id="setTheme"><option value="auto">Авто — с 18:00 до 7:00</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
     <details class="set-help"><summary>Как пользоваться</summary>
       <p>Карта сама находит, где вы, — это точка А. Выберите точку Б: найдите адрес в поиске или нажмите на карту. Точки можно перетаскивать, ⇅ меняет их местами.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 1.0.0</p>
+    <p class="set-ver">Версия 1.0.1</p>
   </div>
 </div>
 
@@ -399,6 +399,7 @@ body.navmode .panel,body.navmode .search{display:none}
 
     if (state.routes.length) selectRoute(state.active);
     nightSaved = null; if (night) applyNight(true);
+    setTimeout(() => loadCams(), 1500);   // камеры видны и без поездки
     if (!hashApplied){ hashApplied = true; applyHash(); if (!state.from) locateMe(true); }
   });
 
@@ -408,6 +409,7 @@ body.navmode .panel,body.navmode .search{display:none}
 
   map.on('click', e => {
     if (e.defaultPrevented || driving) return;
+    if (map.getLayer('cams') && map.queryRenderedFeatures(e.point, { layers:['cams'] }).length) return;   // нажали на камеру
     const p = { lng:e.lngLat.lng, lat:e.lngLat.lat };
     if (!state.from) setPoint('from', p);
     else if (!state.to) setPoint('to', p);
@@ -905,20 +907,16 @@ body.navmode .panel,body.navmode .search{display:none}
     { id:'az:ru-RU-DariyaNeural',   name:'Дарья · русский, жен.',    lang:'ru' },
     { id:'az:ru-RU-DmitryNeural',   name:'Дмитрий · русский, муж.',  lang:'ru' },
   ];
-  let azureOk = false, voiceId = '', devVoice = null;
+  let azureOk = true, voiceId = '', devVoice = null;
   try{ voiceId = localStorage.getItem('voiceId') || ''; }catch{}
   fetch('/api/tts?ping=1').then(r => r.ok ? r.json() : { ok:false }).then(j => { azureOk = !!j.ok; renderVoices(); }).catch(() => {});
   function renderVoices(){
     const dev = (speechSynthesis?.getVoices?.() || []).filter(x => /^(ru|kk)/i.test(x.lang));
-    const opts = [];
-    if (azureOk) AZURE.forEach(v => opts.push({ id:v.id, name:v.name }));
-    dev.forEach(v => opts.push({ id:'dev:' + v.voiceURI, name:`${v.name} · телефон` }));
-    if (!opts.length) opts.push({ id:'dev:', name:'Голос телефона' });
-    if (!opts.some(o => o.id === voiceId)) voiceId = opts[0].id;
-    devVoice = dev.find(v => 'dev:' + v.voiceURI === voiceId) || dev.find(v => /^ru/i.test(v.lang)) || null;
+    const opts = AZURE.map(v => ({ id:v.id, name:v.name }));
+    if (!opts.some(o => o.id === voiceId)) voiceId = 'az:ru-RU-DmitryNeural';   // по умолчанию — Дмитрий
+    devVoice = dev.find(v => /^ru/i.test(v.lang)) || null;                      // запасной, если пропал интернет
     const sel = $('#voiceSel');
-    sel.innerHTML = opts.map(o => `<option value="${esc(o.id)}"${o.id === voiceId ? ' selected' : ''}>${esc(o.name)}</option>`).join('')
-      + (azureOk ? '' : '<option disabled>Ещё голоса — после подключения Azure</option>');
+    sel.innerHTML = opts.map(o => `<option value="${esc(o.id)}"${o.id === voiceId ? ' selected' : ''}>${esc(o.name)}</option>`).join('');
   }
   if ('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = renderVoices; setTimeout(renderVoices, 800); }
   renderVoices();
@@ -1102,7 +1100,7 @@ body.navmode .panel,body.navmode .search{display:none}
   // ---------- Ночной неоновый режим навигатора, широкая «дорожка» маршрута, полосы, знак камеры ----------
   // Тёмная карта: auto (с 19:00 до 7:00), on, off
   let theme = 'auto'; try{ theme = localStorage.getItem('mapTheme') || 'auto'; }catch{}
-  const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 19 || h < 7; })());
+  const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 18 || h < 7; })());
   let night = isDarkNow();
   function setTheme(t){ theme = t; try{ localStorage.setItem('mapTheme', t); }catch{} night = isDarkNow(); applyNight(night); }
   setInterval(() => { if (theme === 'auto' && isDarkNow() !== night){ night = isDarkNow(); applyNight(night); } }, 60000);
@@ -1211,18 +1209,45 @@ body.navmode .panel,body.navmode .search{display:none}
     try{
       const j = await (await fetch('/api/cameras')).json();
       (j.items || []).forEach(c => { if (!out.some(o => dist([o.lng, o.lat], [c.lng, c.lat]) < 60)) out.push({ lng:c.lng, lat:c.lat, v:0, src:'user', votes:c.votes }); });
+      // камеры OSM, которые водители пометили как «нет камеры», не показываем
+      const hidden = j.hidden || [];
+      for (let i = out.length - 1; i >= 0; i--) if (out[i].src === 'osm' && hidden.some(h => dist([out[i].lng, out[i].lat], [h.lng, h.lat]) < 40)) out.splice(i, 1);
     }catch{}
     cams = out; drawCams();
     if (driving) attachCams();
   }
   function drawCams(){
-    const fc = { type:'FeatureCollection', features: cams.map(c => ({ type:'Feature', geometry:{ type:'Point', coordinates:[c.lng, c.lat] }, properties:{ v:c.v || '' } })) };
+    const fc = { type:'FeatureCollection', features: cams.map((c, i) => ({ type:'Feature', geometry:{ type:'Point', coordinates:[c.lng, c.lat] }, properties:{ v:c.v || '', i } })) };
     if (map.getSource('cams')) return map.getSource('cams').setData(fc);
     if (!map.hasImage('cam')) map.addImage('cam', camIcon(), { pixelRatio:2 });
     map.addSource('cams', { type:'geojson', data:fc });
     map.addLayer({ id:'cams', type:'symbol', source:'cams', minzoom:11,
       layout:{ 'icon-image':'cam', 'icon-size':['interpolate',['linear'],['zoom'],11,0.55,16,1], 'icon-allow-overlap':true } });
   }
+  // Нажатие на камеру: подробности и удаление (если отметили по ошибке или камеру сняли)
+  map.on('click', 'cams', e => {
+    e.preventDefault();
+    const c = cams[e.features[0]?.properties?.i]; if (!c) return;
+    popup?.remove();
+    const el = document.createElement('div');
+    el.innerHTML = `<div class="pop-t">📷 Камера${c.v ? ' · ' + c.v + ' км/ч' : ''}</div>
+      <div class="hint" style="margin-bottom:8px">${c.src === 'user' ? 'Отметили водители: ' + (c.votes || 1) : 'Из данных OpenStreetMap'}</div>
+      <button class="btn" data-del>🗑 Удалить камеру</button>`;
+    const b = el.querySelector('[data-del]');
+    b.onclick = async () => {
+      if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = 'Точно удалить? Нажмите ещё раз'; b.classList.add('primary'); return; }
+      b.disabled = true;
+      try{
+        const r = await fetch('/api/cameras', { method:'DELETE', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:c.lng, lat:c.lat, src:c.src }) });
+        if (!r.ok) throw 0;
+        cams.splice(cams.indexOf(c), 1); drawCams(); attachCams(); popup.remove();
+        toast('Камера удалена');
+      }catch{ b.disabled = false; toast('Не удалось удалить. Проверьте интернет.'); }
+    };
+    popup = new maplibregl.Popup({ offset:14, maxWidth:'260px' }).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
+  });
+  map.on('mouseenter', 'cams', () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', 'cams', () => map.getCanvas().style.cursor = '');
   function camIcon(){
     const s = 56, c = document.createElement('canvas'); c.width = c.height = s; const g = c.getContext('2d');
     g.fillStyle = '#ffffff'; g.beginPath(); g.arc(28, 28, 26, 0, 7); g.fill();
