@@ -106,7 +106,25 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
   background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;display:grid;gap:4px}
 .nav-top{display:flex;justify-content:space-between;align-items:baseline}
 .nav-turn{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
-.nav-speed{font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted)}
+.speedo{display:flex;align-items:center;gap:8px}
+.spd{width:62px;height:62px;border-radius:50%;border:4px solid var(--accent);display:grid;place-items:center;align-content:center;line-height:1;background:var(--surface)}
+.spd b{font-size:24px;font-variant-numeric:tabular-nums}
+.spd small{font-size:10px;color:var(--muted)}
+.spd.over{border-color:#e53935;background:#e53935;color:#fff;animation:over .8s ease-in-out infinite}
+.spd.over small{color:#fff}
+@keyframes over{50%{transform:scale(1.08)}}
+.limit{width:46px;height:46px;border-radius:50%;background:#fff;border:6px solid #e53935;display:grid;place-items:center;color:#111;font:700 17px/1 var(--font);font-variant-numeric:tabular-nums}
+.limit.guess{opacity:.7}
+.hud{position:fixed;inset:0;z-index:20;background:#000;color:#3dff8a;display:grid;grid-template-rows:1fr auto;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.hud-inner{display:grid;place-items:center;align-content:center;gap:2vh;text-align:center}
+.hud-inner.mirror{transform:scaleX(-1)}
+.hud-turn{display:flex;gap:4vw;align-items:center;font:700 9vmin/1 var(--font);font-variant-numeric:tabular-nums}
+.hud-speed{font:700 34vmin/0.9 var(--font);font-variant-numeric:tabular-nums}
+.hud-unit{font:600 5vmin/1 var(--font);opacity:.8}
+.hud-limit{width:18vmin;height:18vmin;border-radius:50%;border:2.4vmin solid #ff3030;display:grid;place-items:center;font:700 7vmin/1 var(--font);color:#fff}
+.hud.over{color:#ff3b3b}
+.hud-bar{display:flex;gap:10px;justify-content:center;padding:12px;opacity:.55}
+.hud-bar .btn{background:#111;color:#ddd;border-color:#333}
 .nav-street{font-size:17px;font-weight:600}
 .nav-left{color:var(--muted);font-variant-numeric:tabular-nums}
 .nav-btns{margin-top:6px}
@@ -169,15 +187,25 @@ body.navmode .panel,body.navmode .search{display:none}
       <button class="btn" id="reset">Сбросить</button>
     </div>
     <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
-    <p class="hint" style="font-size:12px">Версия 0.3.2</p>
+    <p class="hint" style="font-size:12px">Версия 0.4.0</p>
   </div>
 </section>
 
 <div class="nav" id="nav" hidden>
-  <div class="nav-top"><span class="nav-turn" id="navTurn">↑</span><span class="nav-speed" id="navSpeed"></span></div>
+  <div class="nav-top"><span class="nav-turn" id="navTurn">↑</span>
+    <div class="speedo"><div class="spd" id="spd"><b id="navSpeed">0</b><small>км/ч</small></div><div class="limit" id="limit" hidden><span id="limitVal">60</span></div></div></div>
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
-  <div class="row nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn" id="navStop">Завершить</button></div>
+  <div class="row nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navStop">Завершить</button></div>
+</div>
+<div class="hud" id="hud" hidden>
+  <div class="hud-inner" id="hudInner">
+    <div class="hud-turn"><span id="hudArrow">↑</span><span id="hudDist">—</span></div>
+    <div class="hud-speed" id="hudSpeed">0</div>
+    <div class="hud-unit">км/ч</div>
+    <div class="hud-limit" id="hudLimit" hidden><span id="hudLimitVal">60</span></div>
+  </div>
+  <div class="hud-bar"><button class="btn" id="hudMirror">Зеркало: вкл</button><button class="btn" id="hudExit">Выйти</button></div>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -382,7 +410,7 @@ body.navmode .panel,body.navmode .search{display:none}
     stopDrive();
     const id = ++routeReq, { from:a, to:b } = state;
     const url = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/` +
-      `${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+      `${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&alternatives=true&steps=true&annotations=true`;
     $('#routes').innerHTML = '<p class="hint">Строю маршрут…</p>'; showErr('');
     try{
       const j = await (await fetch(url)).json();
@@ -535,13 +563,15 @@ body.navmode .panel,body.navmode .search{display:none}
     carMarker?.remove(); carMarker = null;
     document.body.classList.remove('navmode');
     $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехать';
-    $('#nav').hidden = true;
+    $('#nav').hidden = true; exitHud(); $('#spd').classList.remove('over');
   }
 
   function loadRoute(r){
     nav.pts = r.geometry.coordinates; nav.cum = [0];
     for (let k = 1; k < nav.pts.length; k++) nav.cum.push(nav.cum[k - 1] + dist(nav.pts[k - 1], nav.pts[k]));
     nav.total = nav.cum[nav.cum.length - 1]; nav.dur = r.duration; nav.idx = 0;
+    // ограничения скорости по участкам маршрута (из данных OpenStreetMap)
+    nav.maxspeed = (r.legs || []).flatMap(l => l.annotation?.maxspeed || []);
     const steps = (r.legs || []).flatMap(l => l.steps || []);
     nav.steps = steps.map((s, k) => ({ s, k, at: k === 0 ? 0 : project(s.maneuver.location, 0, true).along }));
   }
@@ -552,7 +582,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (announce) speak('Вы ушли с маршрута. Перестраиваю.');
     try{
       const b = state.to;
-      const url = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/${here.lng},${here.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true`;
+      const url = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/${here.lng},${here.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=true&annotations=true`;
       const j = await (await fetch(url)).json();
       if (j.code !== 'Ok' || !j.routes?.length) throw 0;
       state.from = { ...here, name:'Моё местоположение' };
@@ -599,6 +629,7 @@ body.navmode .panel,body.navmode .search{display:none}
     if (next){
       const d = next.at - along, s = next.s, key = next.k;
       $('#navTurn').textContent = `${arrowFor(s)} ${fmtDist(d)}`;
+      $('#hudArrow').textContent = arrowFor(s); $('#hudDist').textContent = fmtDist(d);
       $('#navStreet').textContent = stepText(s);
       const T = state.mode === 'car' ? [700, 250, 60] : [150, 50, 15];
       if (s.maneuver.type === 'arrive'){
@@ -611,8 +642,66 @@ body.navmode .panel,body.navmode .search{display:none}
     } else if (left < 40) arrive();
     const tLeft = nav.total ? nav.dur * left / nav.total : 0;
     $('#navLeft').textContent = `${fmtDist(left)} · ${fmtTime(tLeft)} · прибытие ${arrival(tLeft)}`;
-    $('#navSpeed').textContent = demo ? '' : `${Math.round(speed * 3.6)} км/ч`;
+    // ---- спидометр и ограничение скорости ----
+    const lim = limitAt(nav.idx);
+    const kmh = demo ? Math.max(0, (lim.v || 60) - 3 + Math.round(Math.sin(Date.now() / 1500) * 4)) : Math.round(speed * 3.6);
+    showSpeed(kmh, lim);
   }
+  // Ограничение на текущем участке. Если в данных нет — 60 км/ч (по ПДД РК в городе), помечаем как «примерно».
+  function limitAt(i){
+    const m = nav.maxspeed?.[i];
+    if (m && m.speed) return { v: m.unit === 'mph' ? Math.round(m.speed * 1.609) : m.speed, sure:true };
+    return { v: state.mode === 'car' ? 60 : 0, sure:false };
+  }
+  let overSince = 0, lastBeep = 0, overSaid = 0;
+  function showSpeed(kmh, lim){
+    $('#navSpeed').textContent = kmh;
+    $('#hudSpeed').textContent = kmh;
+    const show = state.mode === 'car' && lim.v > 0;
+    $('#limit').hidden = !show; $('#hudLimit').hidden = !show;
+    $('#limitVal').textContent = lim.v; $('#hudLimitVal').textContent = lim.v;
+    $('#limit').classList.toggle('guess', !lim.sure);
+    $('#limit').title = lim.sure ? 'Ограничение скорости' : 'Ограничение не указано на карте — показано городское 60';
+    const over = show && kmh > lim.v + 5;            // запас 5 км/ч от погрешности GPS
+    $('#spd').classList.toggle('over', over);
+    $('#hud').classList.toggle('over', over);
+    const now = Date.now();
+    if (over){
+      if (!overSince) overSince = now;
+      if (now - overSince > 2000 && now - lastBeep > 6000 && !demo){ lastBeep = now; beep(); }
+      if (now - overSince > 2500 && now - overSaid > 45000){ overSaid = now; speak(`Внимание, ограничение ${lim.v}`); }
+    } else overSince = 0;
+  }
+  let actx = null;
+  function beep(){
+    if (muted) return;
+    try{
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.22].forEach(t => {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'square'; o.frequency.value = 1150;
+        g.gain.setValueAtTime(0.0001, actx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(0.25, actx.currentTime + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + t + 0.16);
+        o.connect(g).connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + 0.18);
+      });
+    }catch{}
+  }
+
+  // ---- HUD: телефон на панель, изображение отражается в лобовом стекле ----
+  let hudMirror = true;
+  try{ hudMirror = localStorage.getItem('hudMirror') !== '0'; }catch{}
+  function setMirror(){ $('#hudInner').classList.toggle('mirror', hudMirror); $('#hudMirror').textContent = 'Зеркало: ' + (hudMirror ? 'вкл' : 'выкл'); }
+  $('#navHud').onclick = async () => {
+    setMirror(); $('#hud').hidden = false;
+    try{ await document.documentElement.requestFullscreen?.(); }catch{}
+    toast(hudMirror ? 'Положите телефон на панель под лобовое стекло' : '');
+  };
+  $('#hudMirror').onclick = () => { hudMirror = !hudMirror; try{ localStorage.setItem('hudMirror', hudMirror ? '1' : '0'); }catch{} setMirror(); };
+  function exitHud(){ $('#hud').hidden = true; try{ if (document.fullscreenElement) document.exitFullscreen(); }catch{} }
+  $('#hudExit').onclick = exitHud;
+  $('#hudInner').ondblclick = exitHud;
+
   function arrive(){ if (nav.said.arrived) return; nav.said.arrived = 1; speak('Вы прибыли. Хорошего дня!'); toast('Вы на месте'); setTimeout(stopDrive, 2500); }
 
   // Плавное движение машинки между точками GPS
