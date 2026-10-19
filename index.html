@@ -131,7 +131,7 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .nav-btns .btn{flex:1 1 52px;padding:8px 4px}
 .nav-btns .btn.stop{flex-basis:100%;background:#e53935;border-color:#e53935;color:#fff}
 .nav-cam{justify-self:start;background:#e53935;color:#fff;font-weight:700;border-radius:999px;padding:4px 12px;font-variant-numeric:tabular-nums}
-.sky{position:fixed;left:0;right:0;top:0;height:24vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
+.sky{position:fixed;left:0;right:0;top:0;height:42vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
   background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
 body.navmode .sky{opacity:1}
 body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
@@ -219,7 +219,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <button class="btn" id="reset">Сбросить</button>
     </div>
     <p class="hint">Первое нажатие на карту ставит точку А, второе — точку Б. Точки можно перетаскивать. Время без учёта пробок.</p>
-    <p class="hint" style="font-size:12px">Версия 0.6.0</p>
+    <p class="hint" style="font-size:12px">Версия 0.6.1</p>
   </div>
 </section>
 
@@ -579,7 +579,7 @@ body.navmode .panel,body.navmode .search{display:none}
     $('#play').textContent = demo ? '■ Остановить' : '▶ Демо-проезд';
     $('#go').textContent = demo ? '🚗 Поехать' : '■ Завершить';
     $('#nav').hidden = false; $('#navTop').hidden = false; $('#navCenter').hidden = true;
-    applyNight(night); routeNavStyle(true);
+    applyNight(night); routeNavStyle(true); declutter(true);
     if (innerWidth <= 700) $('#panel').classList.add('collapsed');
     if (!state.d3) set3D(true);
     map.setMaxPitch(85); loadCams();
@@ -603,7 +603,7 @@ body.navmode .panel,body.navmode .search{display:none}
     document.body.classList.remove('navmode');
     $('#play').textContent = '▶ Демо-проезд'; $('#go').textContent = '🚗 Поехать';
     $('#nav').hidden = true; $('#navTop').hidden = true; exitHud(); $('#navCam').hidden = true;
-    applyNight(false); routeNavStyle(false); showCamSign(null);
+    applyNight(false); routeNavStyle(false); declutter(false); showCamSign(null);
     map.easeTo({ padding:{ top:0, bottom:0, left:0, right:0 }, pitch:state.d3 ? PITCH_3D : 0, duration:600 }); setTimeout(() => map.setMaxPitch(state.d3 ? 75 : 0), 650); $('#spd').classList.remove('over');
   }
 
@@ -638,6 +638,7 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   function setPointMarkerOnly(p){
     markerFrom = new maplibregl.Marker({ element:makePin('#1f9d55', 'А', false) }).setLngLat([p.lng, p.lat]).addTo(map);
+    if (driving) markerFrom.getElement().style.display = 'none';
   }
 
   // Каждая новая точка: от GPS или от демо
@@ -683,6 +684,7 @@ body.navmode .panel,body.navmode .search{display:none}
       }
     } else if (left < 40) arrive();
     const tLeft = nav.total ? nav.dur * left / nav.total : 0;
+    if (markerTo) markerTo.getElement().style.display = left > 2500 ? 'none' : '';   // далёкая точка Б «висит» над горизонтом — прячем
     $('#navTurn').textContent = fmtTime(tLeft);
     $('#navLeft').textContent = `${fmtDist(left)} · прибытие ${arrival(tLeft)}`;
     checkCams(along);
@@ -761,13 +763,23 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   // Вид камеры: «за машиной» (как в навигаторах), «классика», «сверху»
   const VIEWS = [
-    { id:'chase', name:'За машиной', pitch:76, zoom:17.7, low:0.56 },
-    { id:'classic', name:'Классика', pitch:58, zoom:16.6, low:0.35 },
-    { id:'top', name:'Сверху', pitch:0, zoom:16, low:0.2 },
+    { id:'chase', name:'За машиной', pitch:66, zoom:18, off:80 },
+    { id:'classic', name:'Классика', pitch:50, zoom:16.9, off:150 },
+    { id:'top', name:'Сверху', pitch:0, zoom:16.3, off:0 },
   ];
   let viewIdx = 0; try{ viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === localStorage.getItem('navView'))); }catch{}
   const view = () => VIEWS[viewIdx];
-  function camPad(){ const v = view(); return innerWidth <= 700 ? { top:innerHeight * v.low, bottom:0, left:0, right:0 } : { top:innerHeight * v.low, bottom:0, left:380, right:0 }; }
+  // Машина всегда видна: ставим её чуть выше нижней панели навигатора (а не под ней)
+  function camPad(){
+    const v = view(), H = innerHeight;
+    const nb = $('#nav'), nt = $('#navTop');
+    const bottom = nb && !nb.hidden ? nb.offsetHeight + 16 : 0;
+    const topBar = nt && !nt.hidden ? nt.offsetTop + nt.offsetHeight : 0;
+    const free = H - bottom - topBar;
+    const off = v.off ? Math.min(v.off, free * 0.4) : free / 2;      // расстояние машины от нижней панели
+    const top = Math.max(0, H - bottom - 2 * off);
+    return { top, bottom, left: innerWidth > 700 ? 0 : 0, right:0 };
+  }
   $('#navView').onclick = () => {
     viewIdx = (viewIdx + 1) % VIEWS.length; try{ localStorage.setItem('navView', view().id); }catch{}
     toast('Вид: ' + view().name); follow = true;
@@ -969,6 +981,21 @@ body.navmode .panel,body.navmode .search{display:none}
   $('#navNight').onclick = () => { night = !night; try{ localStorage.setItem('navNight', night ? '1' : '0'); }catch{} applyNight(night); };
 
   // Маршрут в навигаторе: широкая неоновая «дорожка» по полосе, как в навигаторах с видом от водителя
+  let declutterSaved = null;
+  function declutter(on){
+    const st = map.getStyle(); if (!st) return;
+    if (on && !declutterSaved){
+      declutterSaved = [];
+      st.layers.forEach(l => { if (l.type === 'symbol' && /shield|poi/i.test(l.id)){
+        declutterSaved.push([l.id, map.getLayoutProperty(l.id, 'visibility') || 'visible']); map.setLayoutProperty(l.id, 'visibility', 'none'); } });
+      if (markerFrom) markerFrom.getElement().style.display = 'none';
+    } else if (!on && declutterSaved){
+      declutterSaved.forEach(([id, v]) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v); });
+      declutterSaved = null;
+      if (markerFrom) markerFrom.getElement().style.display = '';
+      if (markerTo) markerTo.getElement().style.display = '';
+    }
+  }
   function routeNavStyle(on){
     const set = (id, pr, v) => { try{ if (map.getLayer(id)) map.setPaintProperty(id, pr, v); }catch{} };
     if (on && !routeSaved){
