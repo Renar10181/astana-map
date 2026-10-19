@@ -281,7 +281,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 1.0.1</p>
+    <p class="set-ver">Версия 1.0.2</p>
   </div>
 </div>
 
@@ -1027,11 +1027,11 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   function buildCar(T){
     const g = new T.Group();
-    const paint = new T.MeshPhysicalMaterial({ color:0xf2b400, metalness:0.25, roughness:0.28, clearcoat:1, clearcoatRoughness:0.1 });
+    const paint = new T.MeshStandardMaterial({ color:0xffbf00, metalness:0.1, roughness:0.32, envMapIntensity:0.35 });   // насыщенный жёлтый, отражения слабые — чтобы не «выцветал» в серый
     const black = new T.MeshStandardMaterial({ color:0x0d0d0f, metalness:0.4, roughness:0.4 });
     const tyre = new T.MeshStandardMaterial({ color:0x121212, roughness:0.9 });
     const rim = new T.MeshStandardMaterial({ color:0xd0d5dd, metalness:1, roughness:0.2 });
-    const glass = new T.MeshPhysicalMaterial({ color:0x0a1420, metalness:0.9, roughness:0.05, clearcoat:1 });
+    const glass = new T.MeshStandardMaterial({ color:0x0a1420, metalness:0.8, roughness:0.08, envMapIntensity:0.8 });
     // плавный боковой профиль (длина по z, минус — перёд; высота по y), вытянутый на ширину и скруглённый фаской
     const side = (draw, width, mat, bevel) => {
       const sh = new T.Shape(); draw(sh);
