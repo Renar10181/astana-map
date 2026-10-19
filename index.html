@@ -132,17 +132,17 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 @keyframes puff{0%{transform:translate(0,-6px) scale(.4);opacity:.95}100%{transform:translate(var(--dx,6px),26px) scale(1.9);opacity:0}}
 .p2{--dx:-7px}.p3{--dx:2px}
 .nav{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 20px));
-  background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;display:grid;gap:4px}
+  background:color-mix(in srgb,var(--surface) 84%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:14px;box-shadow:var(--shadow);padding:8px 12px;display:grid;gap:2px}
 .nav-top{display:flex;justify-content:space-between;align-items:baseline}
-.nav-turn{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
+.nav-turn{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
 .speedo{display:flex;align-items:center;gap:8px}
-.spd{width:62px;height:62px;border-radius:50%;border:4px solid var(--accent);display:grid;place-items:center;align-content:center;line-height:1;background:var(--surface)}
-.spd b{font-size:24px;font-variant-numeric:tabular-nums}
+.spd{width:48px;height:48px;border-radius:50%;border:3px solid var(--accent);display:grid;place-items:center;align-content:center;line-height:1;background:var(--surface)}
+.spd b{font-size:18px;font-variant-numeric:tabular-nums}
 .spd small{font-size:10px;color:var(--muted)}
 .spd.over{border-color:#e53935;background:#e53935;color:#fff;animation:over .8s ease-in-out infinite}
 .spd.over small{color:#fff}
 @keyframes over{50%{transform:scale(1.08)}}
-.limit{width:46px;height:46px;border-radius:50%;background:#fff;border:6px solid #e53935;display:grid;place-items:center;color:#111;font:700 17px/1 var(--font);font-variant-numeric:tabular-nums}
+.limit{width:38px;height:38px;border-radius:50%;background:#fff;border:5px solid #e53935;display:grid;place-items:center;color:#111;font:700 14px/1 var(--font);font-variant-numeric:tabular-nums}
 .limit.guess{opacity:.7}
 .hud{position:fixed;inset:0;z-index:20;background:#000;color:#3dff8a;display:grid;grid-template-rows:1fr auto;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
 .hud-inner{display:grid;place-items:center;align-content:center;gap:2vh;text-align:center}
@@ -155,33 +155,37 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .hud-bar{display:flex;gap:10px;justify-content:center;padding:12px;opacity:.55}
 .hud-bar .btn{background:#111;color:#ddd;border-color:#333}
 .nav-street{font-size:17px;font-weight:600}
-.nav-left{color:var(--muted);font-variant-numeric:tabular-nums}
-.nav-btns{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
-.nav-btns .btn{flex:1 1 52px;padding:8px 4px}
-.nav-btns .btn.stop{flex-basis:100%;background:#e53935;border-color:#e53935;color:#fff}
+.nav-left{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
+.nav-btns{margin-top:4px;display:flex;flex-wrap:nowrap;gap:5px}
+.nav-btns .btn{flex:1 1 0;min-width:0;padding:7px 2px;font-size:14px}
+.nav-btns .btn.stop{flex:1.6 1 0;background:#e53935;border-color:#e53935;color:#fff}
 .nav-cam{justify-self:start;background:#e53935;color:#fff;font-weight:700;border-radius:999px;padding:4px 12px;font-variant-numeric:tabular-nums}
 .sky{position:fixed;left:0;right:0;top:0;height:42vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
   background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
 body.navmode .sky{opacity:1}
 body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
 body.navmode .tools{display:none}
+.zoom{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:45%;display:grid;gap:8px}
+.zoom .tool{width:44px;height:44px;font-size:24px;font-weight:600}
+.ph-btns{display:flex;gap:2px;align-items:center}
+body.navmode .zoom{top:auto;bottom:calc(var(--navh,190px) + 24px)}
 .carwrap.three .car-svg,.carwrap.three::before{display:none}
 body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .navtop{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 20px));
-  background:#0f6b45;color:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.35);padding:12px 14px;display:grid;gap:8px}
+  background:rgba(15,107,69,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.3);padding:8px 12px;display:grid;gap:6px}
 .nt-main{display:flex;align-items:center;gap:14px}
-.nt-arrow{font:700 46px/1 var(--font);min-width:46px;text-align:center}
+.nt-arrow{font:700 32px/1 var(--font);min-width:34px;text-align:center}
 .nt-text{min-width:0;flex:1}
 .navtop>*{min-width:0}
 .nt-main{min-width:0}
-.nt-dist{font:700 30px/1.05 var(--font);font-variant-numeric:tabular-nums}
-.nt-street{font-size:16px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt-dist{font:700 22px/1.05 var(--font);font-variant-numeric:tabular-nums}
+.nt-street{font-size:14px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nt-lanes{display:flex;justify-content:center;gap:4px;background:#0a4a30;border-radius:10px;padding:4px}
-.nt-lanes span{font:700 24px/1.2 var(--font);min-width:34px;text-align:center;opacity:.3}
+.nt-lanes span{font:700 18px/1.2 var(--font);min-width:26px;text-align:center;opacity:.3}
 .nt-lanes span.on{opacity:1}
 .nav .nav-street{display:none}
 .nav .nav-turn{color:var(--fg)}
-body.night .nav{background:#0f1622;color:#e7eef3}
+body.night .nav{background:rgba(15,22,34,.84);color:#e7eef3}
 body.night .nav .nav-turn{color:#e7eef3}
 body.night .nav .btn{background:#182231;color:#e7eef3;border-color:#2a3647}
 body.night .nav .btn.stop{background:#e53935;border-color:#e53935;color:#fff}
@@ -217,17 +221,17 @@ body.navmode .panel,body.navmode .search{display:none}
   <div class="results" id="results" hidden></div>
 </div>
 
+<div class="zoom" aria-label="Масштаб"><button class="tool" id="zIn" aria-label="Приблизить">+</button><button class="tool" id="zOut" aria-label="Отдалить">−</button></div>
 <div class="tools">
   <button class="tool on" id="t3d" title="Переключить 3D / 2D">3D</button>
   <button class="tool" id="tSat" title="Спутник">Спут</button>
   <button class="tool" id="tGeo" title="Где я">◎</button>
-  <button class="tool" id="tSet" title="Настройки" aria-label="Настройки" style="font-size:22px">⚙</button>
 </div>
 
 <section class="panel" id="panel">
   <div class="panel-head">
     <h2>Маршрут</h2>
-    <button class="icon-btn" id="collapse" aria-label="Свернуть панель">▾</button>
+    <div class="ph-btns"><button class="icon-btn" id="tSet" aria-label="Настройки" title="Настройки" style="font-size:20px">⚙</button><button class="icon-btn" id="collapse" aria-label="Свернуть панель">▾</button></div>
   </div>
   <div class="body">
     <div class="ab">
@@ -269,7 +273,7 @@ body.navmode .panel,body.navmode .search{display:none}
       <p>«Поехать» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 0.8.4</p>
+    <p class="set-ver">Версия 0.9.0</p>
   </div>
 </div>
 
@@ -283,7 +287,7 @@ body.navmode .panel,body.navmode .search{display:none}
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
-  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navCamAdd" aria-label="Отметить камеру здесь">📷+</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Завершить</button></div>
+  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navCamAdd" aria-label="Отметить камеру здесь">📷+</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -324,7 +328,6 @@ body.navmode .panel,body.navmode .search{display:none}
     container:'map', style:STYLE, center:CENTER, zoom:14.5, pitch:PITCH_3D, bearing:-20, maxPitch:75,
     maxBounds:BOUNDS, attributionControl:{ compact:true }
   });
-  map.addControl(new maplibregl.NavigationControl({ visualizePitch:true }), 'bottom-right');
   map.addControl(new maplibregl.ScaleControl({ unit:'metric' }), 'bottom-left');
 
   let styleOk = false, usedFallback = false, hashApplied = false;
@@ -814,17 +817,19 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   // Вид камеры: «за машиной» (как в навигаторах), «классика», «сверху»
   const VIEWS = [
-    { id:'chase', name:'За машиной', pitch:66, zoom:18, off:80 },
-    { id:'classic', name:'Классика', pitch:50, zoom:16.9, off:150 },
-    { id:'top', name:'Сверху', pitch:0, zoom:16.3, off:0 },
+    { id:'chase', name:'За машиной', pitch:62, zoom:17.1, off:70 },
+    { id:'classic', name:'Классика', pitch:45, zoom:16.2, off:120 },
+    { id:'top', name:'Сверху', pitch:0, zoom:15.7, off:0 },
   ];
   let viewIdx = 0; try{ viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === localStorage.getItem('navView'))); }catch{}
-  const view = () => VIEWS[viewIdx];
+  let zoomOff = 0;   // кнопки +/− во время поездки сдвигают масштаб вида
+  const view = () => { const v = VIEWS[viewIdx]; return { ...v, zoom: v.zoom + zoomOff }; };
   // Машина всегда видна: ставим её чуть выше нижней панели навигатора (а не под ней)
   function camPad(){
     const v = view(), H = innerHeight;
     const nb = $('#nav'), nt = $('#navTop');
     const bottom = nb && !nb.hidden ? nb.offsetHeight + 16 : 0;
+    if (nb && !nb.hidden) document.documentElement.style.setProperty('--navh', nb.offsetHeight + 'px');
     const topBar = nt && !nt.hidden ? nt.offsetTop + nt.offsetHeight : 0;
     const free = H - bottom - topBar;
     const off = v.off ? Math.min(v.off, free * 0.4) : free / 2;      // расстояние машины от нижней панели
@@ -1056,7 +1061,7 @@ body.navmode .panel,body.navmode .search{display:none}
         if (!carMarker) return;
         const ll = carMarker.getLngLat(), mc = maplibregl.MercatorCoordinate.fromLngLat(ll, 0);
         // машина всегда примерно одного размера на экране, как в навигаторах
-        const k = Math.min(12, Math.max(1, 4 * Math.pow(2, 18 - map.getZoom())));
+        const k = Math.min(10, Math.max(1, 2.6 * Math.pow(2, 18 - map.getZoom())));
         const s = mc.meterInMercatorCoordinateUnits() * k;
         const rot = -(carMarker.getRotation() || 0) * Math.PI / 180;
         const l = new T.Matrix4().makeTranslation(mc.x, mc.y, mc.z)
@@ -1392,6 +1397,14 @@ body.navmode .panel,body.navmode .search{display:none}
   }
   $('#tGeo').onclick = () => locateMe(false);
   $('#collapse').onclick = () => $('#panel').classList.toggle('collapsed');
+
+  // ---------- Масштаб +/− ----------
+  function zoomBy(d){
+    if (driving){ zoomOff = Math.max(-3, Math.min(2, zoomOff + d)); follow = true; if (nav.shown) camTo(nav.shown, nav.heading, 300); }
+    else map.easeTo({ zoom: map.getZoom() + d, duration:250 });
+  }
+  $('#zIn').onclick = () => zoomBy(0.7);
+  $('#zOut').onclick = () => zoomBy(-0.7);
 
   // ---------- Настройки ----------
   function openSettings(){
