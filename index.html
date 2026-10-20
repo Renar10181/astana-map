@@ -257,10 +257,15 @@ body.navmode .panel,body.navmode .search{display:none}
   background:var(--glass);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-radius:14px;box-shadow:var(--shadow);padding:8px 10px;display:flex;gap:6px;align-items:center}
 .rulerbar b{flex:1;min-width:0;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #busBar{bottom:auto;top:calc(70px + env(safe-area-inset-top,0px));width:calc(100vw - 140px);max-width:440px}
-#rulerBar{flex-wrap:wrap}
+#rulerBar,#dispBar{flex-wrap:wrap}
+#dispBar .disp-info{flex:1 1 100%;font-weight:600;font-size:14px;display:grid;gap:4px}
+.disp-list{display:grid;gap:2px;font-weight:400}
+.disp-list div{display:flex;justify-content:space-between;gap:10px}
+.disp-list .best{font-weight:700;color:var(--accent)}
+#dispBar .btn{flex:1}
 #rulerBar b{flex:1 1 100%;white-space:normal}
 #rulerBar .btn{flex:1}
-body.ruling .panel{display:none}
+body.ruling .panel,body.dispatching .panel{display:none}
 .org{display:grid;gap:4px;margin-bottom:8px;font-size:14px}
 .org a.chip{text-decoration:none;color:var(--fg)}
 .bus-chips{max-height:150px;overflow:auto}
@@ -310,6 +315,9 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
 .qr svg{width:200px;height:200px}
 .set-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .set-2 input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px;width:100%}
+.depart{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.depart select{flex:1;min-width:0;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.route .free{grid-column:1 / -1;color:var(--muted);font-size:12px}
 .offline-bar{position:fixed;z-index:7;left:50%;transform:translateX(-50%);top:calc(4px + env(safe-area-inset-top,0px));background:#e53935;color:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
 @media (prefers-reduced-motion: reduce){ .pin.pulse::before{animation:none} }
 </style>
@@ -354,6 +362,9 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       <button class="icon-btn swap" id="swap" aria-label="Поменять А и Б местами" title="Поменять местами">⇅</button>
     </div>
     <div class="ab-more" id="abMore" hidden><button class="chip" id="addStop">＋ Остановка</button><button class="chip" id="findAlong">🔍 По пути</button><button class="chip" id="avoidChip" hidden></button></div>
+    <div class="depart" id="departRow"><label for="departSel">🕒 Выезд</label><select id="departSel">
+      <option value="0">Сейчас</option><option value="15">Через 15 мин</option><option value="30">Через 30 мин</option><option value="60">Через 1 час</option><option value="120">Через 2 часа</option>
+      <option value="t08:30">Утром в 8:30</option><option value="t13:00">Днём в 13:00</option><option value="t18:30">Вечером в 18:30</option><option value="t23:30">Ночью в 23:30</option></select></div>
     <div class="modes" role="group" aria-label="Способ передвижения">
       <button data-mode="car" aria-pressed="true">🚗 Авто</button>
       <button data-mode="foot" aria-pressed="false">🚶 Пешком</button>
@@ -381,7 +392,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     <div class="set-row"><label for="setView">Вид в поездке</label>
       <select id="setView"><option value="chase">За машиной</option><option value="classic">Классика</option><option value="top">Сверху</option></select></div>
     <div class="set-row"><label for="setTheme">Тёмная карта</label>
-      <select id="setTheme"><option value="auto">Авто — с 18:00 до 7:00</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
+      <select id="setTheme"><option value="auto">Авто — с 18:00 до 7:00</option><option value="sun">По солнцу — закат и рассвет</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
     <div class="set-row"><label for="setCar">Цвет машины</label><select id="setCar"></select></div>
     <div class="set-row"><label for="setSnowSel">Снег на карте</label>
       <select id="setSnowSel"><option value="auto">По погоде в Астане</option><option value="on">Всегда</option><option value="off">Выключен</option></select></div>
@@ -408,8 +419,8 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       <p>🐆 Барыс подсказывает голосом, радуется наградам и рассказывает о Байтереке, Хан Шатыре и других местах, когда вы проезжаете рядом. Очки — за отметки на дороге, цены на АЗС, километры и новые места коллекции.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
-    <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 1.3.0</p>
+    <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
+    <p class="set-ver">Версия 1.4.0</p>
   </div>
 </div>
 
@@ -452,7 +463,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   <div class="sheet-card" role="dialog" aria-label="Вы на месте">
     <div class="arr-head"><div class="big">🏁</div><h2>Вы на месте</h2><p id="arrTo"></p></div>
     <div class="arr-grid" id="arrGrid"></div>
-    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn" id="arrGpx">⬇ GPX</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
+    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn" id="arrGpx">⬇ GPX</button><button class="btn" id="arrProbe" title="Отправить трек анонимно — для расчёта скоростей улиц">📡 +5</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
   </div>
 </div>
 <div class="sheet" id="layersSheet" hidden>
@@ -460,7 +471,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     <div class="sheet-head"><h2>Слои карты</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
     <div class="set-row"><label>Основа</label><div class="chips"><button class="chip" data-base="map">🗺 Схема</button><button class="chip" data-base="sat">🛰 Спутник</button></div></div>
     <div class="set-row"><label>Поверх карты</label><div id="ovlList" style="display:grid;gap:8px"></div></div>
-    <div class="set-row"><label>Инструменты</label><div class="chips"><button class="chip" id="rulerBtn">📏 Линейка и площадь</button></div></div>
+    <div class="set-row"><label>Инструменты</label><div class="chips"><button class="chip" id="rulerBtn">📏 Линейка и площадь</button><button class="chip" id="dispBtn">🚚 Диспетчер</button><button class="chip" id="recBtn">⏺ Записать поездку</button></div></div>
     <p class="hint">Слои 📐🟥🏙 — открытые данные геопортала Астаны (gis.esaulet.kz); их сервер иногда недоступен. Зажмите точку на карте → «ℹ ГИС», чтобы увидеть данные участка.</p>
   </div>
 </div>
@@ -475,6 +486,20 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     <div class="row"><button class="btn primary" id="ptShare" style="flex:1">📤 Поделиться</button><button class="btn" id="ptCopy" style="flex:1">Копировать код</button></div>
   </div>
 </div>
+<div class="sheet" id="fixSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Ошибка на карте">
+    <div class="sheet-head"><h2>Здесь не так?</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <div class="set-row"><label for="fixType">Что не так</label><select id="fixType">
+      <option>Неверное число полос или разметка</option><option>Нет поворота / запрещён поворот</option><option>Дороги нет или она закрыта</option><option>Не хватает дороги или проезда</option>
+      <option>Неверное ограничение скорости</option><option>Неверный адрес или название</option><option>Организация закрылась или переехала</option><option>Нет входа / подъезда</option><option>Другое</option></select></div>
+    <div class="set-row"><label for="fixText">Подробнее</label><textarea id="fixText" rows="3" maxlength="500" placeholder="Например: с Кенесары на Иманова поворот налево запрещён" style="font:inherit;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg)"></textarea></div>
+    <label class="set-check"><input type="checkbox" id="fixOsm" checked> Отправить и в OpenStreetMap — её исправят картографы, и ошибка уйдёт из всех карт</label>
+    <button class="btn primary" id="fixSend">Отправить (+5 очков)</button>
+    <p class="hint">Без регистрации. Мы получим сообщение и координаты точки — больше ничего.</p>
+  </div>
+</div>
+<div class="rulerbar" id="dispBar" hidden><div id="dispInfo" class="disp-info">🚚 Диспетчер</div><button class="btn" id="dispCar">＋ Машина</button><button class="btn" id="dispCall">📍 Вызов</button><button class="btn primary" id="dispDone">Готово</button></div>
+<div class="rulerbar" id="recBar" hidden><b id="recInfo">⏺ Запись…</b><button class="btn primary" id="recStop">Остановить</button></div>
 <div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
 <div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
   <div class="m-bubble" id="mBubble" hidden></div>
@@ -617,6 +642,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     if (hitLayers.length && map.queryRenderedFeatures(e.point, { layers:hitLayers }).length) return;   // нажали на камеру или событие
     const p = { lng:e.lngLat.lng, lat:e.lngLat.lat };
     if (ruler.on) return rulerAdd(p);
+    if (disp.on) return dispClick(p);
     if (addStopMode){ addStopMode = false; $('#addStop').classList.remove('on'); return addStop(p); }
     const poi = poiAt(e.point); if (poi) return openOrg(poi);
     if (!state.from) setPoint('from', p);
@@ -693,7 +719,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       if (!silent){ clearRoute(); highlight(); }
       return;
     }
-    state[kind] = { ...p, name: p.name || 'Определяю адрес…' };
+    state[kind] = { ...p, name: p.name || 'Определяю адрес…' }; if (kind === 'to') delete state.to.ent;
     if (!m){
       m = new maplibregl.Marker({ element: kind === 'from' ? makePin('#1f9d55', 'А', false) : makePin('#7c4dff', 'Б', true), draggable:true })
         .setLngLat([p.lng, p.lat]).addTo(map);
@@ -731,7 +757,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   // Параметры: объезд платных дорог и автомагистралей (только для авто)
   let avoid = { toll:false, motorway:false };
   try{ avoid = { ...avoid, ...JSON.parse(localStorage.getItem('avoid') || '{}') }; }catch{}
-  const routePts = () => [state.from, ...state.stops, state.to];
+  const routePts = () => [state.from, ...state.stops, state.to?.ent ? { ...state.to, lng:state.to.ent.lng, lat:state.to.ent.lat } : state.to];
   async function osrm(pts, alts){
     const base = `https://routing.openstreetmap.de/${ROUTER[state.mode]}/route/v1/driving/` +
       pts.map(p => (+p.lng).toFixed(6) + ',' + (+p.lat).toFixed(6)).join(';') +
@@ -747,12 +773,14 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   async function buildRoute(){
     updMore();
     if (!state.from || !state.to) return;
+    if (state.to.ent === undefined && state.mode !== 'bike') await findEntrance(state.to);
     stopDrive();
     const id = ++routeReq;
     $('#routes').innerHTML = '<p class="hint">Строю маршрут…</p>'; showErr('');
     try{
       const j = await osrm(routePts(), !state.stops.length);
       if (id !== routeReq) return;
+      if (j.code === 'Ok') j.routes.forEach(r => { r._walk = j.waypoints?.at(-1)?.distance || 0; });
       if (j.code !== 'Ok' || !j.routes?.length) throw new Error('Маршрут между этими точками не найден. Передвиньте точку ближе к дороге.');
       state.routes = j.routes; state.avoided = j.avoided || []; selectRoute(0, true); writeHash(); pushHist(state.to);
       if (j.avoidFailed) toast('Объехать платные дороги / магистрали здесь нельзя — показан обычный маршрут');
@@ -774,9 +802,13 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     $('#routes').innerHTML = state.routes.map((r, k) => {
       const tags = n > 1 ? [k === fast ? 'быстрый' : '', k === short ? 'короткий' : ''].filter(Boolean) : [];
       const extra = [tripCost(r), state.stops.length ? `${state.stops.length} ${state.stops.length === 1 ? 'остановка' : 'остановки'}` : '', ...av].filter(Boolean);
+      const f = peakFactor(); r._f = f;
+      const walk = r._walk > 25 ? `пешком ~${Math.round(r._walk / 10) * 10} м` : '';
+      const ent = state.to?.ent ? `🚪 к подъезду${state.to.ent.ref ? ' ' + state.to.ent.ref : ''}` : '';
+      const free = state.mode === 'car' && Math.abs(f - 1) > 0.04 ? `<span class="free">${f > 1 ? '🚦 час пик' : '🌙 ночью свободнее'} · без пробок ${fmtTime(r.duration)} · оценка по времени суток</span>` : '';
       return `<button class="route" data-r="${k}" aria-pressed="${k === i}">
-        <span class="time">${fmtTime(r.duration)}</span><span class="dist">${fmtDist(r.distance)}${tags.length ? ' · ' + tags.join(', ') : ''}</span>
-        <span class="eta">Прибытие в ${arrival(r.duration)}${extra.length ? ' · ' + extra.join(' · ') : ''}</span>
+        <span class="time">${fmtTime(r.duration * f)}</span><span class="dist">${fmtDist(r.distance)}${tags.length ? ' · ' + tags.join(', ') : ''}</span>
+        <span class="eta">${etaLine(r.duration * f)}${[...extra, ent, walk].filter(Boolean).length ? ' · ' + [...extra, ent, walk].filter(Boolean).join(' · ') : ''}</span>${free}
       </button>`; }).join('');
     document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => selectRoute(+b.dataset.r));
     const ww = wxWarn(); if (ww) $('#routes').insertAdjacentHTML('beforeend', `<p class="hint wx-warn">${ww}</p>`);
@@ -932,7 +964,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   function loadRoute(r){
     nav.pts = r.geometry.coordinates; nav.cum = [0];
     for (let k = 1; k < nav.pts.length; k++) nav.cum.push(nav.cum[k - 1] + dist(nav.pts[k - 1], nav.pts[k]));
-    nav.total = nav.cum[nav.cum.length - 1]; nav.dur = r.duration; nav.idx = 0;
+    nav.total = nav.cum[nav.cum.length - 1]; nav.dur = r.duration * (state.mode === 'car' ? peakFactor(new Date()) : 1); nav.idx = 0;
     // ограничения скорости по участкам маршрута (из данных OpenStreetMap)
     nav.maxspeed = (r.legs || []).flatMap(l => l.annotation?.maxspeed || []);
     attachCams();
@@ -1387,7 +1419,20 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   // ---------- Ночной неоновый режим навигатора, широкая «дорожка» маршрута, полосы, знак камеры ----------
   // Тёмная карта: auto (с 19:00 до 7:00), on, off
   let theme = 'auto'; try{ theme = localStorage.getItem('mapTheme') || 'auto'; }catch{}
-  const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 18 || h < 7; })());
+  const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 18 || h < 7; })())
+    || (theme === 'sun' && (() => { const t = sunTimes(new Date()), now = Date.now(); return now < t.rise || now > t.set; })());
+  // Восход и закат над Астаной (упрощённая формула NOAA, точность ±2 минуты)
+  function sunTimes(d, lat = 51.13, lng = 71.43){
+    const rad = Math.PI / 180, n = Math.round(d / 864e5 + 2440587.5 - 2451545.0009 + lng / 360), Js = 2451545.0009 - lng / 360 + n;
+    const M = (357.5291 + 0.98560028 * (Js - 2451545)) % 360;
+    const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+    const L = (M + 102.9372 + C + 180) % 360, Jt = Js + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * L * rad);
+    const dec = Math.asin(Math.sin(L * rad) * Math.sin(23.44 * rad));
+    const cosH = (Math.sin(-0.83 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec));
+    const H = Math.acos(Math.max(-1, Math.min(1, cosH))) / rad, t = j => (j - 2440587.5) * 864e5;
+    return { rise:t(Jt - H / 360), set:t(Jt + H / 360) };
+  }
+  setInterval(() => { if (theme === 'sun' || theme === 'auto'){ const d = isDarkNow(); if (d !== night){ night = d; applyNight(night); } } }, 60000);
   let night = isDarkNow();
   function setTheme(t){ theme = t; try{ localStorage.setItem('mapTheme', t); }catch{} night = isDarkNow(); applyNight(night); }
   setInterval(() => { if (theme === 'auto' && isDarkNow() !== night){ night = isDarkNow(); applyNight(night); } }, 60000);
@@ -1495,7 +1540,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     }catch{}
     try{
       const j = await (await fetch('/api/cameras')).json();
-      (j.items || []).forEach(c => { if (!out.some(o => dist([o.lng, o.lat], [c.lng, c.lat]) < 60)) out.push({ lng:c.lng, lat:c.lat, v:0, src:'user', votes:c.votes }); });
+      (j.items || []).forEach(c => { if (!out.some(o => dist([o.lng, o.lat], [c.lng, c.lat]) < 60)) out.push({ lng:c.lng, lat:c.lat, v:0, src:'user', votes:c.votes || 1 }); });
       // камеры OSM, которые водители пометили как «нет камеры», не показываем
       const hidden = j.hidden || [];
       for (let i = out.length - 1; i >= 0; i--) if (out[i].src === 'osm' && hidden.some(h => dist([out[i].lng, out[i].lat], [h.lng, h.lat]) < 40)) out.splice(i, 1);
@@ -1504,12 +1549,13 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     if (driving) attachCams();
   }
   function drawCams(){
-    const fc = { type:'FeatureCollection', features: cams.map((c, i) => ({ type:'Feature', geometry:{ type:'Point', coordinates:[c.lng, c.lat] }, properties:{ v:c.v || '', i } })) };
+    const fc = { type:'FeatureCollection', features: cams.map((c, i) => ({ type:'Feature', geometry:{ type:'Point', coordinates:[c.lng, c.lat] }, properties:{ v:c.v || '', i, u: c.src === 'user' && (c.votes || 1) < 3 ? 1 : 0 } })) };
     if (map.getSource('cams')) return map.getSource('cams').setData(fc);
     if (!map.hasImage('cam')) map.addImage('cam', camIcon(), { pixelRatio:2 });
     map.addSource('cams', { type:'geojson', data:fc });
     map.addLayer({ id:'cams', type:'symbol', source:'cams', minzoom:11,
-      layout:{ 'icon-image':'cam', 'icon-size':['interpolate',['linear'],['zoom'],11,0.55,16,1], 'icon-allow-overlap':true } });
+      layout:{ 'icon-image':'cam', 'icon-size':['interpolate',['linear'],['zoom'],11,0.55,16,1], 'icon-allow-overlap':true },
+      paint:{ 'icon-opacity':['case', ['==', ['get', 'u'], 1], 0.45, 1] } });
     syncToggles();
   }
   // Нажатие на камеру: подробности и удаление (если отметили по ошибке или камеру сняли)
@@ -1519,8 +1565,10 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     popup?.remove();
     const el = document.createElement('div');
     el.innerHTML = `<div class="pop-t">📷 Камера${c.v ? ' · ' + c.v + ' км/ч' : ''}</div>
-      <div class="hint" style="margin-bottom:8px">${c.src === 'user' ? 'Отметили водители: ' + (c.votes || 1) : 'Из данных OpenStreetMap'}</div>
+      <div class="hint" style="margin-bottom:8px">${c.src === 'user' ? 'Отметили водители: ' + (c.votes || 1) + ((c.votes || 1) < 3 ? ' из 3 — ещё не подтверждена, голосом не предупреждаем' : ' · подтверждена') : 'Из данных OpenStreetMap'}</div>
+      ${c.src === 'user' && (c.votes || 1) < 3 ? '<button class="btn" data-yes style="margin-bottom:6px">👍 Камера есть</button> ' : ''}
       <button class="btn" data-del>🗑 Удалить камеру</button>`;
+    el.querySelector('[data-yes]')?.addEventListener('click', () => { popup.remove(); addCam([c.lng, c.lat]); });
     const b = el.querySelector('[data-del]');
     b.onclick = async () => {
       if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = 'Точно удалить? Нажмите ещё раз'; b.classList.add('primary'); return; }
@@ -1548,7 +1596,8 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   function attachCams(){
     nav.cams = [];
     if (state.mode !== 'car' || !nav.pts.length) return;
-    cams.forEach((c, i) => { const pr = project([c.lng, c.lat], 0, true); if (pr.dist < 35) nav.cams.push({ i, at:pr.along, v:c.v }); });
+    cams.forEach((c, i) => { if (c.src === 'user' && (c.votes || 1) < 3) return;   // камера водителей считается подтверждённой после 3 разных отметок
+      const pr = project([c.lng, c.lat], 0, true); if (pr.dist < 35) nav.cams.push({ i, at:pr.along, v:c.v }); });
     nav.cams.sort((a, b) => a.at - b.at);
   }
   function checkCams(along){
@@ -1565,7 +1614,10 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     try{
       const r = await fetch('/api/cameras', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:p[0], lat:p[1] }) });
       if (!r.ok) throw 0;
-      cams.push({ lng:p[0], lat:p[1], v:0, src:'user' }); drawCams(); attachCams();
+      const j = await r.json().catch(() => ({}));
+      const ex = cams.find(c => c.src === 'user' && dist([c.lng, c.lat], p) < 60);
+      if (ex) ex.votes = j.votes || (ex.votes || 1) + 1; else cams.push({ lng:p[0], lat:p[1], v:0, src:'user', votes:j.votes || 1 });
+      drawCams(); attachCams();
       toast('Спасибо! Камера отмечена для всех водителей'); addPts(10, 'за камеру');
     }catch{ toast('Не удалось отметить камеру. Проверьте интернет.'); }
   }
@@ -1652,11 +1704,12 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     const text = q.value.trim(); if (!text) return;
     const id = ++searchReq;
     try{
-      const list = await searchPhoton(text).catch(() => searchNominatim(text));
+      const [ov, list0] = await Promise.all([searchPlaces(text).catch(() => []), searchPhoton(text).catch(() => searchNominatim(text)).catch(() => [])]);
       if (id !== searchReq) return;
+      const list = [...ov.slice(0, 6), ...list0.filter(it => !ov.some(o => near({ lng:+it.lon, lat:+it.lat }, { lng:+o.lon, lat:+o.lat }, 60) && title(o).toLowerCase() === title(it).toLowerCase()))].slice(0, 12);
       res.hidden = false;
       if (!list.length){ res.innerHTML = '<div class="empty">Ничего не нашлось в Астане. Попробуйте «Кабанбай батыра 53» или название места.</div>'; return; }
-      res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}</div><div class="s">${esc(sub(it))}</div></button>`).join('');
+      res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}</div><div class="s">${esc(it.ov ? [catRu(it.cat), it.addr].filter(Boolean).join(' · ') : sub(it))}</div></button>`).join('');
       res.querySelectorAll('button').forEach(b => b.onclick = () => pick(list[+b.dataset.k]));
     }catch{ res.hidden = false; res.innerHTML = '<div class="empty">Поиск недоступен. Проверьте интернет.</div>'; }
   }
@@ -1682,7 +1735,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     res.hidden = true; q.value = title(it);
     const p = { lng:+it.lon, lat:+it.lat, name:title(it) };
     map.flyTo({ center:[p.lng, p.lat], zoom:17, duration:900 });
-    pushHist(p); showPopup(p);
+    pushHist(p); showPopup(p, it.ov ? ovHtml(it) : '');
   }
   // Карточка точки: Отсюда / Заехать / Сюда + сохранить в мои места + сообщить о событии
   function showPopup(p, extra){
@@ -1693,7 +1746,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       ${driving ? '' : '<button class="btn" data-a="from">Отсюда</button>'}
       ${canStop ? '<button class="btn" data-a="via">＋ Заехать</button>' : ''}
       ${driving ? '' : '<button class="btn primary" data-a="to">Сюда</button>'}</div>
-      <div class="row pop-save"><button class="chip" data-s="home" title="Это мой дом">🏠</button><button class="chip" data-s="work" title="Это моя работа">💼</button><button class="chip" data-s="fav" title="В избранное">⭐</button><button class="chip" data-s="ev" title="Сообщить о событии">⚠</button><button class="chip" data-s="share" title="Код места, QR и поделиться">📤</button><button class="chip" data-s="taxi" title="Вызвать такси сюда">🚕</button><button class="chip" data-s="gis" title="Данные геопортала">ℹ ГИС</button></div><div data-gis></div>`;
+      <div class="row pop-save"><button class="chip" data-s="home" title="Это мой дом">🏠</button><button class="chip" data-s="work" title="Это моя работа">💼</button><button class="chip" data-s="fav" title="В избранное">⭐</button><button class="chip" data-s="ev" title="Сообщить о событии">⚠</button><button class="chip" data-s="share" title="Код места, QR и поделиться">📤</button><button class="chip" data-s="taxi" title="Вызвать такси сюда">🚕</button><button class="chip" data-s="fix" title="Здесь на карте ошибка">✏ Не так?</button><button class="chip" data-s="gis" title="Данные геопортала">ℹ ГИС</button></div><div data-gis></div>`;
     el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
       popup.remove();
       if (b.dataset.a === 'via') return addStop(p, driving);
@@ -1703,6 +1756,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       if (b.dataset.s === 'ev'){ popup.remove(); return openReport([p.lng, p.lat]); }
       if (b.dataset.s === 'share') return openPoint(p);
       if (b.dataset.s === 'taxi') return taxiTo(p);
+      if (b.dataset.s === 'fix') return openFix(p);
       if (b.dataset.s === 'gis') return gisInfo(p, el.querySelector('[data-gis]'));
       savePlace(b.dataset.s, p); b.classList.add('on');
     });
@@ -1906,6 +1960,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     $('#arrFav').onclick = () => { if (st.toP) savePlace('fav', st.toP); $('#arrSheet').hidden = true; };
     $('#arrSheet').hidden = false;
     $('#arrGpx').onclick = () => downloadGpx(st);
+    $('#arrProbe').hidden = st.demo || !st.track?.length; $('#arrProbe').onclick = () => sendProbe(st.track, $('#arrProbe'));
     mascot('happy', st.demo ? 'Демо-поездка завершена! Поехали по-настоящему? 🐾' : `Приехали! ${fmtDist(st.dist)} позади. Молодец! 🐾`, 6000);
     if (!st.demo && st.dist > 300) addPts(Math.round(st.dist / 1000), 'за километры');
     if (!st.demo && st.dist > 200){
@@ -1988,6 +2043,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       if (my !== catReq) return;
       let items = (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat,
         name:el.tags?.name || el.tags?.brand || el.tags?.operator || cat.n, hours:el.tags?.opening_hours || '' })).filter(x => x.lng != null);
+      items = items.concat(await ovForCat(cat, s, w, n, e, items));
       if (id === 'fuel'){ await loadFuel(); items.forEach(x => { const f = fuelAt(x); if (f) x.price = f; }); }
       if (line && line.length > 1){
         items = items.map(x => { const r = lineDist([x.lng, x.lat], line); return { ...x, off:r.d, at:r.at }; })
@@ -2807,6 +2863,263 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     const qs = (from ? `start-lat=${from.lat.toFixed(6)}&start-lon=${from.lng.toFixed(6)}&` : '') + `end-lat=${(+p.lat).toFixed(6)}&end-lon=${(+p.lng).toFixed(6)}`;
     location.href = `https://3.redirect.appmetrica.yandex.com/route?${qs}&ref=astanamap&appmetrica_tracking_id=1178268795219780156`;
   }
+
+  // ---------- 1.4: время выезда и час пик (оценка, не данные о пробках) ----------
+  function departDate(){
+    const v = $('#departSel').value, d = new Date();
+    if (v.startsWith('t')){ const [h, m] = v.slice(1).split(':').map(Number); d.setHours(h, m, 0, 0); if (d < Date.now() - 6e5) d.setDate(d.getDate() + 1); return d; }
+    d.setMinutes(d.getMinutes() + (+v || 0)); return d;
+  }
+  // Коэффициенты по часам для авто: утренний и вечерний пик ×1,4, межпик ×1,18, ночь ×0,9, выходные мягче
+  function peakFactor(d = departDate()){
+    if (state.mode !== 'car') return 1;
+    const t = d.getHours() + d.getMinutes() / 60, wk = d.getDay() === 0 || d.getDay() === 6;
+    let f = 1.05;
+    if (t >= 23 || t < 6) f = 0.9;
+    else if ((t >= 7.5 && t < 9.5) || (t >= 17.5 && t < 19.5)) f = 1.4;
+    else if ((t >= 6.5 && t < 7.5) || (t >= 9.5 && t < 10.5) || (t >= 16.5 && t < 17.5) || (t >= 19.5 && t < 20.5) || (t >= 12.5 && t < 14)) f = 1.18;
+    return wk && f > 1.1 ? 1.1 : f;
+  }
+  const hhmm = d => d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+  function etaLine(sec){
+    const d = departDate(), arr = new Date(d.getTime() + sec * 1000);
+    return $('#departSel').value === '0' ? `Прибытие в ${hhmm(arr)}` : `Выезд ${hhmm(d)} · прибытие в ${hhmm(arr)}`;
+  }
+  $('#departSel').onchange = () => { if (state.routes.length) selectRoute(state.active); };
+
+  // ---------- Подача к подъезду: ближайший вход из OSM ----------
+  async function findEntrance(to){
+    to.ent = null;
+    if (!to || to.me || !to.name || /Определяю|Моё местоположение/.test(to.name)) return;
+    try{
+      const j = await Promise.race([
+        overpass(`[out:json][timeout:6];node(around:45,${to.lat},${to.lng})["entrance"];out;`),
+        new Promise((_, no) => setTimeout(() => no(0), 3500)) ]);
+      let best = null;
+      (j.elements || []).forEach(e => { const d = dist([to.lng, to.lat], [e.lon, e.lat]); if (!best || d < best.d) best = { d, lng:e.lon, lat:e.lat, ref:e.tags?.ref || '' }; });
+      if (best && state.to === to) to.ent = { lng:best.lng, lat:best.lat, ref:best.ref };
+    }catch{}
+  }
+
+  // ---------- Заведения Overture Maps: поиск с опечатками на русском, казахском и латиницей ----------
+  let placesDb = null, placesLoading = null;
+  function loadPlaces(){
+    if (placesDb) return Promise.resolve(placesDb);
+    placesLoading = placesLoading || fetch('/data/places-astana.json').then(r => r.ok ? r.json() : { items:[] })
+      .then(j => { placesDb = (j.items || []).map(r => ({ r, k:normKey(r[2]), c:normKey(catRu(r[3])) })); return placesDb; })
+      .catch(() => { placesDb = []; return placesDb; });
+    return placesLoading;
+  }
+  q.addEventListener('focus', () => loadPlaces(), { once:true });
+  const TR = { а:'a', б:'b', в:'v', г:'g', д:'d', е:'e', ё:'e', ж:'zh', з:'z', и:'i', й:'i', к:'k', л:'l', м:'m', н:'n', о:'o', п:'p', р:'r', с:'s', т:'t', у:'u', ф:'f', х:'h', ц:'c', ч:'ch', ш:'sh', щ:'sh', ъ:'', ы:'y', ь:'', э:'e', ю:'yu', я:'ya',
+    ә:'a', ғ:'g', қ:'k', ң:'n', ө:'o', ұ:'u', ү:'u', һ:'h', і:'i' };
+  // одна «латинская» форма для сравнения: «Хилтон» = «Hilton», «Кофе» ≈ «kofe»
+  function normKey(s){
+    return String(s || '').toLowerCase().replace(/[«»"'`’.,()]/g, ' ').replace(/[а-яёәғқңөұүһі]/g, ch => TR[ch] ?? ch)
+      .replace(/kh/g, 'h').replace(/ph/g, 'f').replace(/w/g, 'v').replace(/x/g, 'ks').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function lev1(a, b){   // расстояние Левенштейна не больше 1?
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0, j = 0, e = 0;
+    while (i < a.length && j < b.length){
+      if (a[i] === b[j]){ i++; j++; continue; }
+      if (++e > 1) return false;
+      if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+    }
+    return e + (a.length - i) + (b.length - j) <= 1;
+  }
+  async function searchPlaces(text){
+    const db = await loadPlaces(); if (!db.length) return [];
+    const qt = normKey(text).split(' ').filter(t => t.length >= 2); if (!qt.length) return [];
+    const c = map.getCenter(), out = [];
+    for (const p of db){
+      const nt = p.k.split(' '), ct = p.c.split(' ');
+      let sc = 0, ok = true;
+      for (const t of qt){
+        if (nt.some(w => w.startsWith(t))) sc += 2;
+        else if (t.length >= 4 && nt.some(w => lev1(w.slice(0, t.length), t) || lev1(w, t))) sc += 1;
+        else if (ct.some(w => w.startsWith(t))) sc += 1;
+        else { ok = false; break; }
+      }
+      if (!ok) continue;
+      if (p.k.startsWith(qt.join(' '))) sc += 3;
+      out.push({ p, sc, d:dist([c.lng, c.lat], [p.r[0], p.r[1]]) });
+    }
+    out.sort((a, b) => b.sc - a.sc || a.d - b.d);
+    return out.slice(0, 8).map(({ p:{ r } }) => ({ lon:r[0], lat:r[1], name:r[2], ov:true, cat:r[3], addr:r[4], phone:r[5], web:r[6], src:r[7], display_name:r[2], address:{} }));
+  }
+  const CAT_RU = { coffee_shop:'Кофейня', cafe:'Кафе', restaurant:'Ресторан', fast_food_restaurant:'Фастфуд', bar:'Бар', pub:'Паб', bakery:'Пекарня', pizza_restaurant:'Пиццерия',
+    sushi_restaurant:'Суши', burger_restaurant:'Бургерная', pharmacy:'Аптека', hospital:'Больница', medical_center:'Медцентр', dentist:'Стоматология', doctor:'Врач',
+    beauty_salon:'Салон красоты', hair_salon:'Парикмахерская', barber:'Барбершоп', nail_salon:'Маникюр', spa:'СПА', supermarket:'Супермаркет', grocery_store:'Продукты',
+    convenience_store:'Магазин у дома', gas_station:'АЗС', ev_charging_station:'Зарядка', car_wash:'Автомойка', automotive_repair:'Автосервис', auto_parts_store:'Автозапчасти',
+    car_dealer:'Автосалон', tire_shop:'Шиномонтаж', hotel:'Гостиница', hostel:'Хостел', bank:'Банк', atm:'Банкомат', gym:'Спортзал', fitness_center:'Фитнес', school:'Школа',
+    kindergarten:'Детский сад', college_university:'Университет', clothing_store:'Одежда', shoe_store:'Обувь', shopping_center:'ТРЦ', shopping_mall:'ТРЦ', park:'Парк',
+    parking:'Парковка', printing_services:'Печать', advertising_agency:'Рекламное агентство', sign_making:'Вывески', florist:'Цветы', flower_shop:'Цветы',
+    electronics_store:'Электроника', mobile_phone_store:'Телефоны', furniture_store:'Мебель', hardware_store:'Стройтовары', mosque:'Мечеть', church:'Церковь',
+    fashion_and_apparel_store:'Одежда', shopping:'Магазин', personal_or_beauty_service:'Красота', real_estate_service:'Недвижимость', hardware_home_and_garden_store:'Стройтовары',
+    professional_service:'Услуги', wellness_service:'Здоровье', historic_site:'Достопримечательность', event_or_party_service:'Праздники', food_and_beverage_store:'Продукты',
+    automotive_service:'Автосервис', education:'Образование', home_service:'Услуги для дома', government_office:'Госучреждение', health_care:'Медицина', dental_clinic:'Стоматология',
+    place_of_learning:'Учёба', travel_service:'Туризм', music_venue:'Музыка', casual_eatery:'Кафе', flowers_and_gifts_store:'Цветы и подарки', drugstore:'Аптека',
+    clothing_store:'Одежда', specialty_store:'Магазин', beauty_salon:'Салон красоты', car_repair:'Автосервис', financial_service:'Финансы', it_service:'IT-услуги',
+    advertising_service:'Реклама', print_shop:'Печать', marketing_agency:'Маркетинг',
+    museum:'Музей', theatre:'Театр', movie_theater:'Кинотеатр', post_office:'Почта', notary:'Нотариус', lawyer:'Юрист', real_estate_agent:'Недвижимость',
+    veterinarian:'Ветклиника', pet_store:'Зоомагазин', laundry:'Прачечная', dry_cleaning:'Химчистка', karaoke:'Караоке', bowling_alley:'Боулинг', hookah_bar:'Кальянная' };
+  function catRu(c){ return CAT_RU[c] || (c ? c.replace(/_/g, ' ') : ''); }
+  function ovHtml(it){
+    const btns = [];
+    if (it.phone) btns.push(`<a class="chip" href="tel:${esc(String(it.phone).replace(/[^\d+]/g, ''))}">📞 Позвонить</a>`);
+    if (it.web) btns.push(`<a class="chip" target="_blank" rel="noopener" href="${esc(/^https?:/.test(it.web) ? it.web : 'https://' + it.web)}">🌐 Сайт</a>`);
+    return `<div class="org">${it.cat ? `<div class="hint">${esc(catRu(it.cat))}</div>` : ''}${it.addr ? `<div>📍 ${esc(it.addr)}</div>` : ''}
+      ${it.phone ? `<div class="hint">${esc(it.phone)}</div>` : ''}${btns.length ? `<div class="chips">${btns.join('')}</div>` : ''}
+      <div class="hint" style="font-size:11px">Источник: Overture Maps${it.src ? ' · ' + esc(it.src) : ''}</div></div>`;
+  }
+  // категории «Найти рядом / По пути»: добавляем заведения Overture
+  const CAT_OV = { fuel:/gas_station|fuel/, ev:/charging/, food:/restaurant|fast_food|pizza|burger|sushi|eatery/, cafe:/coffee|cafe|bakery|tea/, pharm:/pharmacy|drugstore/,
+    shop:/supermarket|grocery|convenience|food_and_beverage_store/, atm:/^atm$|^bank$/, park:/^parking/, wash:/car_wash/, tyre:/tire/, wc:/toilet/ };
+  async function ovForCat(cat, s, w, n, e, have){
+    const re = CAT_OV[cat.id]; if (!re) return [];
+    const db = await loadPlaces();
+    return db.filter(p => re.test(p.r[3]) && p.r[1] > s && p.r[1] < n && p.r[0] > w && p.r[0] < e)
+      .filter(p => !have.some(h => dist([h.lng, h.lat], [p.r[0], p.r[1]]) < 40))
+      .map(p => ({ lng:p.r[0], lat:p.r[1], name:p.r[2], hours:'' }));
+  }
+
+  // ---------- Диспетчер: какая машина приедет первой (по дорогам, а не по прямой) ----------
+  const disp = { on:false, mode:'car', cars:store.get('fleet', []), mk:[], callMk:null };
+  function dispToggle(on){
+    disp.on = on; $('#dispBar').hidden = !on; $('#layersSheet').hidden = true; document.body.classList.toggle('dispatching', on);
+    disp.mk.forEach(m => m.remove()); disp.mk = []; disp.callMk?.remove(); disp.callMk = null; popup?.remove();
+    map.getSource('disp')?.setData(emptyFC());
+    if (on){ disp.mode = disp.cars.length ? 'call' : 'car'; dispDraw(); dispHint(); }
+  }
+  function dispHint(){
+    $('#dispInfo').textContent = disp.mode === 'car' ? `🚚 Нажмите на карту, где стоит машина или бригада (${disp.cars.length}/12). Затем «📍 Вызов».`
+      : `📍 Нажмите на карту, куда нужно приехать. Машин: ${disp.cars.length}.`;
+    $('#dispCar').classList.toggle('primary', disp.mode === 'car'); $('#dispCall').classList.toggle('primary', disp.mode === 'call');
+  }
+  function dispSave(){ store.set('fleet', disp.cars); }
+  function dispDraw(){
+    disp.mk.forEach(m => m.remove()); disp.mk = [];
+    disp.cars.forEach((c, i) => {
+      const el = makePin('#ff9800', String(i + 1), false); el.title = c.name;
+      el.onclick = ev => {
+        ev.stopPropagation(); popup?.remove();
+        const box = document.createElement('div');
+        box.innerHTML = `<input class="disp-name" value="${esc(c.name)}" maxlength="30" style="font:inherit;width:100%;padding:6px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--surface);color:var(--fg)">
+          <div class="row"><button class="btn" data-ok>Сохранить</button><button class="btn" data-del>🗑 Убрать</button></div>`;
+        box.querySelector('[data-ok]').onclick = () => { c.name = box.querySelector('input').value.trim() || c.name; dispSave(); popup.remove(); dispDraw(); };
+        box.querySelector('[data-del]').onclick = () => { disp.cars.splice(i, 1); dispSave(); popup.remove(); dispDraw(); dispHint(); };
+        popup = new maplibregl.Popup({ offset:14, maxWidth:'240px' }).setLngLat([c.lng, c.lat]).setDOMContent(box).addTo(map);
+      };
+      const m = new maplibregl.Marker({ element:el, draggable:true }).setLngLat([c.lng, c.lat]).addTo(map);
+      m.on('dragend', () => { const ll = m.getLngLat(); c.lng = ll.lng; c.lat = ll.lat; dispSave(); });
+      disp.mk.push(m);
+    });
+  }
+  function dispClick(p){
+    if (disp.mode === 'car'){
+      if (disp.cars.length >= 12) return toast('Можно до 12 машин');
+      disp.cars.push({ lng:p.lng, lat:p.lat, name:'Машина ' + (disp.cars.length + 1) }); dispSave(); dispDraw(); dispHint();
+    } else dispCall(p);
+  }
+  async function dispCall(p){
+    if (!disp.cars.length){ disp.mode = 'car'; dispHint(); return toast('Сначала поставьте машины'); }
+    disp.callMk?.remove();
+    disp.callMk = new maplibregl.Marker({ element:makePin('#7c4dff', '📍', true) }).setLngLat([p.lng, p.lat]).addTo(map);
+    $('#dispInfo').textContent = '⏳ Считаю время по дорогам…';
+    const pts = [p, ...disp.cars], co = pts.map(x => (+x.lng).toFixed(6) + ',' + (+x.lat).toFixed(6)).join(';');
+    let rows = null;
+    try{
+      const j = await (await fetch(`https://routing.openstreetmap.de/routed-car/table/v1/driving/${co}?sources=${disp.cars.map((_, i) => i + 1).join(';')}&destinations=0&annotations=duration,distance`)).json();
+      if (j.code === 'Ok') rows = disp.cars.map((c, i) => ({ c, i, t:j.durations[i][0], d:j.distances?.[i]?.[0] }));
+    }catch{}
+    if (!rows){   // запасной путь: по одному маршруту на машину
+      rows = await Promise.all(disp.cars.map(async (c, i) => {
+        try{ const j = await (await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${c.lng},${c.lat};${p.lng},${p.lat}?overview=false`)).json(); return { c, i, t:j.routes?.[0]?.duration, d:j.routes?.[0]?.distance }; }
+        catch{ return { c, i, t:null }; }
+      }));
+    }
+    rows = rows.filter(r => r.t != null);
+    if (!rows.length){ dispHint(); return toast('Не удалось посчитать. Проверьте интернет.'); }
+    const f = peakFactor(new Date()); rows.forEach(r => { r.t *= f; r.air = dist([r.c.lng, r.c.lat], [p.lng, p.lat]); });
+    rows.sort((a, b) => a.t - b.t);
+    const nearest = [...rows].sort((a, b) => a.air - b.air)[0], best = rows[0];
+    popup?.remove();
+    $('#dispInfo').innerHTML = `✅ Отправляйте «${esc(best.c.name)}» — ${fmtTime(best.t)}` +
+      `<div class="disp-list">` + rows.slice(0, 5).map((r, k) => `<div${k ? '' : ' class="best"'}><span>${k + 1}. ${esc(r.c.name)}</span><span>${fmtTime(r.t)} · ${fmtDist(r.d || 0)}</span></div>`).join('') + `</div>` +
+      (nearest !== best ? `<span class="hint">По прямой ближе «${esc(nearest.c.name)}» (${fmtDist(nearest.air)}), но по дорогам быстрее «${esc(best.c.name)}».</span> ` : '') +
+      `<span class="hint" style="font-size:11px">${f > 1.04 ? 'С учётом часа пик (оценка). ' : ''}Время по дорогам, без реальных пробок. Нажмите на карту — новый вызов.</span>`;
+    try{
+      const j = await (await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${best.c.lng},${best.c.lat};${p.lng},${p.lat}?overview=full&geometries=geojson`)).json();
+      const fc = { type:'FeatureCollection', features:[{ type:'Feature', geometry:j.routes[0].geometry, properties:{} }] };
+      if (map.getSource('disp')) map.getSource('disp').setData(fc);
+      else { map.addSource('disp', { type:'geojson', data:fc }); map.addLayer({ id:'disp', type:'line', source:'disp', layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#ff9800', 'line-width':6, 'line-opacity':0.85 } }); }
+    }catch{}
+  }
+  $('#dispBtn').onclick = () => dispToggle(true);
+  $('#dispDone').onclick = () => dispToggle(false);
+  $('#dispCar').onclick = () => { disp.mode = 'car'; dispHint(); };
+  $('#dispCall').onclick = () => { disp.mode = 'call'; dispHint(); };
+
+  // ---------- Записать поездку и отдать трек анонимно (по трекам считаем реальные скорости улиц) ----------
+  const rec = { id:null, pts:[], t0:0, max:0, timer:0 };
+  $('#recBtn').onclick = () => {
+    $('#layersSheet').hidden = true;
+    if (rec.id != null) return;
+    if (!navigator.geolocation) return toast('Браузер не умеет определять местоположение');
+    rec.pts = []; rec.t0 = Date.now(); rec.max = 0;
+    rec.id = navigator.geolocation.watchPosition(q => {
+      const p = [q.coords.longitude, q.coords.latitude, Date.now()], l = rec.pts[rec.pts.length - 1];
+      if (q.coords.speed != null) rec.max = Math.max(rec.max, q.coords.speed * 3.6);
+      if (!l || dist(l, p) > 10) rec.pts.push(p);
+    }, () => toast('Нет сигнала GPS'), { enableHighAccuracy:true, maximumAge:2000, timeout:20000 });
+    $('#recBar').hidden = false;
+    const upd = () => { let d = 0; for (let i = 1; i < rec.pts.length; i++) d += dist(rec.pts[i - 1], rec.pts[i]); $('#recInfo').textContent = `⏺ Запись: ${fmtDist(d)} · ${fmtTime((Date.now() - rec.t0) / 1000)}`; };
+    upd(); rec.timer = setInterval(upd, 3000);
+    toast('Запись идёт. Экран можно не выключать — так точнее');
+  };
+  $('#recStop').onclick = () => {
+    navigator.geolocation.clearWatch(rec.id); rec.id = null; clearInterval(rec.timer); $('#recBar').hidden = true;
+    if (rec.pts.length < 5) return toast('Слишком короткая запись');
+    let d = 0; for (let i = 1; i < rec.pts.length; i++) d += dist(rec.pts[i - 1], rec.pts[i]);
+    showArrival({ t0:rec.t0, dist:d, max:rec.max, sum:0, n:0, demo:false, to:'Запись поездки', track:rec.pts });
+  };
+  async function sendProbe(track, btn){
+    if (!track?.length) return;
+    const step = Math.max(1, Math.ceil(track.length / 1500)), t0 = track[0][2];
+    const pts = track.filter((_, i) => i % step === 0).map(([x, y, t]) => [+x.toFixed(5), +y.toFixed(5), Math.round((t - t0) / 1000)]);
+    try{
+      const r = await fetch('/api/probes', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ pts }) });
+      if (!r.ok) throw 0;
+      btn.disabled = true; btn.textContent = '✓ Спасибо'; addPts(5, 'за трек');
+      toast('Трек отправлен анонимно — без имени и устройства. Он поможет считать скорость улиц');
+    }catch{ toast('Не удалось отправить. Проверьте интернет.'); }
+  }
+
+  // ---------- «Здесь не так?» — сообщение об ошибке карты (и заметка в OpenStreetMap) ----------
+  let fixAt = null;
+  function openFix(p){ popup?.remove(); fixAt = p; $('#fixText').value = ''; $('#fixSheet').hidden = false; }
+  $('#fixSend').onclick = async () => {
+    if (!fixAt) return;
+    const type = $('#fixType').value, text = $('#fixText').value.trim().slice(0, 500);
+    const b = $('#fixSend'); b.disabled = true;
+    let ok = false;
+    try{
+      const r = await fetch('/api/corrections', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:fixAt.lng, lat:fixAt.lat, type, text }) });
+      ok = r.ok;
+    }catch{}
+    if ($('#fixOsm').checked){
+      try{
+        const note = `${type}${text ? '. ' + text : ''}\n\n#astanamap — сообщение пользователя «Карты Астаны»`;
+        const r = await fetch(`https://api.openstreetmap.org/api/0.6/notes.json?lat=${(+fixAt.lat).toFixed(6)}&lon=${(+fixAt.lng).toFixed(6)}&text=${encodeURIComponent(note)}`, { method:'POST' });
+        ok = ok || r.ok;
+      }catch{}
+    }
+    b.disabled = false;
+    if (!ok) return toast('Не удалось отправить. Проверьте интернет.');
+    $('#fixSheet').hidden = true; addPts(5, 'за исправление');
+    mascot('happy', 'Спасибо! Вместе сделаем карту точнее 🐾 +5 очков', 5000);
+  };
 
   // ---------- Настройки ----------
   function openSettings(){
