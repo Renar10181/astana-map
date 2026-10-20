@@ -48,7 +48,7 @@ def main(src, dst):
         p = ft.get("properties") or {}
         names = val(p.get("names")) or {}
         name = (names.get("primary") if isinstance(names, dict) else None) or ""
-        name = name.replace('""', '"').strip().strip('"').strip()
+        name = name.replace("\\n", " ").replace("\n", " ").replace('""', '"').strip().strip('"').strip()
         if name.count('"') == 1:
             name = name.replace('"', '')
         if not name or len(name) > 80:
@@ -57,15 +57,14 @@ def main(src, dst):
         datasets = {s.get("dataset", "") for s in sources if isinstance(s, dict)}
         conf = p.get("confidence") or 0
         # как у Айналмы: для данных Meta порог уверенности 0,7, остальные источники без порога
-        if datasets <= {"meta"} and conf < 0.7:
+        real = datasets - {"Overture"}
+        if real <= {"meta"} and conf < 0.7:
             continue
         cats = val(p.get("categories")) or {}
         cat = (cats.get("primary") if isinstance(cats, dict) else None) or ""
-        if not cat:   # новые релизы: basic_category / taxonomy
-            cat = val(p.get("basic_category")) or ""
+        if not cat:   # новые релизы: taxonomy (точнее) / basic_category (грубее)
             tax = val(p.get("taxonomy")) or {}
-            if not cat and isinstance(tax, dict):
-                cat = tax.get("primary") or ""
+            cat = (tax.get("primary") if isinstance(tax, dict) else None) or val(p.get("basic_category")) or ""
             if not isinstance(cat, str):
                 cat = ""
         addr = first(p.get("addresses")) or {}
@@ -77,7 +76,7 @@ def main(src, dst):
         if key in seen:
             continue
         seen.add(key)
-        src_name = sorted(datasets)[0] if datasets else ""
+        src_name = sorted(real)[0] if real else ""
         out.append([round(lng, 6), round(lat, 6), name, cat, addr or "", phone or "", web or "", src_name])
     out.sort(key=lambda r: r[2].lower())
     os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
