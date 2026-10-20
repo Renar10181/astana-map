@@ -346,6 +346,7 @@ body.ruling .panel{display:none}
       <button class="btn" id="installBtn" type="button" hidden>📲 Установить как приложение</button>
       <p class="hint" id="iosHint" hidden>На iPhone: «Поделиться» → «На экран Домой».</p></div>
     <button class="btn" id="clearHist" type="button">Очистить историю поиска</button>
+    <button class="btn" id="updBtn" type="button">🔄 Проверить обновления</button>
     <details class="set-help"><summary>Как пользоваться</summary>
       <p>Карта сама находит, где вы, — это точка А. Выберите точку Б: найдите адрес в поиске или нажмите на карту. Точки можно перетаскивать, ⇅ меняет их местами.</p>
       <p>Долгое нажатие на карту — меню точки: Отсюда, Сюда, Заехать, 🏠 Дом, 💼 Работа, ⭐ Избранное, ⚠ Событие. «＋ Остановка» — заехать по пути (до 5 точек). «🔍 По пути» — АЗС, аптеки, кафе рядом с маршрутом.</p>
@@ -354,7 +355,7 @@ body.ruling .panel{display:none}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 1.2.0</p>
+    <p class="set-ver">Версия 1.2.1</p>
   </div>
 </div>
 
@@ -1996,7 +1997,25 @@ body.ruling .panel{display:none}
   $('#tNorth').onclick = () => map.easeTo({ bearing:0, duration:500 });
 
   // ---------- Приложение на телефон (PWA) и карта без интернета ----------
-  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  // Автообновление: при каждом возвращении в приложение проверяем новую версию и перезагружаемся сами
+  let swReg = null, reloading = false;
+  if ('serviceWorker' in navigator){
+    addEventListener('load', () => navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {}));
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading || driving) return; reloading = true; location.reload();
+    });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') swReg?.update().catch(() => {}); });
+  }
+  async function checkUpdate(){
+    const b = $('#updBtn'); b.textContent = 'Проверяю…';
+    try{
+      await swReg?.update();
+      const html = await (await fetch('/?v=' + Date.now(), { cache:'no-store' })).text();
+      const v = html.match(/Версия ([\d.]+)/)?.[1], cur = $('.set-ver').textContent.match(/([\d.]+)/)?.[1];
+      if (v && v !== cur){ b.textContent = `Обновляю до ${v}…`; const ks = await caches.keys(); await Promise.all(ks.filter(k => k.startsWith('shell-')).map(k => caches.delete(k))); location.reload(); }
+      else b.textContent = '✅ У вас последняя версия';
+    }catch{ b.textContent = 'Нет связи. Попробуйте позже'; }
+  }
   let installEvt = null;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#installBtn').hidden = false; });
@@ -2077,6 +2096,7 @@ body.ruling .panel{display:none}
     avoid = { toll:$('#avToll').checked, motorway:$('#avMotor').checked }; store.set('avoid', avoid);
     if (state.mode === 'car' && state.from && state.to && !driving) buildRoute(); else updMore();
   };
+  $('#updBtn').onclick = checkUpdate;
   $('#clearHist').onclick = () => { hist = []; store.set('hist', hist); toast('История поиска очищена'); };
 
   // ---------- 1.2: слои карты (как в Google, 2GIS, Mapy и геопортале Астаны) ----------
