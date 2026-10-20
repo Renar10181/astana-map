@@ -8,6 +8,7 @@
 Лицензии: Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0-1.0.
 """
 import json
+import os
 import sys
 
 
@@ -32,9 +33,14 @@ def first(lst):
 
 def main(src, dst):
     with open(src, encoding="utf-8") as f:
-        fc = json.load(f)
+        raw = f.read()
+    try:
+        feats = json.loads(raw).get("features", [])
+    except ValueError:   # построчный GeoJSON (по одному объекту на строке)
+        feats = [json.loads(l) for l in raw.splitlines() if l.strip().startswith("{")]
+    print(f"features in file: {len(feats)}")
     out, seen = [], set()
-    for ft in fc.get("features", []):
+    for ft in feats:
         g = ft.get("geometry") or {}
         if g.get("type") != "Point":
             continue
@@ -64,6 +70,7 @@ def main(src, dst):
         src_name = sorted(datasets)[0] if datasets else ""
         out.append([round(lng, 6), round(lat, 6), name, cat, addr or "", phone or "", web or "", src_name])
     out.sort(key=lambda r: r[2].lower())
+    os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
     with open(dst, "w", encoding="utf-8") as f:
         json.dump({"release": "overture", "count": len(out), "items": out}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"places: {len(out)}")
