@@ -48,7 +48,9 @@ def main(src, dst):
         p = ft.get("properties") or {}
         names = val(p.get("names")) or {}
         name = (names.get("primary") if isinstance(names, dict) else None) or ""
-        name = name.strip()
+        name = name.replace('""', '"').strip().strip('"').strip()
+        if name.count('"') == 1:
+            name = name.replace('"', '')
         if not name or len(name) > 80:
             continue
         sources = val(p.get("sources")) or []
@@ -59,8 +61,16 @@ def main(src, dst):
             continue
         cats = val(p.get("categories")) or {}
         cat = (cats.get("primary") if isinstance(cats, dict) else None) or ""
+        if not cat:   # новые релизы: basic_category / taxonomy
+            cat = val(p.get("basic_category")) or ""
+            tax = val(p.get("taxonomy")) or {}
+            if not cat and isinstance(tax, dict):
+                cat = tax.get("primary") or ""
+            if not isinstance(cat, str):
+                cat = ""
         addr = first(p.get("addresses")) or {}
         addr = addr.get("freeform", "") if isinstance(addr, dict) else ""
+        addr = (addr or "").replace('""', '"').strip().strip('"')
         phone = first(p.get("phones")) or ""
         web = first(p.get("websites")) or ""
         key = (name.lower(), round(lng, 4), round(lat, 4))
@@ -74,6 +84,9 @@ def main(src, dst):
     with open(dst, "w", encoding="utf-8") as f:
         json.dump({"release": "overture", "count": len(out), "items": out}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"places: {len(out)}")
+    # образец сырых свойств — чтобы видеть схему релиза (без лишних полей)
+    with open(os.path.join(os.path.dirname(dst) or ".", "overture-sample.json"), "w", encoding="utf-8") as f:
+        json.dump([ft.get("properties") for ft in feats[:3]], f, ensure_ascii=False, indent=1)
 
 
 if __name__ == "__main__":
