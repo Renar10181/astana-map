@@ -1,0 +1,29 @@
+name: Заведения Overture для Астаны
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'   # первого числа каждого месяца
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/overture.yml'
+      - 'scripts/overture_places.py'
+permissions:
+  contents: write
+jobs:
+  places:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install overturemaps
+      - run: overturemaps download --bbox=71.20,50.95,71.75,51.30 -f geojson --type=place -o /tmp/places.geojson
+      - run: python scripts/overture_places.py /tmp/places.geojson data/places-astana.json
+      - name: Сохранить в репозиторий
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/places-astana.json
+          git diff --cached --quiet || (git commit -m "Обновлены заведения Overture для Астаны" && git push)
