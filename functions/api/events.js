@@ -1,9 +1,9 @@
-// Дорожные события от водителей: ДТП, пробка, ремонт, перекрытие, полиция, яма, опасность.
+// Дорожные события от водителей: ДТП, пробка, ремонт, перекрытие, полиция, яма, опасность, гололёд, снежный занос.
 // Хранятся в том же Cloudflare KV, что и камеры (привязка CAMERAS), ключ "events".
 // У каждого события свой срок жизни; подтверждение «Ещё есть» продлевает его.
 const BOX = { w: 70.95, s: 50.85, e: 71.95, n: 51.40 };
 const H = 3600e3;
-const TTL = { accident: 2 * H, jam: 1 * H, works: 7 * 24 * H, closed: 12 * H, police: 3 * H, pothole: 30 * 24 * H, danger: 6 * H };
+const TTL = { accident: 2 * H, jam: 1 * H, works: 7 * 24 * H, closed: 12 * H, police: 3 * H, pothole: 30 * 24 * H, danger: 6 * H, ice: 12 * H, snow: 12 * H };
 const KEY = 'events';
 
 function distM(a, b) {

@@ -266,6 +266,50 @@ body.ruling .panel{display:none}
 .bus-chips{max-height:150px;overflow:auto}
 .gis-res{border-top:1px solid var(--line);padding-top:4px;margin-top:4px}
 .gis-res .hint{font-size:12px}
+.wx{border:0;background:transparent;font:600 13px/1 var(--font);color:var(--muted);padding:6px 4px;white-space:nowrap}
+.wx-warn{background:color-mix(in srgb,#2f7de1 12%,transparent);border-radius:10px;padding:8px 10px}
+#snow{position:fixed;inset:0;z-index:2;pointer-events:none}
+.mascot{position:fixed;z-index:5;right:max(10px,env(safe-area-inset-right,0px));top:calc(300px + env(safe-area-inset-top,0px));width:76px;height:76px;cursor:pointer;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));-webkit-tap-highlight-color:transparent;user-select:none}
+body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
+@media (min-width:701px){ body:not(.navmode) .mascot{top:auto;bottom:40px} }
+.mascot svg{overflow:visible;display:block}
+.m-all{transform-origin:50px 92px;animation:m-breathe 3.2s ease-in-out infinite}
+@keyframes m-breathe{50%{transform:scale(1.03,.97)}}
+.m-eye{transform-box:fill-box;transform-origin:center;animation:m-blink 4.6s infinite}
+@keyframes m-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+.m-tail{transform-origin:68px 86px;animation:m-tail 2.8s ease-in-out infinite}
+@keyframes m-tail{50%{transform:rotate(-10deg)}}
+.m-happy,.m-closed,.m-brows,.m-open,.m-z{display:none}
+.mascot.talk .m-mouth{display:none}
+.mascot.talk .m-open{display:block;transform-box:fill-box;transform-origin:center;animation:m-talk .17s ease-in-out infinite alternate}
+@keyframes m-talk{from{transform:scaleY(.2)}to{transform:scaleY(1)}}
+.mascot.happy .m-eye{display:none}
+.mascot.happy .m-happy{display:block}
+.mascot.happy .m-all{animation:m-hop .45s ease-in-out 4}
+@keyframes m-hop{50%{transform:translateY(-12px)}}
+.mascot.sad .m-brows{display:block}
+.mascot.sad .m-ears{transform:translateY(5px)}
+.mascot.sad .m-all{animation:none}
+.mascot.sleep .m-eye{display:none}
+.mascot.sleep .m-closed,.mascot.sleep .m-z{display:block}
+.m-z{animation:m-z 2.2s infinite}
+@keyframes m-z{0%{opacity:0;transform:translate(0,4px)}50%{opacity:1}100%{opacity:0;transform:translate(7px,-9px)}}
+.mascot.wave .m-paw{transform-box:fill-box;transform-origin:50% 100%;animation:m-wave .3s ease-in-out 8 alternate}
+@keyframes m-wave{from{transform:translateY(-14px) rotate(-25deg)}to{transform:translateY(-14px) rotate(20deg)}}
+.m-bubble{position:absolute;right:82px;top:4px;width:max-content;max-width:min(240px,58vw);background:var(--surface);color:var(--fg);border-radius:14px 14px 4px 14px;padding:8px 10px;font-size:13px;line-height:1.35;box-shadow:var(--shadow)}
+.level{display:grid;gap:6px;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.level b{font-size:16px}
+.lvl-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.lvl-bar i{display:block;height:100%;background:linear-gradient(90deg,#00a3e0,#ffd200)}
+.fuel{border-top:1px solid var(--line);padding-top:6px;margin-top:4px;font-size:13px}
+.fuel-form{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
+.fuel-form input{width:100%;font:inherit;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.fuel-form label{font-size:11px;color:var(--muted)}
+.pt-code{font:700 22px/1.2 ui-monospace,monospace;letter-spacing:.04em;text-align:center}
+.qr{display:grid;place-items:center;background:#fff;border-radius:12px;padding:10px}
+.qr svg{width:200px;height:200px}
+.set-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.set-2 input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px;width:100%}
 .offline-bar{position:fixed;z-index:7;left:50%;transform:translateX(-50%);top:calc(4px + env(safe-area-inset-top,0px));background:#e53935;color:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
 @media (prefers-reduced-motion: reduce){ .pin.pulse::before{animation:none} }
 </style>
@@ -273,12 +317,13 @@ body.ruling .panel{display:none}
 <body>
 <div id="map" aria-label="Карта Астаны"></div>
 <div class="sky" aria-hidden="true"></div>
+<canvas id="snow" aria-hidden="true" hidden></canvas>
 
 <div class="search">
   <div class="search-box">
     <span class="brand">Астана</span>
     <input id="q" type="search" placeholder="Адрес, улица или место" autocomplete="off">
-    <button class="icon-btn" id="clearQ" aria-label="Очистить поиск" hidden>✕</button>
+    <button class="icon-btn" id="clearQ" aria-label="Очистить поиск" hidden>✕</button><button class="wx" id="wxChip" hidden></button>
   </div>
   <div class="results" id="results" hidden></div>
 </div>
@@ -329,12 +374,20 @@ body.ruling .panel{display:none}
 <div class="sheet" id="settings" hidden>
   <div class="sheet-card" role="dialog" aria-label="Настройки">
     <div class="sheet-head"><h2>Настройки</h2><button class="icon-btn" id="setClose" aria-label="Закрыть">✕</button></div>
+    <div class="level" id="myLevel"></div>
+    <label class="set-check"><input type="checkbox" id="setMascot" checked> 🐆 Барсёнок Барыс — помощник на карте</label>
     <div class="set-row"><label for="voiceSel">Голос подсказок</label>
       <div class="voice-row"><select id="voiceSel"></select><button class="btn" id="voiceTest" type="button" aria-label="Послушать">▶</button></div></div>
     <div class="set-row"><label for="setView">Вид в поездке</label>
       <select id="setView"><option value="chase">За машиной</option><option value="classic">Классика</option><option value="top">Сверху</option></select></div>
     <div class="set-row"><label for="setTheme">Тёмная карта</label>
       <select id="setTheme"><option value="auto">Авто — с 18:00 до 7:00</option><option value="on">Всегда тёмная</option><option value="off">Всегда светлая</option></select></div>
+    <div class="set-row"><label for="setCar">Цвет машины</label><select id="setCar"></select></div>
+    <div class="set-row"><label for="setSnowSel">Снег на карте</label>
+      <select id="setSnowSel"><option value="auto">По погоде в Астане</option><option value="on">Всегда</option><option value="off">Выключен</option></select></div>
+    <div class="set-row"><label>Стоимость поездки</label>
+      <div class="set-2"><input id="setUse" type="number" inputmode="decimal" min="3" max="30" step="0.5" aria-label="Расход, л на 100 км" placeholder="л/100 км"><input id="setPrice" type="number" inputmode="numeric" min="100" max="700" aria-label="Цена топлива, тенге за литр" placeholder="₸ за литр"></div>
+      <p class="hint">Расход, л/100 км · цена бензина, ₸/л. Стоимость появится у маршрута.</p></div>
     <div class="set-row"><label>Маршрут для авто</label>
       <label class="set-check"><input type="checkbox" id="avToll"> Без платных дорог</label>
       <label class="set-check"><input type="checkbox" id="avMotor"> Без автомагистралей</label></div>
@@ -352,10 +405,11 @@ body.ruling .panel{display:none}
       <p>Долгое нажатие на карту — меню точки: Отсюда, Сюда, Заехать, 🏠 Дом, 💼 Работа, ⭐ Избранное, ⚠ Событие. «＋ Остановка» — заехать по пути (до 5 точек). «🔍 По пути» — АЗС, аптеки, кафе рядом с маршрутом.</p>
       <p>В поездке ⚠ — сообщить о ДТП, пробке, ремонте, яме или камере: увидят все водители. Пробок от сервиса пока нет — только отметки водителей.</p>
       <p>🗂 Слои: автобусы (нажмите на остановку — какие автобусы ходят), велодорожки, тропы, земельные участки и красные линии геопортала, 📏 линейка и площадь. Нажмите на значок кафе, аптеки и т. п. — карточка с часами работы и телефоном.</p>
+      <p>🐆 Барыс подсказывает голосом, радуется наградам и рассказывает о Байтереке, Хан Шатыре и других местах, когда вы проезжаете рядом. Очки — за отметки на дороге, цены на АЗС, километры и новые места коллекции.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri.</p>
-    <p class="set-ver">Версия 1.2.1</p>
+    <p class="set-ver">Версия 1.3.0</p>
   </div>
 </div>
 
@@ -369,7 +423,7 @@ body.ruling .panel{display:none}
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
-  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navReport" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navFind" aria-label="Найти по пути">🔍</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
+  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navReport" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navFind" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" aria-label="Поделиться поездкой">📤</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -398,7 +452,7 @@ body.ruling .panel{display:none}
   <div class="sheet-card" role="dialog" aria-label="Вы на месте">
     <div class="arr-head"><div class="big">🏁</div><h2>Вы на месте</h2><p id="arrTo"></p></div>
     <div class="arr-grid" id="arrGrid"></div>
-    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
+    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn" id="arrGpx">⬇ GPX</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
   </div>
 </div>
 <div class="sheet" id="layersSheet" hidden>
@@ -412,6 +466,44 @@ body.ruling .panel{display:none}
 </div>
 <div class="rulerbar" id="rulerBar" hidden><b id="rulerVal">Поставьте 2 точки</b><button class="btn" id="rulerUndo" aria-label="Убрать точку">↶</button><button class="btn" id="rulerArea">Площадь</button><button class="btn primary" id="rulerDone">Готово</button></div>
 <div class="rulerbar" id="busBar" hidden><b id="busName">🚌</b><button class="btn" id="busClose">Скрыть</button></div>
+<div class="sheet" id="ptSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Точка">
+    <div class="sheet-head"><h2 id="ptName">Точка</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <div class="pt-code" id="ptCode"></div>
+    <p class="hint" style="text-align:center">Короткий код места (Plus Code) — открывается в любых картах. Отсканируйте QR, чтобы открыть точку на телефоне.</p>
+    <div class="qr" id="ptQr"></div>
+    <div class="row"><button class="btn primary" id="ptShare" style="flex:1">📤 Поделиться</button><button class="btn" id="ptCopy" style="flex:1">Копировать код</button></div>
+  </div>
+</div>
+<div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
+<div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
+  <div class="m-bubble" id="mBubble" hidden></div>
+  <svg viewBox="0 0 100 100" width="76" height="76" aria-hidden="true">
+    <g class="m-all">
+      <g class="m-tail"><path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#cfd5db" stroke-width="11" stroke-linecap="round"/><path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#f3f5f7" stroke-width="8" stroke-linecap="round"/>
+        <path d="M84 86 l3 4 M92 76 l5 1 M90 64 l4 -3" stroke="#4a4f57" stroke-width="2.4" stroke-linecap="round"/></g>
+      <ellipse cx="50" cy="80" rx="23" ry="15" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/>
+      <g fill="none" stroke="#4a4f57" stroke-width="1.6"><circle cx="36" cy="80" r="2.6"/><circle cx="64" cy="80" r="2.6"/><circle cx="44" cy="86" r="2"/><circle cx="57" cy="87" r="2"/></g>
+      <path d="M31 65 Q50 74 69 65 L69 70 Q50 80 31 70 Z" fill="#00a3e0"/><circle cx="50" cy="73" r="3.2" fill="#ffd200"/>
+      <ellipse cx="40" cy="93" rx="7" ry="4.5" fill="#fff" stroke="#cfd5db" stroke-width="1.2"/>
+      <g class="m-paw"><ellipse cx="60" cy="93" rx="7" ry="4.5" fill="#fff" stroke="#cfd5db" stroke-width="1.2"/></g>
+      <g class="m-ears"><circle cx="29" cy="24" r="9" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/><circle cx="29" cy="24" r="4.6" fill="#f6b8c8"/><circle cx="71" cy="24" r="9" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/><circle cx="71" cy="24" r="4.6" fill="#f6b8c8"/></g>
+      <circle cx="50" cy="44" r="27" fill="#f8f9fa" stroke="#cfd5db" stroke-width="1.2"/>
+      <g fill="#4a4f57"><circle cx="40" cy="26" r="2"/><circle cx="50" cy="22.5" r="2.3"/><circle cx="60" cy="26" r="2"/><circle cx="27" cy="40" r="1.8"/><circle cx="73" cy="40" r="1.8"/><circle cx="45" cy="30" r="1.3"/><circle cx="55" cy="30" r="1.3"/></g>
+      <ellipse cx="32" cy="53" rx="5" ry="3" fill="#ffc1d0" opacity=".75"/><ellipse cx="68" cy="53" rx="5" ry="3" fill="#ffc1d0" opacity=".75"/>
+      <g class="m-eye"><ellipse cx="40" cy="44" rx="5.4" ry="6.6" fill="#2b5876"/><circle cx="41.9" cy="41.4" r="1.9" fill="#fff"/></g>
+      <g class="m-eye"><ellipse cx="60" cy="44" rx="5.4" ry="6.6" fill="#2b5876"/><circle cx="61.9" cy="41.4" r="1.9" fill="#fff"/></g>
+      <g class="m-happy" fill="none" stroke="#2b3036" stroke-width="2.6" stroke-linecap="round"><path d="M35 46 Q40 39 45 46"/><path d="M55 46 Q60 39 65 46"/></g>
+      <g class="m-closed" fill="none" stroke="#2b3036" stroke-width="2.4" stroke-linecap="round"><path d="M35 44 Q40 48 45 44"/><path d="M55 44 Q60 48 65 44"/></g>
+      <g class="m-brows" stroke="#2b3036" stroke-width="2.2" stroke-linecap="round"><path d="M34 34 L45 37"/><path d="M66 34 L55 37"/></g>
+      <path d="M46 53 Q50 50 54 53 Q50 57.5 46 53 Z" fill="#e88aa0"/>
+      <path class="m-mouth" d="M44 58 Q47 61.5 50 58 Q53 61.5 56 58" stroke="#2b3036" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+      <ellipse class="m-open" cx="50" cy="60.5" rx="4" ry="3.2" fill="#7a2e3a"/>
+      <g stroke="#9aa3ad" stroke-width="1" stroke-linecap="round"><path d="M30 55 L19 53"/><path d="M30 58 L20 60"/><path d="M70 55 L81 53"/><path d="M70 58 L80 60"/></g>
+      <text class="m-z" x="76" y="16" font-size="13" font-weight="700" fill="#5d6c79">z</text>
+    </g>
+  </svg>
+</div>
 <div class="offline-bar" id="offBar" hidden>Нет интернета · карта из памяти</div>
 <div class="toast" id="toast" hidden></div>
 
@@ -681,12 +773,13 @@ body.ruling .panel{display:none}
     const av = (state.avoided || []).map(x => x === 'toll' ? 'без платных' : 'без магистралей');
     $('#routes').innerHTML = state.routes.map((r, k) => {
       const tags = n > 1 ? [k === fast ? 'быстрый' : '', k === short ? 'короткий' : ''].filter(Boolean) : [];
-      const extra = [state.stops.length ? `${state.stops.length} ${state.stops.length === 1 ? 'остановка' : 'остановки'}` : '', ...av].filter(Boolean);
+      const extra = [tripCost(r), state.stops.length ? `${state.stops.length} ${state.stops.length === 1 ? 'остановка' : 'остановки'}` : '', ...av].filter(Boolean);
       return `<button class="route" data-r="${k}" aria-pressed="${k === i}">
         <span class="time">${fmtTime(r.duration)}</span><span class="dist">${fmtDist(r.distance)}${tags.length ? ' · ' + tags.join(', ') : ''}</span>
         <span class="eta">Прибытие в ${arrival(r.duration)}${extra.length ? ' · ' + extra.join(' · ') : ''}</span>
       </button>`; }).join('');
     document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => selectRoute(+b.dataset.r));
+    const ww = wxWarn(); if (ww) $('#routes').insertAdjacentHTML('beforeend', `<p class="hint wx-warn">${ww}</p>`);
     $('#routeActions').hidden = false;
     renderSteps(main); updMore();
     if (fit) fitRoute(main);
@@ -706,7 +799,12 @@ body.ruling .panel{display:none}
   // ---------- Пошаговые подсказки ----------
   const DIR = { left:'налево', right:'направо', 'slight left':'плавно налево', 'slight right':'плавно направо',
     'sharp left':'резко налево', 'sharp right':'резко направо', uturn:'на разворот', straight:'прямо' };
+  // Подсказка с ориентиром: «Поверните направо на Кабанбай батыра у «Хан Шатыр»»
   function stepText(s){
+    const t = stepTextBase(s), ty = s.maneuver?.type;
+    return s._lm && !['depart', 'arrive'].includes(ty) ? `${t} у «${s._lm}»` : t;
+  }
+  function stepTextBase(s){
     const m = s.maneuver || {}, d = DIR[m.modifier] || '', on = s.name ? ` на ${s.name}` : '';
     switch (m.type){
       case 'depart': return `Начните движение${s.name ? ' по ' + s.name : ''}`;
@@ -797,7 +895,7 @@ body.ruling .panel{display:none}
       loadRoute(state.routes[state.active]);
     }
     driving = true;
-    nav.stats = { t0:Date.now(), dist:0, max:0, sum:0, n:0, lastAlong:0, demo, to:state.to?.name || 'Точка Б', toP:state.to && { ...state.to } };
+    nav.stats = { t0:Date.now(), dist:0, max:0, sum:0, n:0, lastAlong:0, track:[], demo, to:state.to?.name || 'Точка Б', toP:state.to && { ...state.to } };
     document.body.classList.add('navmode'); res.hidden = true; clearPoi();
     $('#play').textContent = demo ? '■ Остановить' : '▶ Демо-проезд';
     $('#go').textContent = demo ? '🚗 Поехали' : '■ Завершить';
@@ -818,6 +916,7 @@ body.ruling .panel{display:none}
 
   function stopDrive(){
     if (!driving) return;
+    if (share){ pushTrip(true); share = null; }
     driving = false; cancelAnimationFrame(demoRaf); cancelAnimationFrame(nav.anim);
     if (watchId != null){ navigator.geolocation.clearWatch(watchId); watchId = null; }
     try{ wakeLock?.release(); }catch{} wakeLock = null;
@@ -839,7 +938,9 @@ body.ruling .panel{display:none}
     attachCams();
     attachEvents();
     const steps = routeSteps(r);
+    nav.bumps = [];
     nav.steps = steps.map((s, k) => ({ s, k, at: k === 0 ? 0 : project(s.maneuver.location, 0, true).along }));
+    attachLandmarks(nav.steps); if (state.mode === 'car') loadBumps();
   }
 
   // Перестроить маршрут от текущего места (при старте и если съехали с маршрута)
@@ -912,7 +1013,9 @@ body.ruling .panel{display:none}
     if (markerTo) markerTo.getElement().style.display = left > 2500 ? 'none' : '';   // далёкая точка Б «висит» над горизонтом — прячем
     $('#navTurn').textContent = fmtTime(tLeft);
     $('#navLeft').textContent = `${fmtDist(left)} · прибытие ${arrival(tLeft)}`;
-    checkCams(along); checkEvents(along);
+    checkCams(along); checkEvents(along); checkBumps(along); checkLandmarks(p, true);
+    nav.left = left; nav.tLeft = nav.total ? nav.dur * left / nav.total : 0;
+    if (share && Date.now() - share.t > 30000) pushTrip();
     // ---- спидометр и ограничение скорости ----
     const lim = limitAt(nav.idx);
     const kmh = demo ? Math.max(0, (lim.v || 60) - 3 + Math.round(Math.sin(Date.now() / 1500) * 4)) : Math.round(speed * 3.6);
@@ -923,6 +1026,8 @@ body.ruling .panel{display:none}
       st.dist += demo ? Math.max(0, along - st.lastAlong) : (moved < 150 ? moved : 0);
       st.lastAlong = along; st.max = Math.max(st.max, kmh);
       if (kmh > 2){ st.sum += kmh; st.n++; }
+      const lt = st.track[st.track.length - 1];
+      if (!lt || dist(lt, p) > 15) st.track.push([p[0], p[1], Date.now()]);
     }
   }
   // Ограничение на текущем участке. Если в данных нет — 60 км/ч (по ПДД РК в городе), помечаем как «примерно».
@@ -1098,6 +1203,10 @@ body.ruling .panel{display:none}
   // Фразы навигатора на двух языках
   const DIR_KK = { left:'солға', right:'оңға', 'slight left':'сәл солға', 'slight right':'сәл оңға', 'sharp left':'күрт солға', 'sharp right':'күрт оңға', straight:'тура' };
   function stepKk(s){
+    const t = stepKkBase(s), ty = s.maneuver?.type;
+    return s._lm && !['depart', 'arrive'].includes(ty) ? `«${s._lm}» жанында ${lowerFirst(t)}` : t;
+  }
+  function stepKkBase(s){
     const m = s.maneuver || {}, d = DIR_KK[m.modifier] || '', nm = s.name ? `, ${s.name}` : '';
     if (m.modifier === 'uturn') return 'Кері бұрылыңыз';
     switch (m.type){
@@ -1128,6 +1237,7 @@ body.ruling .panel{display:none}
       camera: () => `Через ${spokenDist(o.d)} камера${o.v ? ', ограничение ' + o.v : ''}`,
       arrive: () => 'Вы прибыли. Хорошего дня!',
       via: () => 'Вы на промежуточной точке. Едем дальше.',
+      bump: () => `Через ${spokenDist(o.d)} лежачий полицейский`,
       event: () => `Внимание, через ${spokenDist(o.d)} ${o.t.ru}`,
       test: () => 'Через 300 метров поверните направо на проспект Абая.',
     }[kind]();
@@ -1140,6 +1250,7 @@ body.ruling .panel{display:none}
       camera: () => `${distKk(o.d)} кейін камера${o.v ? ', жылдамдық шегі ' + o.v : ''}`,
       arrive: () => 'Сіз межелі жерге жеттіңіз. Сәтті күн!',
       via: () => 'Аралық нүктеге жеттіңіз. Әрі қарай жүреміз.',
+      bump: () => `${distKk(o.d)} кейін жасанды кедергі`,
       event: () => `Назар аударыңыз, ${distKk(o.d)} кейін ${o.t.kk}`,
       test: () => '300 метрден кейін оңға бұрылыңыз, Абай даңғылы.',
     }[kind]();
@@ -1166,8 +1277,9 @@ body.ruling .panel{display:none}
     if (!speaking) next();
   }
   async function next(){
-    const p = queue.shift(); if (!p){ speaking = false; return; }
+    const p = queue.shift(); if (!p){ speaking = false; mascotIdle(); return; }
     speaking = true;
+    mascot('talk', voiceId.startsWith('az:kk') ? p.kk : p.ru);
     if (voiceId.startsWith('az:') && azureOk){
       const v = voiceId.slice(3), text = v.startsWith('kk') ? p.kk : p.ru;
       try{
@@ -1179,7 +1291,7 @@ body.ruling .panel{display:none}
         return;
       }catch{ /* нет связи — говорим голосом телефона */ }
     }
-    if (!('speechSynthesis' in window)){ speaking = false; return; }
+    if (!('speechSynthesis' in window)){ speaking = false; mascotIdle(); return; }
     const u = new SpeechSynthesisUtterance(p.ru);
     u.lang = 'ru-RU'; if (devVoice) u.voice = devVoice; u.rate = 1.02;
     u.onend = u.onerror = () => next();
@@ -1202,7 +1314,7 @@ body.ruling .panel{display:none}
   }
   function buildCar(T){
     const g = new T.Group();
-    const paint = new T.MeshStandardMaterial({ color:0xffbf00, metalness:0.1, roughness:0.32, envMapIntensity:0.35 });   // насыщенный жёлтый, отражения слабые — чтобы не «выцветал» в серый
+    const paint = new T.MeshStandardMaterial({ color:carColor(), metalness:0.1, roughness:0.32, envMapIntensity:0.35 });   // насыщенный жёлтый, отражения слабые — чтобы не «выцветал» в серый
     const black = new T.MeshStandardMaterial({ color:0x0d0d0f, metalness:0.4, roughness:0.4 });
     const tyre = new T.MeshStandardMaterial({ color:0x121212, roughness:0.9 });
     const rim = new T.MeshStandardMaterial({ color:0xd0d5dd, metalness:1, roughness:0.2 });
@@ -1454,7 +1566,7 @@ body.ruling .panel{display:none}
       const r = await fetch('/api/cameras', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:p[0], lat:p[1] }) });
       if (!r.ok) throw 0;
       cams.push({ lng:p[0], lat:p[1], v:0, src:'user' }); drawCams(); attachCams();
-      toast('Спасибо! Камера отмечена для всех водителей');
+      toast('Спасибо! Камера отмечена для всех водителей'); addPts(10, 'за камеру');
     }catch{ toast('Не удалось отметить камеру. Проверьте интернет.'); }
   }
 
@@ -1500,6 +1612,8 @@ body.ruling .panel{display:none}
     history.replaceState(null, '', '#r=' + routePts().map(f).join('~') + '~' + state.mode);
   }
   function applyHash(){
+    const tm = location.hash.match(/^#t=([a-z0-9]{6,16})$/);
+    if (tm){ watchTrip(tm[1]); return; }
     const pm = location.hash.match(/^#p=(-?[\d.]+),(-?[\d.]+)~?(.*)$/);
     if (pm){
       const p = { lng:+pm[1], lat:+pm[2], name:decodeURIComponent(pm[3] || '') || 'Точка на карте' };
@@ -1579,7 +1693,7 @@ body.ruling .panel{display:none}
       ${driving ? '' : '<button class="btn" data-a="from">Отсюда</button>'}
       ${canStop ? '<button class="btn" data-a="via">＋ Заехать</button>' : ''}
       ${driving ? '' : '<button class="btn primary" data-a="to">Сюда</button>'}</div>
-      <div class="row pop-save"><button class="chip" data-s="home" title="Это мой дом">🏠</button><button class="chip" data-s="work" title="Это моя работа">💼</button><button class="chip" data-s="fav" title="В избранное">⭐</button><button class="chip" data-s="ev" title="Сообщить о событии">⚠</button><button class="chip" data-s="share" title="Поделиться точкой">📤</button><button class="chip" data-s="gis" title="Данные геопортала">ℹ ГИС</button></div><div data-gis></div>`;
+      <div class="row pop-save"><button class="chip" data-s="home" title="Это мой дом">🏠</button><button class="chip" data-s="work" title="Это моя работа">💼</button><button class="chip" data-s="fav" title="В избранное">⭐</button><button class="chip" data-s="ev" title="Сообщить о событии">⚠</button><button class="chip" data-s="share" title="Код места, QR и поделиться">📤</button><button class="chip" data-s="taxi" title="Вызвать такси сюда">🚕</button><button class="chip" data-s="gis" title="Данные геопортала">ℹ ГИС</button></div><div data-gis></div>`;
     el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
       popup.remove();
       if (b.dataset.a === 'via') return addStop(p, driving);
@@ -1587,7 +1701,8 @@ body.ruling .panel{display:none}
     });
     el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
       if (b.dataset.s === 'ev'){ popup.remove(); return openReport([p.lng, p.lat]); }
-      if (b.dataset.s === 'share') return sharePoint(p);
+      if (b.dataset.s === 'share') return openPoint(p);
+      if (b.dataset.s === 'taxi') return taxiTo(p);
       if (b.dataset.s === 'gis') return gisInfo(p, el.querySelector('[data-gis]'));
       savePlace(b.dataset.s, p); b.classList.add('on');
     });
@@ -1640,7 +1755,7 @@ body.ruling .panel{display:none}
       toast(auto ? 'Вы здесь. Теперь выберите, куда ехать' : '');
       // дальше синяя точка сама следует за человеком
       if (watchMe == null) watchMe = navigator.geolocation.watchPosition(q => {
-        const pp = { lng:q.coords.longitude, lat:q.coords.latitude }; if (inAstana(pp)) showMe(pp);
+        const pp = { lng:q.coords.longitude, lat:q.coords.latitude }; if (inAstana(pp)){ showMe(pp); if (!driving) checkLandmarks([pp.lng, pp.lat], false); }
       }, () => {}, { enableHighAccuracy:false, maximumAge:15000 });
     }, () => {
       if (!state.from) lbl.textContent = 'Адрес или точка на карте';
@@ -1790,6 +1905,9 @@ body.ruling .panel{display:none}
     ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
     $('#arrFav').onclick = () => { if (st.toP) savePlace('fav', st.toP); $('#arrSheet').hidden = true; };
     $('#arrSheet').hidden = false;
+    $('#arrGpx').onclick = () => downloadGpx(st);
+    mascot('happy', st.demo ? 'Демо-поездка завершена! Поехали по-настоящему? 🐾' : `Приехали! ${fmtDist(st.dist)} позади. Молодец! 🐾`, 6000);
+    if (!st.demo && st.dist > 300) addPts(Math.round(st.dist / 1000), 'за километры');
     if (!st.demo && st.dist > 200){
       trips = [{ at:Date.now(), to:st.to, km, min, avg, max:Math.round(st.max) }, ...trips].slice(0, 15);
       store.set('trips', trips);
@@ -1870,6 +1988,7 @@ body.ruling .panel{display:none}
       if (my !== catReq) return;
       let items = (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat,
         name:el.tags?.name || el.tags?.brand || el.tags?.operator || cat.n, hours:el.tags?.opening_hours || '' })).filter(x => x.lng != null);
+      if (id === 'fuel'){ await loadFuel(); items.forEach(x => { const f = fuelAt(x); if (f) x.price = f; }); }
       if (line && line.length > 1){
         items = items.map(x => { const r = lineDist([x.lng, x.lat], line); return { ...x, off:r.d, at:r.at }; })
           .filter(x => x.off < 600).sort((a, b) => a.at - b.at);
@@ -1879,7 +1998,7 @@ body.ruling .panel{display:none}
       if (!items.length){ $('#catList').innerHTML = `<p class="hint">${cat.e} ${cat.n}: ничего не нашлось ${line ? 'вдоль маршрута' : 'рядом'}. Данные OpenStreetMap могут быть неполными.</p>`; return; }
       const canStop = state.from && state.to;
       $('#catList').innerHTML = items.map((x, i) => `<div class="poi-row"><div style="min-width:0"><b>${cat.e} ${esc(x.name)}</b>
-        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + esc(x.hours) : ''}</div></div>
+        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + esc(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}</div></div>
         <button class="btn${canStop ? '' : ' primary'}" data-i="${i}">${canStop ? '＋ Заехать' : 'Сюда'}</button></div>`).join('');
       $('#catList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => {
         const x = items[+b.dataset.i]; $('#catSheet').hidden = true;
@@ -1904,6 +2023,8 @@ body.ruling .panel{display:none}
     police:{ e:'👮', n:'Полиция', c:'#1565c0', ru:'пост полиции', kk:'полиция бекеті' },
     pothole:{ e:'🕳️', n:'Яма', c:'#6d4c41', ru:'яма на дороге', kk:'жолда шұңқыр' },
     danger:{ e:'⚠️', n:'Опасность', c:'#ef6c00', ru:'опасный участок', kk:'қауіпті учаске' },
+    ice:{ e:'🧊', n:'Гололёд', c:'#0288d1', ru:'гололёд', kk:'көктайғақ' },
+    snow:{ e:'❄️', n:'Снежный занос', c:'#5c6bc0', ru:'снежный занос', kk:'қар үйіндісі' },
   };
   let events = [], reportAt = null;
   async function loadEvents(){
@@ -1947,7 +2068,7 @@ body.ruling .panel{display:none}
       try{
         const r = await fetch('/api/events', { method:'DELETE', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ id:x.id }) });
         if (!r.ok) throw 0;
-        events = events.filter(y => y !== x); drawEvents(); attachEvents(); toast('Спасибо, убрали');
+        events = events.filter(y => y !== x); drawEvents(); attachEvents(); toast('Спасибо, убрали'); addPts(3, 'за проверку');
       }catch{ toast('Не получилось. Проверьте интернет.'); }
     };
     popup = new maplibregl.Popup({ offset:14, maxWidth:'260px' }).setLngLat([x.lng, x.lat]).setDOMContent(el).addTo(map);
@@ -1958,7 +2079,8 @@ body.ruling .panel{display:none}
     reportAt = at || nav.shown || (geoMarker && geoMarker.getLngLat().toArray()) || null;
     if (!reportAt) return toast('Не знаю, где вы. Включите геолокацию или зажмите точку на карте.');
     $('#evChips').innerHTML = Object.entries(EV).map(([k, v]) => `<button class="chip" data-ev="${k}">${v.e} ${v.n}</button>`).join('') +
-      '<button class="chip" data-ev="camera">📷 Камера</button>';
+      '<button class="chip" data-ev="camera">📷 Камера</button>' +
+      '<a class="chip" href="https://eotinish.kz" target="_blank" rel="noopener" style="text-decoration:none;color:var(--fg)">📝 Жалоба в акимат (eOtinish)</a>';
     $('#evChips').querySelectorAll('[data-ev]').forEach(b => b.onclick = () => {
       $('#evSheet').hidden = true;
       if (b.dataset.ev === 'camera') addCam(reportAt); else sendEvent(b.dataset.ev, reportAt);
@@ -1972,6 +2094,7 @@ body.ruling .panel{display:none}
       if (!r.ok || !j.ok) throw 0;
       events = [...events.filter(y => y.id !== j.item.id), j.item]; drawEvents(); if (driving) attachEvents();
       toast(confirm ? 'Спасибо, подтвердили' : `Спасибо! ${EV[type].e} ${EV[type].n} — увидят все водители`);
+      addPts(confirm ? 3 : 10, 'за отметку'); mascot('happy', confirm ? 'Спасибо, что подтвердили! +3' : 'Спасибо! Водители скажут вам спасибо. +10 очков', 4000);
     }catch{ toast('Не удалось отправить. Проверьте интернет.'); }
   }
   $('#navReport').onclick = () => openReport();
@@ -2192,7 +2315,7 @@ body.ruling .panel{display:none}
       const rs = (j.elements || []).map(r => ({ id:r.id, ref:r.tags?.ref || '?', name:r.tags?.name || '', to:r.tags?.to || '' }))
         .sort((a, b) => (parseInt(a.ref) || 999) - (parseInt(b.ref) || 999));
       if (!rs.length){ box.innerHTML = '<p class="hint">Маршруты для этой остановки пока не отмечены в OpenStreetMap.</p>'; return; }
-      box.innerHTML = '<div class="chips bus-chips">' + rs.map((r, i) => `<button class="chip" data-bus="${i}" title="${esc(r.name)}">🚌 ${esc(r.ref)}${r.to ? ' → ' + esc(r.to.slice(0, 18)) : ''}</button>`).join('') + '</div>';
+      box.innerHTML = '<a class="chip" style="text-decoration:none;color:var(--fg);margin-bottom:6px" target="_blank" rel="noopener" href="https://play.google.com/store/apps/details?id=kz.avtobys.userapp">🚌 Где автобус сейчас — Avtobys</a><div class="chips bus-chips">' + rs.map((r, i) => `<button class="chip" data-bus="${i}" title="${esc(r.name)}">🚌 ${esc(r.ref)}${r.to ? ' → ' + esc(r.to.slice(0, 18)) : ''}</button>`).join('') + '</div>';
       box.querySelectorAll('[data-bus]').forEach(b => b.onclick = () => showBus(rs[+b.dataset.bus]));
     }catch{ box.innerHTML = '<p class="hint">Не удалось загрузить автобусы. Проверьте интернет.</p>'; }
   }
@@ -2243,6 +2366,8 @@ body.ruling .panel{display:none}
       const j = await overpass(`[out:json][timeout:15];nwr(around:80,${o.lat},${o.lng})["name"="${nm}"];out center tags 1;`);
       const t = j.elements?.[0]?.tags || {};
       box.innerHTML = orgHtml(t, kind);
+      if (o.sub === 'fuel' || o.cls === 'fuel') fuelBlock(box, o);
+      if (o.sub === 'parking' || o.cls === 'parking') box.insertAdjacentHTML('beforeend', '<a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://play.google.com/store/search?q=UIMS%20Parking&c=apps">🅿 Оплатить парковку (UIMS Parking)</a>');
     }catch{ box.innerHTML = kind ? `<div class="hint">${kind}</div>` : ''; }
   }
   function orgHtml(t, kind){
@@ -2364,10 +2489,330 @@ body.ruling .panel{display:none}
     try{ await navigator.clipboard.writeText(url); toast('Ссылка на точку скопирована'); }catch{ toast(url); }
   }
 
+  // ---------- 1.3: Барсёнок Барыс — помощник на карте ----------
+  const mascotEl = $('#mascot'), mBubble = $('#mBubble');
+  let mOn = store.get('mascot', true), mTimer = 0;
+  const mIdleClass = () => 'mascot' + (night && !driving ? ' sleep' : '');
+  function mascot(st, text, ms = 4500){
+    if (!mOn) return;
+    mascotEl.className = 'mascot' + (st ? ' ' + st : '');
+    if (text){ mBubble.textContent = text; mBubble.hidden = false; }
+    clearTimeout(mTimer);
+    if (st !== 'talk') mTimer = setTimeout(mascotIdle, ms);
+  }
+  function mascotIdle(){
+    clearTimeout(mTimer);
+    mTimer = setTimeout(() => { mascotEl.className = mIdleClass(); mBubble.hidden = true; }, 1200);
+  }
+  function setMascot(on){ mOn = on; store.set('mascot', on); mascotEl.hidden = !on; if (on){ mascotEl.className = mIdleClass(); } }
+  setMascot(mOn);
+  const TIPS = [
+    () => 'Привет! Я Барыс 🐾 Зажмите точку на карте — покажу меню.',
+    () => `Ваш уровень: ${levelOf(score.pts).name} · ${score.pts} очков. Отмечайте ДТП и гололёд — получите ещё!`,
+    () => wx ? `В Астане ${wx.t}°, ощущается как ${wx.feel}°, ветер ${wx.wind} м/с. ${wx.feel <= -20 ? 'Одевайтесь теплее!' : 'Хорошей дороги!'}` : 'Хорошей дороги!',
+    () => `Коллекция Астаны: ${collected.length} из ${LANDMARKS.length}. Проезжайте мимо Байтерека — расскажу историю!`,
+    () => 'Нажмите 🔍 «По пути» — найду АЗС, кофе или аптеку на маршруте.',
+    () => 'Сәлем! Қазақша сөйлеуім үшін баптауларда Айгүл немесе Дәулет дауысын таңдаңыз.',
+  ];
+  let tipIdx = 0;
+  mascotEl.onclick = () => mascot('wave', TIPS[tipIdx++ % TIPS.length](), 6000);
+  $('#setMascot').onchange = e => setMascot(e.target.checked);
+  setTimeout(() => { if (!driving && !store.get('mascotHello', false)){ store.set('mascotHello', true); mascot('wave', 'Сәлем! Я Барыс — ваш помощник на карте Астаны 🐾 Нажмите на меня, если нужна подсказка.', 8000); } }, 3500);
+
+  // ---------- Очки и уровни ----------
+  let score = store.get('score', { pts:0 });
+  const LEVELS = [[0, 'Барсёнок'], [200, 'Жас Барс'], [600, 'Барс'], [1500, 'Ақ Барс']];
+  function levelOf(p){ let i = 0; LEVELS.forEach((l, k) => { if (p >= l[0]) i = k; }); return { i, name:LEVELS[i][1], next:LEVELS[i + 1] }; }
+  function addPts(n, why){
+    const before = levelOf(score.pts).i;
+    score.pts += n; store.set('score', score);
+    const lv = levelOf(score.pts);
+    if (lv.i > before){ mascot('happy', `Ура! Новый уровень — ${lv.name}! 🎉`, 7000); toast(`🐆 Новый уровень: ${lv.name}`); renderCarSel(); }
+  }
+  function renderLevel(){
+    const lv = levelOf(score.pts), from = LEVELS[lv.i][0], to = lv.next ? lv.next[0] : from;
+    const pc = lv.next ? Math.round((score.pts - from) / (to - from) * 100) : 100;
+    $('#myLevel').innerHTML = `<b>🐆 ${lv.name} · ${score.pts} очков</b>
+      <div class="lvl-bar"><i style="width:${pc}%"></i></div>
+      <span class="hint">${lv.next ? `До уровня «${lv.next[1]}» — ${lv.next[0] - score.pts} очков` : 'Максимальный уровень!'} · Коллекция Астаны: ${collected.length}/${LANDMARKS.length}</span>
+      <div class="chips">${LANDMARKS.map(l => `<span class="chip${collected.includes(l.id) ? ' on' : ''}" title="${esc(l.n)}">${collected.includes(l.id) ? '✓ ' : ''}${esc(l.n)}</span>`).join('')}</div>`;
+  }
+
+  // ---------- Цвет машины (часть открывается уровнями) ----------
+  const CAR_COLORS = [
+    { id:'yellow', n:'Жёлтый', c:0xffbf00, lvl:0 }, { id:'white', n:'Белый', c:0xf2f4f7, lvl:0 }, { id:'red', n:'Красный', c:0xd32f2f, lvl:0 },
+    { id:'blue', n:'Синий', c:0x1e63d6, lvl:0 }, { id:'black', n:'Чёрный', c:0x1a1c20, lvl:0 },
+    { id:'tiffany', n:'Тиффани', c:0x0abab5, lvl:1 }, { id:'sky', n:'Небесный (флаг)', c:0x00a3e0, lvl:2 }, { id:'gold', n:'Золотой', c:0xd4a017, lvl:3 },
+  ];
+  let carId = store.get('carColor', 'yellow');
+  function carColor(){ const c = CAR_COLORS.find(x => x.id === carId && levelOf(score.pts).i >= x.lvl); return (c || CAR_COLORS[0]).c; }
+  function renderCarSel(){
+    const lv = levelOf(score.pts).i;
+    $('#setCar').innerHTML = CAR_COLORS.map(c => `<option value="${c.id}"${c.id === carId ? ' selected' : ''}${lv < c.lvl ? ' disabled' : ''}>${lv < c.lvl ? '🔒 ' : ''}${c.n}${lv < c.lvl ? ' — с уровня «' + LEVELS[c.lvl][1] + '»' : ''}</option>`).join('');
+  }
+  $('#setCar').onchange = e => { carId = e.target.value; store.set('carColor', carId); toast('Цвет машины изменится в следующей поездке'); };
+
+  // ---------- Погода, зимний режим и снег на карте ----------
+  let wx = null, snowPref = store.get('snowPref', 'auto');
+  const WX_ICON = c => c === 0 ? '☀' : c <= 3 ? '⛅' : c <= 48 ? '🌫' : c <= 67 || (c >= 80 && c <= 82) ? '🌧' : c <= 77 || c === 85 || c === 86 ? '❄' : '⛈';
+  async function loadWeather(){
+    try{
+      const j = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=51.13&longitude=71.43&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,snowfall&wind_speed_unit=ms&timezone=auto')).json();
+      const c = j.current;
+      wx = { t:Math.round(c.temperature_2m), feel:Math.round(c.apparent_temperature), wind:Math.round(c.wind_speed_10m), code:c.weather_code,
+        snow:(c.snowfall || 0) > 0 || [71, 73, 75, 77, 85, 86].includes(c.weather_code) };
+      const chip = $('#wxChip'); chip.hidden = false; chip.textContent = `${WX_ICON(wx.code)} ${wx.t > 0 ? '+' : ''}${wx.t}°`;
+      applySnow();
+    }catch{}
+  }
+  $('#wxChip').onclick = () => { if (wx) mascot('talk', `Сейчас ${wx.t}°, ощущается как ${wx.feel}°, ветер ${wx.wind} м/с.${wxWarn() ? ' ' + wxWarn() : ''}`, 6000), setTimeout(mascotIdle, 5000); };
+  function wxWarn(){
+    if (!wx) return '';
+    const a = [];
+    if (wx.feel <= -20) a.push(`❄ Ощущается как ${wx.feel}° — ${state.mode === 'car' ? 'прогрейте машину, держите дистанцию' : 'сократите путь пешком, грейтесь в ТРЦ и переходах'}`);
+    if (wx.wind >= 12) a.push(`💨 Ветер ${wx.wind} м/с — возможны метель и заносы`);
+    if (wx.snow) a.push('🌨 Идёт снег — на дорогах может быть гололёд');
+    return a.join('. ');
+  }
+  loadWeather(); setInterval(loadWeather, 15 * 60e3);
+  // снежинки поверх карты (лёгкий canvas, без библиотек)
+  const snowCv = $('#snow'), sctx = snowCv.getContext('2d'); let flakes = [], snowRaf = 0;
+  function applySnow(){ setSnow(snowPref === 'on' || (snowPref === 'auto' && !!wx?.snow)); }
+  function setSnow(on){
+    cancelAnimationFrame(snowRaf); snowCv.hidden = !on;
+    if (!on || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    const size = () => { snowCv.width = innerWidth * dpr; snowCv.height = innerHeight * dpr; };
+    size(); addEventListener('resize', size);
+    flakes = Array.from({ length: innerWidth < 700 ? 90 : 160 }, () => ({ x:Math.random(), y:Math.random(), r:0.6 + Math.random() * 2.2, s:0.0006 + Math.random() * 0.0014, w:Math.random() * 6.28 }));
+    const wind = (wx?.wind || 3) / 4000;
+    const draw = () => {
+      sctx.clearRect(0, 0, snowCv.width, snowCv.height); sctx.fillStyle = 'rgba(255,255,255,.85)';
+      flakes.forEach(f => {
+        f.y += f.s; f.w += 0.02; f.x += wind + Math.sin(f.w) * 0.0004;
+        if (f.y > 1.02){ f.y = -0.02; f.x = Math.random(); } if (f.x > 1.02) f.x = -0.02;
+        sctx.beginPath(); sctx.arc(f.x * snowCv.width, f.y * snowCv.height, f.r * dpr, 0, 6.29); sctx.fill();
+      });
+      snowRaf = requestAnimationFrame(draw);
+    };
+    draw();
+  }
+  $('#setSnowSel').onchange = e => { snowPref = e.target.value; store.set('snowPref', snowPref); applySnow(); };
+
+  // ---------- Стоимость поездки ----------
+  let fuelCfg = store.get('fuelCfg', { use:9, price:255 });
+  function tripCost(r){
+    if (state.mode !== 'car' || !r) return '';
+    const fuel = r.distance / 1000 * fuelCfg.use / 100 * fuelCfg.price;
+    let toll = 0;
+    (r.legs || []).forEach(l => (l.steps || []).forEach(s => { if ((s.intersections || []).some(i => (i.classes || []).includes('toll'))) toll += s.distance; }));
+    const t = toll > 500 ? ` + платная дорога ~${Math.round(toll / 1000)} км ≈ ${Math.max(10, Math.round(toll / 1000 * 1.2))} ₸` : '';
+    return `⛽ ≈ ${Math.max(10, Math.round(fuel / 10) * 10)} ₸${t}`;
+  }
+  const saveFuelCfg = () => {
+    const u = parseFloat($('#setUse').value), p = parseFloat($('#setPrice').value);
+    fuelCfg = { use: u >= 3 && u <= 30 ? u : 9, price: p >= 100 && p <= 700 ? p : 255 }; store.set('fuelCfg', fuelCfg);
+    if (state.routes.length && !driving) selectRoute(state.active);
+  };
+  $('#setUse').onchange = $('#setPrice').onchange = saveFuelCfg;
+
+  // ---------- Цены на АЗС от водителей ----------
+  let fuelDb = null;
+  async function loadFuel(force){
+    if (fuelDb && !force) return fuelDb;
+    try{ fuelDb = (await (await fetch('/api/fuel')).json()).items || {}; }catch{ fuelDb = {}; }
+    return fuelDb;
+  }
+  function fuelAt(p){ return Object.values(fuelDb || {}).find(f => near(f, p, 60)); }
+  const FUELS = [['a92', 'АИ-92'], ['a95', 'АИ-95'], ['dt', 'ДТ'], ['gas', 'Газ']];
+  function fuelLine(pr){ return FUELS.filter(([k]) => pr[k]).map(([k, n]) => `${n} ${pr[k]} ₸`).join(' · '); }
+  async function fuelBlock(box, o){
+    await loadFuel();
+    const f = fuelAt(o), el = document.createElement('div'); el.className = 'fuel';
+    const render = () => {
+      el.innerHTML = (f ? `⛽ <b>${esc(fuelLine(f.p))}</b> <span class="hint">· ${ago(f.ts)}</span>` : '⛽ Цен пока нет.') +
+        ' <button class="linkbtn" data-fp>Указать цены</button>';
+      el.querySelector('[data-fp]').onclick = form;
+    };
+    const form = () => {
+      el.innerHTML = '<div class="fuel-form">' + FUELS.map(([k, n]) => `<label>${n}<input type="number" inputmode="numeric" data-k="${k}" value="${f?.p?.[k] || ''}" placeholder="₸"></label>`).join('') +
+        '</div><button class="btn primary" data-save style="margin-top:6px;width:100%">Сохранить цены</button>';
+      el.querySelector('[data-save]').onclick = async () => {
+        const p = {}; el.querySelectorAll('[data-k]').forEach(i => { const v = parseInt(i.value); if (v >= 100 && v <= 700) p[i.dataset.k] = v; });
+        if (!Object.keys(p).length) return toast('Введите хотя бы одну цену (100–700 ₸)');
+        try{
+          const r = await fetch('/api/fuel', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ lng:o.lng, lat:o.lat, name:o.name, p }) });
+          if (!r.ok) throw 0;
+          await loadFuel(true); toast('Спасибо! Цены увидят все водители'); addPts(5, 'за цены');
+          el.innerHTML = `⛽ <b>${esc(fuelLine(p))}</b> <span class="hint">· только что</span>`;
+        }catch{ toast('Не удалось сохранить. Проверьте интернет.'); }
+      };
+    };
+    render(); box.appendChild(el);
+  }
+
+  // ---------- Ориентиры на манёврах: «у Хан Шатыра» ----------
+  async function attachLandmarks(steps){
+    const pts = steps.filter(st => st.k > 0 && !st.s._cont && !['arrive', 'depart'].includes(st.s.maneuver?.type)).slice(0, 30);
+    if (!pts.length) return;
+    const q = pts.map(st => { const [lng, lat] = st.s.maneuver.location; return `nwr(around:45,${lat},${lng})["name"][~"^(amenity|shop|tourism|leisure)$"~"."];`; }).join('');
+    try{
+      const j = await overpass(`[out:json][timeout:15];(${q});out center tags 400;`);
+      const els = (j.elements || []).map(e => ({ lng:e.lon ?? e.center?.lon, lat:e.lat ?? e.center?.lat, name:e.tags.name,
+        w: e.tags.tourism || e.tags.shop === 'mall' ? 2.5 : e.tags.amenity === 'fuel' || e.tags.shop === 'supermarket' ? 1.6 : 1 }))
+        .filter(e => e.lng != null && e.name && e.name.length <= 28);
+      pts.forEach(st => {
+        const [lng, lat] = st.s.maneuver.location; let best = null, bs = Infinity;
+        els.forEach(e => { const d = dist([lng, lat], [e.lng, e.lat]); if (d < 45 && d / e.w < bs){ bs = d / e.w; best = e; } });
+        if (best) st.s._lm = best.name;
+      });
+    }catch{}
+  }
+
+  // ---------- Лежачие полицейские на маршруте ----------
+  async function loadBumps(){
+    if (!nav.pts.length) return;
+    let s = 90, w = 180, n = -90, e = -180;
+    nav.pts.forEach(([x, y]) => { s = Math.min(s, y); n = Math.max(n, y); w = Math.min(w, x); e = Math.max(e, x); });
+    if ((n - s) * (e - w) > 0.5) return;   // слишком длинный маршрут — пропускаем
+    try{
+      const j = await overpass(`[out:json][timeout:15];node["traffic_calming"~"^(bump|hump|table|cushion|yes)$"](${s},${w},${n},${e});out;`);
+      nav.bumps = (j.elements || []).map(b => ({ id:b.id, at:project([b.lon, b.lat], 0, true) })).filter(b => b.at.dist < 20).map(b => ({ id:b.id, at:b.at.along })).sort((a, b) => a.at - b.at);
+    }catch{}
+  }
+  function checkBumps(along){
+    const b = (nav.bumps || []).find(x => x.at > along); if (!b) return;
+    const d = b.at - along;
+    if (d <= 180 && d > 30 && !nav.said['bump' + b.id]){ nav.said['bump' + b.id] = 1; speak(say('bump', { d })); }
+  }
+
+  // ---------- Аудиогид и «Коллекция Астаны» ----------
+  const LANDMARKS = [
+    { id:'baiterek', n:'Байтерек', q:'Байтерек', ru:'Байтерек — символ Астаны. Смотровая площадка на высоте 97 метров — в честь 1997 года, когда столицу перенесли в Астану.', kk:'Бәйтерек — Астананың символы. Бақылау алаңы 97 метр биіктікте, бұл елорданың 1997 жылы көшкенін білдіреді.' },
+    { id:'khanshatyr', n:'Хан Шатыр', q:'Хан Шатыр', ru:'Хан Шатыр — торговый центр в форме шатра по проекту Нормана Фостера. Открыт в 2010 году, внутри есть пляж.', kk:'Хан Шатыр — Норман Фостер жобалаған шатыр пішінді сауда орталығы. 2010 жылы ашылды, ішінде жағажай бар.' },
+    { id:'akorda', n:'Ак Орда', q:'Акорда', ru:'Ак Орда — резиденция Президента Казахстана, открыта в 2004 году.', kk:'Ақорда — Қазақстан Президентінің резиденциясы, 2004 жылы ашылған.' },
+    { id:'pyramid', n:'Дворец мира и согласия', q:'Дворец мира и согласия', ru:'Дворец мира и согласия — пирамида по проекту Нормана Фостера, открыта в 2006 году.', kk:'Бейбітшілік және келісім сарайы — Норман Фостер жобалаған пирамида, 2006 жылы ашылды.' },
+    { id:'hazret', n:'Хазрет Султан', q:'мечеть Хазрет Султан', ru:'Мечеть Хазрет Султан — одна из крупнейших мечетей Центральной Азии, открыта в 2012 году.', kk:'Хазірет Сұлтан мешіті — Орталық Азиядағы ең ірі мешіттердің бірі, 2012 жылы ашылды.' },
+    { id:'opera', n:'Астана Опера', q:'Астана Опера', ru:'Астана Опера — театр оперы и балета, открыт в 2013 году.', kk:'Астана Опера — опера және балет театры, 2013 жылы ашылды.' },
+    { id:'nuralem', n:'Нур Алем', q:'Нур Алем', ru:'Нур Алем — шар-павильон выставки ЭКСПО-2017, теперь музей энергии будущего.', kk:'Нұр Әлем — ЭКСПО-2017 көрмесінің шар тәріздес павильоны, қазір болашақ энергиясы мұражайы.' },
+    { id:'museum', n:'Национальный музей', q:'Национальный музей Республики Казахстан', ru:'Национальный музей Казахстана открыт в 2014 году. Здесь можно увидеть Золотого человека.', kk:'Қазақстан Республикасының Ұлттық музейі 2014 жылы ашылды. Мұнда Алтын адамды көруге болады.' },
+  ];
+  let collected = store.get('collected', []), lmPos = store.get('lmPos', {}), lmTold = new Set(), lmResolving = false;
+  async function resolveLandmarks(){
+    if (lmResolving) return; lmResolving = true;
+    for (const l of LANDMARKS){
+      if (lmPos[l.id]) continue;
+      try{ const r = await searchPhoton(l.q); const it = r?.[0]; if (it){ const p = { lng:+it.lon, lat:+it.lat }; if (inAstana(p)) lmPos[l.id] = p; } }catch{}
+    }
+    store.set('lmPos', lmPos); lmResolving = false;
+  }
+  setTimeout(resolveLandmarks, 6000);
+  function checkLandmarks(p, inCar){
+    if (!p) return;
+    for (const l of LANDMARKS){
+      const lp = lmPos[l.id]; if (!lp || lmTold.has(l.id)) continue;
+      if (dist(p, [lp.lng, lp.lat]) > (inCar ? 220 : 130)) continue;
+      lmTold.add(l.id);
+      if (inCar) speak({ ru:l.ru, kk:l.kk }); else mascot('happy', l.ru, 9000);
+      if (!collected.includes(l.id)){
+        collected.push(l.id); store.set('collected', collected); addPts(5, 'за место');
+        setTimeout(() => toast(`🏛 В коллекции: ${l.n} (${collected.length}/${LANDMARKS.length})`), 1500);
+      }
+    }
+  }
+
+  // ---------- Поделиться поездкой: живая ссылка с машиной и временем прибытия ----------
+  let share = null;
+  const rnd = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+  async function pushTrip(ended){
+    if (!share) return;
+    share.t = Date.now();
+    const p = nav.shown || nav.lastPos;
+    const body = { id:share.id, key:share.key, ended:!!ended };
+    if (!ended && p) Object.assign(body, { lng:p[0], lat:p[1], h:Math.round(nav.heading || 0), left:Math.round(nav.left || 0), eta:Date.now() + (nav.tLeft || 0) * 1000,
+      to:state.to?.name || '', toLng:state.to?.lng, toLat:state.to?.lat });
+    try{ await fetch('/api/trip', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); }catch{}
+  }
+  $('#navShare').onclick = async () => {
+    if (demo) return toast('Делиться можно настоящей поездкой — нажмите «Поехали»');
+    if (!share) share = { id:rnd(10), key:rnd(16), t:0 };
+    await pushTrip();
+    const url = location.origin + '/#t=' + share.id;
+    try{
+      if (navigator.share) await navigator.share({ title:'Я в пути', text:`Еду в «${state.to?.name || 'точку Б'}». Смотрите, где я, на карте:`, url });
+      else { await navigator.clipboard.writeText(url); toast('Ссылка на поездку скопирована'); }
+    }catch{}
+    toast('Ваша поездка видна по ссылке, пока вы едете');
+  };
+  let tripWatch = 0, tripMarker = null, tripDest = null, tripFitted = false;
+  function watchTrip(id){
+    const load = async () => {
+      try{
+        const r = await fetch('/api/trip?id=' + id), j = await r.json();
+        if (!r.ok || !j.ok || j.ended){ clearInterval(tripWatch); $('#tripBar').hidden = false; $('#tripInfo').textContent = '🏁 Поездка завершена или ссылка устарела'; return; }
+        if (!tripMarker){
+          const el = document.createElement('div'); el.className = 'pin pulse'; el.style.background = '#ffbf00'; el.style.color = '#ffbf00'; el.dataset.l = '🚗';
+          tripMarker = new maplibregl.Marker({ element:el }).setLngLat([j.lng, j.lat]).addTo(map);
+        } else tripMarker.setLngLat([j.lng, j.lat]);
+        if (j.toLng && !tripDest) tripDest = new maplibregl.Marker({ element:makePin('#7c4dff', 'Б', false) }).setLngLat([j.toLng, j.toLat]).addTo(map);
+        if (!tripFitted){
+          tripFitted = true; const bb = new maplibregl.LngLatBounds([j.lng, j.lat], [j.lng, j.lat]); if (j.toLng) bb.extend([j.toLng, j.toLat]);
+          map.fitBounds(bb, { padding:{ top:140, bottom:180, left:50, right:90 }, maxZoom:16, duration:800 });
+        }
+        const sec = Math.round((Date.now() - j.ts) / 1000);
+        $('#tripBar').hidden = false;
+        $('#tripInfo').textContent = `🚗 Едет${j.to ? ' в «' + j.to + '»' : ''} · прибытие ~${new Date(j.eta).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })} · осталось ${fmtDist(j.left || 0)} · ${sec < 60 ? 'только что' : Math.round(sec / 60) + ' мин назад'}`;
+      }catch{ $('#tripBar').hidden = false; $('#tripInfo').textContent = 'Нет связи. Пробую ещё раз…'; }
+    };
+    load(); tripWatch = setInterval(load, 15000);
+    $('#panel').classList.add('collapsed');
+  }
+  $('#tripClose').onclick = () => { clearInterval(tripWatch); $('#tripBar').hidden = true; tripMarker?.remove(); tripDest?.remove(); tripMarker = tripDest = null; history.replaceState(null, '', location.pathname); };
+
+  // ---------- GPX: трек поездки файлом ----------
+  function downloadGpx(st){
+    if (!st?.track?.length) return toast('Трек пуст');
+    const pts = st.track.map(([x, y, t]) => `<trkpt lat="${y.toFixed(6)}" lon="${x.toFixed(6)}"><time>${new Date(t).toISOString()}</time></trkpt>`).join('');
+    const gpx = `<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Карта Астаны" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>${esc(st.to)}</name><trkseg>${pts}</trkseg></trk></gpx>`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([gpx], { type:'application/gpx+xml' }));
+    a.download = `poezdka-${new Date().toISOString().slice(0, 10)}.gpx`; a.click();
+  }
+
+  // ---------- Код места (Plus Code), QR и такси ----------
+  function plusCode(lat, lng){
+    const A = '23456789CFGHJMPQRVWX'; let la = Math.min(179.99999, Math.max(0, lat + 90)), lo = ((lng + 180) % 360 + 360) % 360, res = 20, code = '';
+    for (let i = 0; i < 5; i++){
+      const a = Math.floor(la / res), b = Math.floor(lo / res); la -= a * res; lo -= b * res; code += A[a] + A[b]; res /= 20;
+      if (i === 3) code += '+';
+    }
+    return code;
+  }
+  function loadQr(){
+    if (window.qrcode) return Promise.resolve();
+    return new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://unpkg.com/qrcode-generator@1.4.4/qrcode.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+  }
+  async function openPoint(p){
+    popup?.remove();
+    const code = plusCode(p.lat, p.lng), short = code.slice(4) + ' Астана';
+    const url = location.origin + location.pathname + `#p=${(+p.lng).toFixed(6)},${(+p.lat).toFixed(6)}~${encodeURIComponent(p.name || '')}`;
+    $('#ptName').textContent = p.name || 'Точка на карте'; $('#ptCode').textContent = short; $('#ptQr').innerHTML = '<p class="hint">QR-код…</p>';
+    $('#ptSheet').hidden = false;
+    $('#ptShare').onclick = () => sharePoint(p);
+    $('#ptCopy').onclick = async () => { try{ await navigator.clipboard.writeText(short); toast('Код скопирован: ' + short); }catch{ toast(short); } };
+    try{ await loadQr(); const qr = qrcode(0, 'M'); qr.addData(url); qr.make(); $('#ptQr').innerHTML = qr.createSvgTag({ cellSize:4, margin:2, scalable:true }); }
+    catch{ $('#ptQr').innerHTML = '<p class="hint">QR не загрузился — проверьте интернет.</p>'; }
+  }
+  function taxiTo(p){
+    const from = geoMarker ? geoMarker.getLngLat() : state.from;
+    const qs = (from ? `start-lat=${from.lat.toFixed(6)}&start-lon=${from.lng.toFixed(6)}&` : '') + `end-lat=${(+p.lat).toFixed(6)}&end-lon=${(+p.lng).toFixed(6)}`;
+    location.href = `https://3.redirect.appmetrica.yandex.com/route?${qs}&ref=astanamap&appmetrica_tracking_id=1178268795219780156`;
+  }
+
   // ---------- Настройки ----------
   function openSettings(){
     $('#setView').value = view().id; $('#setTheme').value = theme;
-    $('#avToll').checked = !!avoid.toll; $('#avMotor').checked = !!avoid.motorway; renderMyPlaces();
+    $('#avToll').checked = !!avoid.toll; $('#avMotor').checked = !!avoid.motorway; renderMyPlaces(); renderLevel();
+    $('#setMascot').checked = mOn; $('#setSnowSel').value = snowPref; $('#setUse').value = fuelCfg.use; $('#setPrice').value = fuelCfg.price; renderCarSel();
     renderVoices(); $('#settings').hidden = false;
   }
   $('#tSet').onclick = openSettings;
