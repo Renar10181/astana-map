@@ -1,0 +1,206 @@
+[
+ {
+  "confidence": 0.41455188393592834,
+  "websites": [
+   "https://www.instagram.com/alfaberry.01/"
+  ],
+  "socials": [
+   "https://www.facebook.com/137814279423535"
+  ],
+  "brand": {
+   "wikidata": null,
+   "names": {
+    "primary": null,
+    "common": null,
+    "rules": null
+   }
+  },
+  "addresses": [
+   {
+    "freeform": "Ахмет Байтұрсынов көшесі 1",
+    "locality": "Целиноград ауданы",
+    "postcode": null,
+    "region": null,
+    "country": "KZ"
+   }
+  ],
+  "names": {
+   "primary": "Alfaberry Strowberry\\n",
+   "common": null,
+   "rules": null
+  },
+  "sources": [
+   {
+    "property": "",
+    "dataset": "meta",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": "137814279423535",
+    "update_time": "2026-09-14T00:00:00.000Z",
+    "confidence": 0.41455188393592834,
+    "between": null,
+    "provider": "meta",
+    "resource": "meta",
+    "version": "2026-09-14"
+   },
+   {
+    "property": "/properties/confidence",
+    "dataset": "Overture",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": null,
+    "update_time": "2026-09-17T22:52:12Z",
+    "confidence": null,
+    "between": null,
+    "provider": "overture",
+    "resource": "confidence_calculation",
+    "version": "2026-09-17"
+   }
+  ],
+  "basic_category": "restaurant",
+  "taxonomy": {
+   "primary": "restaurant",
+   "hierarchy": [
+    "food_and_drink",
+    "restaurant"
+   ],
+   "alternates": null
+  },
+  "version": 7
+ },
+ {
+  "confidence": 0.3400171101093292,
+  "websites": [
+   "https://www.instagram.com/master_mebeli.kz/"
+  ],
+  "emails": [
+   "meir.kab1889@gmail.com"
+  ],
+  "socials": [
+   "https://www.facebook.com/450178481522203"
+  ],
+  "phones": [
+   "+77010000698"
+  ],
+  "brand": {
+   "wikidata": null,
+   "names": {
+    "primary": null,
+    "common": null,
+    "rules": null
+   }
+  },
+  "addresses": [
+   {
+    "freeform": "Ахмет Байтұрсынов көшесі 1",
+    "locality": "Целиноград ауданы",
+    "postcode": null,
+    "region": null,
+    "country": "KZ"
+   }
+  ],
+  "names": {
+   "primary": "Golden Residence",
+   "common": null,
+   "rules": null
+  },
+  "sources": [
+   {
+    "property": "",
+    "dataset": "meta",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": "450178481522203",
+    "update_time": "2026-09-14T00:00:00.000Z",
+    "confidence": 0.3400171101093292,
+    "between": null,
+    "provider": "meta",
+    "resource": "meta",
+    "version": "2026-09-14"
+   },
+   {
+    "property": "/properties/confidence",
+    "dataset": "Overture",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": null,
+    "update_time": "2026-09-17T22:52:12Z",
+    "confidence": null,
+    "between": null,
+    "provider": "overture",
+    "resource": "confidence_calculation",
+    "version": "2026-09-17"
+   }
+  ],
+  "basic_category": "real_estate_service",
+  "taxonomy": {
+   "primary": "real_estate_service",
+   "hierarchy": [
+    "services_and_business",
+    "real_estate_service"
+   ],
+   "alternates": null
+  },
+  "version": 4
+ },
+ {
+  "confidence": 0.2136377990245819,
+  "socials": [
+   "https://www.facebook.com/179963931874732"
+  ],
+  "brand": {
+   "wikidata": null,
+   "names": {
+    "primary": null,
+    "common": null,
+    "rules": null
+   }
+  },
+  "addresses": [
+   {
+    "freeform": "Ахмет Байтұрсынов көшесі 1",
+    "locality": "Целиноград ауданы",
+    "postcode": null,
+    "region": null,
+    "country": "KZ"
+   }
+  ],
+  "names": {
+   "primary": "Senim group",
+   "common": null,
+   "rules": null
+  },
+  "sources": [
+   {
+    "property": "",
+    "dataset": "meta",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": "179963931874732",
+    "update_time": "2026-09-14T00:00:00.000Z",
+    "confidence": 0.2136377990245819,
+    "between": null,
+    "provider": "meta",
+    "resource": "meta",
+    "version": "2026-09-14"
+   },
+   {
+    "property": "/properties/confidence",
+    "dataset": "Overture",
+    "license": "CDLA-Permissive-2.0",
+    "record_id": null,
+    "update_time": "2026-09-17T22:52:12Z",
+    "confidence": null,
+    "between": null,
+    "provider": "overture",
+    "resource": "confidence_calculation",
+    "version": "2026-09-17"
+   }
+  ],
+  "basic_category": "home_service",
+  "taxonomy": {
+   "primary": "home_service",
+   "hierarchy": [
+    "services_and_business",
+    "home_service"
+   ],
+   "alternates": null
+  },
+  "version": 2
+ }
+]
