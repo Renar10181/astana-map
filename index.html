@@ -163,15 +163,24 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .hud-bar .btn{background:#111;color:#ddd;border-color:#333}
 .nav-street{font-size:17px;font-weight:600}
 .nav-left{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
-.nav-btns{margin-top:4px;display:flex;flex-wrap:nowrap;gap:5px}
-.nav-btns .btn{flex:1 1 0;min-width:0;padding:7px 2px;font-size:14px}
-.nav-btns .btn.stop{flex:1.6 1 0;background:#e53935;border-color:#e53935;color:#fff}
+.nav-btns,.nav-more{margin-top:6px;display:grid;grid-template-columns:repeat(4,1fr) 1.5fr;gap:6px}
+.nav-more{grid-template-columns:repeat(5,1fr)}
+.nav-btns .btn,.nav-more .btn{min-width:0;height:52px;padding:4px 2px;font-size:19px;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:nowrap;overflow:hidden}
+.nav-btns .btn[data-l]::after,.nav-more .btn[data-l]::after{content:attr(data-l);font-size:10.5px;font-weight:600;opacity:.75}
+#navHud{font-size:14px;font-weight:700}
+.nav-btns .btn.stop{background:#e53935;border-color:#e53935;color:#fff;font-size:17px;font-weight:700}
+#navMore[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.nav-center{position:absolute;right:0;top:-62px;width:52px;height:52px;border-radius:50%;border:0;background:var(--surface);color:var(--accent);font-size:26px;box-shadow:var(--shadow)}
+body.night .nav-center{background:#182231;color:#20b8b0}
+body.navmode #navCenter,body.navmode #navCenter[hidden]{display:grid!important;place-items:center}
+#navCenter[hidden]{opacity:.65}
 .nav-cam{justify-self:start;background:#e53935;color:#fff;font-weight:700;border-radius:999px;padding:4px 12px;font-variant-numeric:tabular-nums}
 .sky{position:fixed;left:0;right:0;top:0;height:42vh;pointer-events:none;z-index:1;opacity:0;transition:opacity .6s;
   background:linear-gradient(to bottom,#7fbfff 0%,rgba(170,214,255,.85) 45%,rgba(220,238,255,0) 100%)}
 body.navmode .sky{opacity:1}
 body.night .sky{background:linear-gradient(to bottom,#03060d 0%,rgba(8,16,34,.85) 45%,rgba(10,15,26,0) 100%)}
-body.navmode .tools{top:calc(84px + env(safe-area-inset-top,0px))}
+body.navmode .tools{top:calc(108px + env(safe-area-inset-top,0px))}
+body.navmode #tMic{display:none}
 body.navmode #tGeo{display:none}
 .zoom{position:fixed;z-index:4;left:max(12px,env(safe-area-inset-left,0px));top:calc(76px + env(safe-area-inset-top,0px));display:grid;gap:8px}
 @media (max-width:700px){ .zoom{top:calc(70px + env(safe-area-inset-top,0px))} }
@@ -179,7 +188,7 @@ body.navmode #tGeo{display:none}
 .zoom .tool{width:48px;height:48px;font-size:24px;font-weight:600}
 #tSet{font-size:22px}
 .ph-btns{display:flex;gap:2px;align-items:center}
-body.navmode .zoom{top:calc(84px + env(safe-area-inset-top,0px))}
+body.navmode .zoom{top:calc(108px + env(safe-area-inset-top,0px))}
 .carwrap.three .car-svg,.carwrap.three::before{display:none}
 body.navmode .toast{top:calc(150px + env(safe-area-inset-top,0px));bottom:auto}
 .navtop{position:fixed;z-index:6;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 20px));
@@ -447,7 +456,7 @@ body.navmode #tQuest{display:none}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.6.0</p>
+    <p class="set-ver">Версия 1.6.1</p>
   </div>
 </div>
 
@@ -462,7 +471,9 @@ body.navmode #tQuest{display:none}
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
-  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navReport" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navFind" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" aria-label="Поделиться поездкой">📤</button><button class="btn" id="navMic" aria-label="Голосовой помощник">🎤</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
+  <button class="nav-center" id="navCenter" hidden aria-label="Вернуться к машине">◎</button>
+  <div class="nav-more" id="navMoreBox" hidden><button class="btn" id="navView" data-l="Вид" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" data-l="Ночь" aria-label="Ночной режим">☀</button><button class="btn" id="navHud" data-l="На стекло">HUD</button><button class="btn" id="navFind" data-l="По пути" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" data-l="Ссылка" aria-label="Поделиться поездкой">📤</button></div>
+  <div class="nav-btns"><button class="btn" id="navMute" data-l="Звук" aria-label="Выключить голос">🔊</button><button class="btn" id="navReport" data-l="Событие" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navMic" data-l="Барыс" aria-label="Голосовой помощник">🎤</button><button class="btn" id="navMore" data-l="Ещё" aria-label="Ещё кнопки" aria-expanded="false">⋯</button><button class="btn stop" id="navStop">Стоп</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -944,6 +955,7 @@ body.navmode #tQuest{display:none}
   $('#go').onclick = () => driving ? stopDrive() : startNav(false);
   $('#navStop').onclick = stopDrive;
   $('#navMute').onclick = () => { muted = !muted; $('#navMute').textContent = muted ? '🔇' : '🔊'; if (muted) speechSynthesis?.cancel(); };
+  $('#navMore').onclick = () => { const box = $('#navMoreBox'); box.hidden = !box.hidden; $('#navMore').setAttribute('aria-expanded', !box.hidden); if (follow && nav.shown) camTo(nav.shown, nav.heading, 400); };
   $('#navCenter').onclick = () => { follow = true; $('#navCenter').hidden = true; if (nav.shown) camTo(nav.shown, nav.heading, 600); };
   map.on('dragstart', () => { if (driving && !demo){ follow = false; $('#navCenter').hidden = false; } });
 
@@ -3491,7 +3503,7 @@ body.navmode #tQuest{display:none}
     if (driving){ drawQMk(); if (state.mode === 'car' && laneWarn && !isDemo) loadLanes(false); }
   };
   const stopDrive0 = stopDrive;
-  stopDrive = function(){ const was = driving; stopDrive0(); gps.on = false; $('#gpsBar').hidden = true; $('#ntSig').hidden = true; if (was) setTimeout(drawQMk, 0); };
+  stopDrive = function(){ const was = driving; stopDrive0(); $('#navMoreBox').hidden = true; $('#navMore').setAttribute('aria-expanded', 'false'); gps.on = false; $('#gpsBar').hidden = true; $('#ntSig').hidden = true; if (was) setTimeout(drawQMk, 0); };
 
   // ---------- 1.5: воздух (смог) ----------
   let aqi = null;
