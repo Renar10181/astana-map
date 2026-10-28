@@ -346,6 +346,16 @@ body.navmode #tQuest{display:none}
 .q-row{display:block}
 .q-done{opacity:.55}
 .poi-pin.q-pin{width:24px;height:24px;font-size:13px;border-width:2px}
+.inp{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px;width:100%;min-width:0}
+.biz-hours{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:6px}
+.ad{display:inline-block;font-size:10px;font-weight:700;color:#8a6d00;background:#fff3c4;border-radius:6px;padding:1px 5px;vertical-align:middle}
+.rv-stars{display:flex;gap:4px}
+.rv-stars button{border:0;background:none;font-size:24px;color:#c9cfd6;padding:0 2px;cursor:pointer}
+.rv-stars button.on{color:#f5a623}
+.rv-item{border-top:1px solid var(--line);padding-top:4px;margin-top:4px;font-size:13px}
+.logo-pin{background:#fff;border:2px solid #f5a623;border-radius:10px;padding:2px 6px;font:700 11px/1.2 var(--font);color:#333;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.logo-pin small{display:block;font-weight:600;font-size:9px;color:#8a6d00}
+body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{animation:none!important}
 .offline-bar{position:fixed;z-index:7;left:50%;transform:translateX(-50%);top:calc(4px + env(safe-area-inset-top,0px));background:#e53935;color:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
 @media (prefers-reduced-motion: reduce){ .pin.pulse::before{animation:none} }
 </style>
@@ -443,6 +453,10 @@ body.navmode #tQuest{display:none}
       <p class="hint" id="offInfo">Карта будет открываться без интернета. Маршруты и поиск без интернета не работают.</p>
       <button class="btn" id="installBtn" type="button" hidden>📲 Установить как приложение</button>
       <p class="hint" id="iosHint" hidden>На iPhone: «Поделиться» → «На экран Домой».</p></div>
+    <div class="set-row"><label for="setLang">Язык интерфейса · Тіл</label><select id="setLang"><option value="ru">Русский</option><option value="kk">Қазақша</option></select></div>
+    <label class="set-check"><input type="checkbox" id="setEco"> 🔋 Экономия батареи: без 3D, анимаций и снега</label>
+    <label class="set-check"><input type="checkbox" id="setProbe"> 🚦 Помогать считать пробки (анонимно)</label>
+    <button class="btn" id="bizOpen" type="button">🏢 Добавить свою организацию — бесплатно</button>
     <button class="btn" id="clearHist" type="button">Очистить историю поиска</button>
     <button class="btn" id="updBtn" type="button">🔄 Проверить обновления</button>
     <details class="set-help"><summary>Как пользоваться</summary>
@@ -453,11 +467,13 @@ body.navmode #tQuest{display:none}
       <p>🐆 Барыс подсказывает голосом, радуется наградам и рассказывает о Байтереке, Хан Шатыре и других местах, когда вы проезжаете рядом. Очки — за отметки на дороге, цены на АЗС, километры и новые места коллекции.</p>
       <p>🎤 «Эй, Барыс» — нажмите микрофон и скажите: «домой», «найди заправку по пути», «сообщи о ДТП», «сколько ехать», «где моя машина», «едем в Хан Шатыр». На ходу Барыс отвечает только голосом.</p>
       <p>🎯 Квесты — короткие вопросы о местах рядом (часы работы, вход, пандус, остановка). Отвечайте рядом с местом и получайте очки. Когда трое ответили одинаково, факт считается проверенным.</p>
+      <p>🏢 Своё дело на карте — зажмите место → «🏢 Это моё дело» или ⚙ → «Добавить свою организацию». Карточка бесплатная. ⭐ Отзывы — в карточке любого места.</p>
+      <p>🚦 Пробки (бета) — 🗂 Слои → «Пробки». Их собирают водители «Карты Астаны», которые включили «Помогать считать пробки». Чем больше водителей, тем точнее.</p>
       <p>📡 Пропал GPS — навигатор переходит в режим «по шагам»: листайте подсказки кнопками или нажмите на карту, где вы сейчас.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.7.0</p>
+    <p class="set-ver">Версия 1.8.0</p>
   </div>
 </div>
 
@@ -581,6 +597,32 @@ body.navmode #tQuest{display:none}
   </div>
 </div>
 <div class="rulerbar" id="walkBar" hidden><b id="walkInfo">🛡 Провожалка</b><button class="btn" id="walkSos">📤 Где я</button><button class="btn primary" id="walkDone">✓ Я дошёл</button></div>
+<div class="sheet" id="bizSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Организация на карте">
+    <div class="sheet-head"><h2 id="bizTitle">🏢 Ваша организация на карте</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="hint">Бесплатно и навсегда. Карточку увидят все, кто ищет в «Карте Астаны». Точка — там, где вы открыли форму; её можно поправить, открыв форму в другом месте.</p>
+    <div class="set-row"><label for="bizName">Название *</label><input id="bizName" class="inp" maxlength="80" placeholder="Например: Кофейня «Бариста»"></div>
+    <div class="set-row"><label for="bizCat">Чем занимаетесь</label><select id="bizCat" class="inp"></select></div>
+    <div class="set-row"><label for="bizAddr">Адрес</label><input id="bizAddr" class="inp" maxlength="120" placeholder="Улица, дом, офис"></div>
+    <div class="set-2"><input id="bizPhone" class="inp" type="tel" maxlength="30" placeholder="Телефон" aria-label="Телефон"><input id="bizWeb" class="inp" maxlength="120" placeholder="Сайт или Instagram" aria-label="Сайт или Instagram"></div>
+    <div class="set-row"><label>Часы работы</label><div class="biz-hours"><select id="bizDays" class="inp"><option value="Mo-Su">Каждый день</option><option value="Mo-Fr">Пн–Пт</option><option value="Mo-Sa">Пн–Сб</option><option value="24/7">Круглосуточно</option><option value="">Не указывать</option></select><input id="bizFrom" class="inp" type="time" value="09:00" aria-label="С"><input id="bizTo" class="inp" type="time" value="20:00" aria-label="До"></div></div>
+    <div class="set-row"><label for="bizDesc">Коротко о вас</label><textarea id="bizDesc" class="inp" rows="2" maxlength="300" placeholder="Что вы предлагаете, чем отличаетесь"></textarea></div>
+    <div class="set-row"><label>Продвижение</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="" checked> Бесплатная карточка</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="priority"> ⬆ Выше в поиске — 50 000 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="logo"> ⭐ Логотип на карте + выше в поиске — 100 000 ₸ в месяц</label>
+      <input id="bizContact" class="inp" maxlength="60" placeholder="Телефон или WhatsApp — менеджер свяжется" hidden aria-label="Контакт для связи">
+      <p class="hint">Платное размещение помечается словом «Реклама». Оплата — после звонка менеджера.</p></div>
+    <button class="btn primary" id="bizSend">Сохранить карточку</button>
+  </div>
+</div>
+<div class="sheet" id="probeAsk" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Помочь считать пробки">
+    <div class="sheet-head"><h2>🚦 Поможете считать пробки?</h2></div>
+    <p class="hint">Во время поездки карта будет анонимно отправлять скорость машины — без имени, номера и устройства. Начало и конец поездки (300 м) не отправляются, точки хранятся 1 час. Из них складываются пробки для всех водителей Астаны.</p>
+    <div class="row"><button class="btn" id="probeNo" style="flex:1">Нет</button><button class="btn primary" id="probeYes" style="flex:1">Да, помогать</button></div>
+  </div>
+</div>
 <div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
 <div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
   <div class="m-bubble" id="mBubble" hidden></div>
@@ -1792,7 +1834,7 @@ body.navmode #tQuest{display:none}
       const list = [...ov.slice(0, 6), ...list0.filter(it => !ov.some(o => near({ lng:+it.lon, lat:+it.lat }, { lng:+o.lon, lat:+o.lat }, 60) && title(o).toLowerCase() === title(it).toLowerCase()))].slice(0, 12);
       res.hidden = false;
       if (!list.length){ res.innerHTML = '<div class="empty">Ничего не нашлось в Астане. Попробуйте «Кабанбай батыра 53» или название места.</div>'; return; }
-      res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}</div><div class="s">${esc(it.ov ? [catRu(it.cat), it.addr].filter(Boolean).join(' · ') : sub(it))}</div></button>`).join('');
+      res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}${it.promo ? ' <span class="ad">Реклама</span>' : ''}</div><div class="s">${esc(it.ov ? [catRu(it.cat), it.addr].filter(Boolean).join(' · ') : sub(it))}${it.hours && openNow(it.hours) === true ? ' · 🟢 открыто' : ''}</div></button>`).join('');
       res.querySelectorAll('button').forEach(b => b.onclick = () => pick(list[+b.dataset.k]));
     }catch{ res.hidden = false; res.innerHTML = '<div class="empty">Поиск недоступен. Проверьте интернет.</div>'; }
   }
@@ -2382,7 +2424,7 @@ body.navmode #tQuest{display:none}
   function renderLayers(){
     document.querySelectorAll('[data-base]').forEach(b => b.classList.toggle('on', (b.dataset.base === 'sat') === state.sat));
     $('#ovlList').innerHTML = OVL.map(o => `<label class="set-check"><input type="checkbox" data-ovl="${o.id}"${ovlIsOn(o) ? ' checked' : ''}> ${o.e} ${o.n}</label>`).join('') +
-      '<label class="set-check" style="opacity:.5"><input type="checkbox" disabled> 🚦 Пробки — нет бесплатных данных</label>';
+      '';
     $('#ovlList').querySelectorAll('[data-ovl]').forEach(i => i.onchange = () => setOvl(i.dataset.ovl, i.checked));
   }
   $('#tLayers').onclick = () => { renderLayers(); $('#layersSheet').hidden = false; };
@@ -2991,8 +3033,9 @@ body.navmode #tQuest{display:none}
   let placesDb = null, placesLoading = null;
   function loadPlaces(){
     if (placesDb) return Promise.resolve(placesDb);
-    placesLoading = placesLoading || fetch('/data/places-astana.json').then(r => r.ok ? r.json() : { items:[] })
-      .then(j => { placesDb = (j.items || []).map(r => ({ r, k:normKey(r[2]), c:normKey(catRu(r[3])) })); return placesDb; })
+    const get = u => fetch(u).then(r => r.ok ? r.json() : { items:[] }).catch(() => ({ items:[] }));
+    placesLoading = placesLoading || Promise.all([get('/data/places-astana.json'), get('/data/osm-places-astana.json'), get('/api/business')])
+      .then(([ov, osm, biz]) => { placesDb = mergePlaces(biz.items || [], ov.items || [], osm.items || []); return placesDb; })
       .catch(() => { placesDb = []; return placesDb; });
     return placesLoading;
   }
@@ -3029,10 +3072,10 @@ body.navmode #tQuest{display:none}
       }
       if (!ok) continue;
       if (p.k.startsWith(qt.join(' '))) sc += 3;
-      out.push({ p, sc, d:dist([c.lng, c.lat], [p.r[0], p.r[1]]) });
+      out.push({ p, sc:sc + (p.r[11] ? 2 : 0), d:dist([c.lng, c.lat], [p.r[0], p.r[1]]) });
     }
     out.sort((a, b) => b.sc - a.sc || a.d - b.d);
-    return out.slice(0, 8).map(({ p:{ r } }) => ({ lon:r[0], lat:r[1], name:r[2], ov:true, cat:r[3], addr:r[4], phone:r[5], web:r[6], src:r[7], display_name:r[2], address:{} }));
+    return out.slice(0, 8).map(({ p:{ r } }) => ({ lon:r[0], lat:r[1], name:r[2], ov:true, cat:r[3], addr:r[4], phone:r[5], web:r[6], src:r[7], hours:r[8] || '', desc:r[9] || '', bid:r[10] || '', promo:r[11] || '', display_name:r[2], address:{} }));
   }
   const CAT_RU = { coffee_shop:'Кофейня', cafe:'Кафе', restaurant:'Ресторан', fast_food_restaurant:'Фастфуд', bar:'Бар', pub:'Паб', bakery:'Пекарня', pizza_restaurant:'Пиццерия',
     sushi_restaurant:'Суши', burger_restaurant:'Бургерная', pharmacy:'Аптека', hospital:'Больница', medical_center:'Медцентр', dentist:'Стоматология', doctor:'Врач',
@@ -3057,7 +3100,8 @@ body.navmode #tQuest{display:none}
     if (it.web) btns.push(`<a class="chip" target="_blank" rel="noopener" href="${esc(/^https?:/.test(it.web) ? it.web : 'https://' + it.web)}">🌐 Сайт</a>`);
     return `<div class="org">${it.cat ? `<div class="hint">${esc(catRu(it.cat))}</div>` : ''}${it.addr ? `<div>📍 ${esc(it.addr)}</div>` : ''}
       ${it.phone ? `<div class="hint">${esc(it.phone)}</div>` : ''}${btns.length ? `<div class="chips">${btns.join('')}</div>` : ''}
-      <div class="hint" style="font-size:11px">Источник: Overture Maps${it.src ? ' · ' + esc(it.src) : ''}</div></div>`;
+      ${it.hours ? `<div>🕘 ${ohBadge(it.hours)}</div>` : ''}${it.desc ? `<div class="hint">${esc(it.desc)}</div>` : ''}
+      <div class="hint" style="font-size:11px">${it.src === 'biz' ? '✔ Карточку добавил владелец' + (it.promo ? ' · <span class="ad">Реклама</span>' : '') : it.src === 'osm' ? 'Источник: © OpenStreetMap' : 'Источник: Overture Maps' + (it.src ? ' · ' + esc(it.src) : '')}</div></div>`;
   }
   // категории «Найти рядом / По пути»: добавляем заведения Overture
   const CAT_OV = { fuel:/gas_station|fuel/, ev:/charging/, food:/restaurant|fast_food|pizza|burger|sushi|eatery/, cafe:/coffee|cafe|bakery|tea/, pharm:/pharmacy|drugstore/,
@@ -3067,7 +3111,7 @@ body.navmode #tQuest{display:none}
     const db = await loadPlaces();
     return db.filter(p => re.test(p.r[3]) && p.r[1] > s && p.r[1] < n && p.r[0] > w && p.r[0] < e)
       .filter(p => !have.some(h => dist([h.lng, h.lat], [p.r[0], p.r[1]]) < 40))
-      .map(p => ({ lng:p.r[0], lat:p.r[1], name:p.r[2], hours:'' }));
+      .map(p => ({ lng:p.r[0], lat:p.r[1], name:p.r[2] + (p.r[11] ? ' · Реклама' : ''), hours:p.r[8] || '' }));
   }
 
   // ---------- Диспетчер: какая машина приедет первой (по дорогам, а не по прямой) ----------
@@ -3581,7 +3625,6 @@ body.navmode #tQuest{display:none}
       const dm = Math.round((best.duration - r.duration) * (r._f || 1) / 60), dk = (best.distance - r.distance) / 1000;
       if (dm >= 2) parts.push(`быстрее соседнего на ${dm} мин`);
       else if (dm <= -2) parts.push(`на ${-dm} мин дольше${dk > 0.5 ? `, зато короче на ${dk.toFixed(1).replace('.', ',')} км` : ''}`);
-      else parts.push('по времени как соседний');
     }
     if (state.mode === 'car'){
       const nc = cams.filter(x => lineDist([x.lng, x.lat], c).d < 25).length;
@@ -4291,6 +4334,257 @@ body.navmode #tQuest{display:none}
   setTimeout(proactive, 12000);
   setInterval(() => { if (document.visibilityState === 'visible') proactive(); }, 20 * 60e3);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(proactive, 4000); });
+
+  // =====================================================================
+  // ---------- 1.8: справочник — Overture + OpenStreetMap + карточки владельцев ----------
+  // строка: [lng, lat, name, cat, addr, phone, web, src, hours, desc, bizId, promo]
+  function mergePlaces(biz, ov, osm){
+    const grid = new Map(), out = [];
+    const cell = (x, y) => Math.round(x * 500) + ':' + Math.round(y * 500);
+    const find = (r, k) => {
+      const [cx, cy] = cell(r[0], r[1]).split(':').map(Number);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++)
+        for (const e of grid.get((cx + dx) + ':' + (cy + dy)) || [])
+          if ((e.k === k || (k.length > 4 && (e.k.startsWith(k) || k.startsWith(e.k)))) && dist([e.r[0], e.r[1]], [r[0], r[1]]) < 90) return e;
+      return null;
+    };
+    const add = r => {
+      if (!r || r[0] == null || !r[2]) return;
+      const k = normKey(r[2]), dup = find(r, k);
+      if (dup){
+        for (let i = 3; i <= 8; i++) if (!dup.r[i] && r[i]) dup.r[i] = r[i];   // дополняем пустые поля
+        return;
+      }
+      const e = { r:[...r], k, c:normKey(catRu(r[3])) }; out.push(e);
+      const key = cell(r[0], r[1]); (grid.get(key) || grid.set(key, []).get(key)).push(e);
+    };
+    biz.forEach(add); ov.forEach(add); osm.forEach(add);
+    return out;
+  }
+  Object.assign(CAT_RU, { library:'Библиотека', police:'Полиция', toilet:'Туалет', market:'Рынок', car_rental:'Прокат авто', driving_school:'Автошкола',
+    night_club:'Ночной клуб', community_center:'Дом культуры', event_venue:'Площадка для событий', currency_exchange:'Обмен валют', money_transfer:'Денежные переводы',
+    food_court:'Фудкорт', arts_center:'Арт-центр', court:'Суд', embassy:'Посольство', optician:'Оптика', jewelry_store:'Ювелирный', bookstore:'Книги',
+    cosmetics_store:'Косметика', toy_store:'Игрушки', sporting_goods:'Спорттовары', butcher:'Мясо', liquor_store:'Алкоголь', gift_shop:'Подарки',
+    computer_store:'Компьютеры', kiosk:'Киоск', medical_supply:'Медтовары', attraction:'Достопримечательность', guest_house:'Гостевой дом',
+    apartment_rental:'Квартиры посуточно', art_gallery:'Галерея', sports_center:'Спорткомплекс', water_park:'Аквапарк', stadium:'Стадион',
+    ice_rink:'Каток', dog_park:'Площадка для собак', place_of_worship:'Храм', fast_food_restaurant:'Фастфуд', ev_charging_station:'Зарядка',
+    car_wash:'Автомойка', tire_shop:'Шиномонтаж', medical_center:'Медцентр', convenience_store:'Магазин у дома', coffee_shop:'Кофейня',
+    outpost:'Пункт выдачи заказов', office_government:'Госучреждение', pawnbroker:'Ломбард', confectionery:'Кондитерская', variety_store:'Товары для дома', copyshop:'Копицентр', beverages:'Напитки', greengrocer:'Овощи и фрукты', seafood:'Рыба', mobile_phone:'Телефоны', bag:'Сумки', perfumery:'Парфюмерия', car_repair:'Автосервис', bicycle_rental:'Прокат велосипедов', office_diplomatic:'Посольство', office_company:'Компания', office_yes:'Офис', office_telecommunication:'Связь', sauna:'Баня, сауна', money_lender:'Микрокредиты', houseware:'Товары для дома', office_financial_advisor:'Финансы', artwork:'Арт-объект', farm:'Фермерские продукты', tobacco:'Табак', office_lawyer:'Юрист', erotic:'Для взрослых', office_insurance:'Страхование', travel_agency:'Турагентство', public_bath:'Баня', doors:'Двери', mosque:'Мечеть' });
+  const catRu0 = catRu;
+  catRu = c => CAT_RU[c] || (/^office_/.test(c || '') ? 'Офис' : /^craft_/.test(c || '') ? 'Мастерская' : /^healthcare_/.test(c || '') ? 'Медицина' : catRu0(c));
+  loadPlaces().then(db => { drawLogos(db); }).catch(() => {});
+
+  // ---------- 1.8: логотипы рекламодателей на карте ----------
+  let logoMk = [];
+  function logoUpd(){ const show = map.getZoom() >= 12.5 && !driving; logoMk.forEach(m => m.getElement().style.display = show ? '' : 'none'); }
+  function drawLogos(db){
+    logoMk.forEach(m => m.remove()); logoMk = [];
+    (db || []).filter(e => e.r[11] === 'logo').slice(0, 60).forEach(e => {
+      const el = document.createElement('div'); el.className = 'logo-pin';
+      el.innerHTML = `${esc(e.r[2])}<small>Реклама</small>`;
+      el.onclick = ev => { ev.stopPropagation(); const r = e.r; pick({ lon:r[0], lat:r[1], name:r[2], ov:true, cat:r[3], addr:r[4], phone:r[5], web:r[6], src:r[7], hours:r[8], desc:r[9], bid:r[10], promo:r[11], display_name:r[2], address:{} }); };
+      const m = new maplibregl.Marker({ element:el, anchor:'bottom' }).setLngLat([e.r[0], e.r[1]]).addTo(map);
+      logoMk.push(m);
+    });
+    if (!drawLogos.bound){ drawLogos.bound = true; map.on('zoomend', logoUpd); }
+    logoUpd();
+  }
+
+  // ---------- 1.8: «Добавить организацию» — бесплатная карточка и заявка на продвижение ----------
+  const BIZ_CATS = ['cafe', 'coffee_shop', 'restaurant', 'fast_food_restaurant', 'bakery', 'supermarket', 'convenience_store', 'pharmacy', 'medical_center', 'dentist',
+    'beauty_salon', 'hair_salon', 'barber', 'fitness_center', 'automotive_repair', 'car_wash', 'tire_shop', 'auto_parts_store', 'gas_station', 'hotel', 'hostel',
+    'clothing_store', 'shoe_store', 'electronics_store', 'mobile_phone_store', 'furniture_store', 'hardware_store', 'florist', 'print_shop', 'advertising_agency',
+    'education', 'kindergarten', 'real_estate_agent', 'lawyer', 'notary', 'veterinarian', 'pet_store', 'laundry', 'professional_service', 'shopping'];
+  $('#bizCat').innerHTML = BIZ_CATS.map(c => `<option value="${c}">${esc(catRu(c))}</option>`).join('');
+  let bizAt = null, bizEditId = '', lastItem = null;
+  let bizToken = store.get('bizToken', ''); if (!bizToken){ bizToken = rnd(24); store.set('bizToken', bizToken); }
+  let myBiz = store.get('myBiz', []);
+  const pick0 = pick;
+  pick = function(it){ lastItem = it; pick0(it); };
+  function openBiz(p, it){
+    popup?.remove();
+    bizAt = p || myPos() || map.getCenter(); bizEditId = it?.bid && myBiz.includes(it.bid) ? it.bid : '';
+    $('#bizTitle').textContent = bizEditId ? '✏ Изменить карточку' : '🏢 Ваша организация на карте';
+    $('#bizName').value = it?.name || '';
+    $('#bizAddr').value = it?.addr || ''; $('#bizPhone').value = it?.phone || ''; $('#bizWeb').value = it?.web || ''; $('#bizDesc').value = it?.desc || '';
+    if (it?.cat && BIZ_CATS.includes(it.cat)) $('#bizCat').value = it.cat;
+    if (!$('#bizAddr').value) reverse(bizAt).then(a => { if (!$('#bizAddr').value && !/^\d/.test(a)) $('#bizAddr').value = a; });
+    document.querySelector('input[name="bizWant"][value=""]').checked = true; $('#bizContact').hidden = true;
+    $('#bizSheet').hidden = false;
+  }
+  document.querySelectorAll('input[name="bizWant"]').forEach(r => r.onchange = () => { $('#bizContact').hidden = !document.querySelector('input[name="bizWant"]:checked').value; });
+  $('#bizOpen').onclick = () => { $('#settings').hidden = true; openBiz(null, null); toast('Точка организации — центр карты. Точнее: зажмите место на карте → 🏢'); };
+  $('#bizSend').onclick = async () => {
+    const name = $('#bizName').value.trim(); if (name.length < 2) return toast('Напишите название');
+    const want = document.querySelector('input[name="bizWant"]:checked').value, contact = $('#bizContact').value.trim();
+    if (want && contact.length < 6) return toast('Оставьте телефон или WhatsApp — менеджер свяжется по продвижению');
+    const days = $('#bizDays').value, hours = days === '24/7' ? '24/7' : days ? `${days} ${$('#bizFrom').value}-${$('#bizTo').value}` : '';
+    const body = { id:bizEditId, token:bizToken, name, cat:$('#bizCat').value, addr:$('#bizAddr').value, phone:$('#bizPhone').value, web:$('#bizWeb').value,
+      hours, desc:$('#bizDesc').value, want, contact, lng:bizAt.lng, lat:bizAt.lat };
+    const b = $('#bizSend'); b.disabled = true;
+    try{
+      const r = await fetch('/api/business', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 429) throw new Error('На сегодня лимит — 5 карточек. Завтра можно ещё.');
+      if (r.status === 403) throw new Error('Изменить карточку можно только с того телефона, с которого её добавили.');
+      if (!r.ok || !j.ok) throw new Error('Не удалось сохранить. Проверьте интернет.');
+      if (!myBiz.includes(j.id)){ myBiz.push(j.id); store.set('myBiz', myBiz); }
+      placesDb = null; placesLoading = null; loadPlaces().then(drawLogos);
+      $('#bizSheet').hidden = true; addPts(20, 'за организацию');
+      mascot('happy', want ? `Карточка «${name}» на карте! Менеджер свяжется с вами по продвижению 🐾` : `Карточка «${name}» на карте — её уже видно в поиске 🐾 +20`, 7000);
+    }catch(e){ toast(e.message); }
+    b.disabled = false;
+  };
+
+  // ---------- 1.8: отзывы ----------
+  const placeId = p => 'p' + hash(normKey(p.name) + (+p.lng).toFixed(3) + (+p.lat).toFixed(3));
+  const stars = n => '★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n));
+  async function reviewsBox(p, box){
+    if (!box) return; const id = placeId(p);
+    box.innerHTML = '<p class="hint">Загружаю отзывы…</p>';
+    let d = { n:0, avg:0, items:[] };
+    try{ d = await (await fetch('/api/reviews?id=' + id)).json(); }catch{}
+    let mine = 0;
+    box.innerHTML = `<div class="gis-res">${d.n ? `<div><b style="color:#f5a623">${stars(d.avg)}</b> ${String(d.avg).replace('.', ',')} · ${d.n} ${d.n === 1 ? 'отзыв' : d.n < 5 ? 'отзыва' : 'отзывов'}</div>` : '<div class="hint">Отзывов пока нет — будьте первым!</div>'}
+      ${(d.items || []).slice(0, 5).map(x => `<div class="rv-item"><b style="color:#f5a623">${stars(x.r)}</b> ${esc(x.t || '')}<div class="hint" style="font-size:11px">${new Date(x.ts).toLocaleDateString('ru-RU')}</div></div>`).join('')}
+      <div class="rv-item"><div class="rv-stars">${[1, 2, 3, 4, 5].map(n => `<button data-st="${n}" aria-label="${n} из 5">★</button>`).join('')}</div>
+      <textarea class="inp" rows="2" maxlength="500" placeholder="Что понравилось, что нет? (без ссылок)" data-rvt></textarea>
+      <button class="btn primary" data-rvs style="margin-top:4px;width:100%">Оставить отзыв (+5)</button></div></div>`;
+    box.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { mine = +b.dataset.st; box.querySelectorAll('[data-st]').forEach(x => x.classList.toggle('on', +x.dataset.st <= mine)); });
+    box.querySelector('[data-rvs]').onclick = async () => {
+      if (!mine) return toast('Поставьте оценку — от 1 до 5 звёзд');
+      try{
+        const r = await fetch('/api/reviews', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ id, r:mine, t:box.querySelector('[data-rvt]').value }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) throw new Error(j.error === 'links' ? 'Ссылки в отзывах нельзя' : j.error === 'words' ? 'Уберите грубые слова' : 'Не удалось отправить');
+        addPts(5, 'за отзыв'); toast('Спасибо за отзыв! +5'); reviewsBox(p, box);
+      }catch(e){ toast(e.message); }
+    };
+  }
+  const showPopup1 = showPopup;
+  showPopup = function(p, extra){
+    const el = showPopup1(p, extra), row = el.querySelector('.pop-save');
+    const named = p.name && !/^(Точка|Определяю|Моё местоположение|-?\d)/.test(p.name);
+    if (row && named && !row.querySelector('[data-s="rv"]')){
+      row.insertAdjacentHTML('afterbegin', '<button class="chip" data-s="rv" title="Отзывы и оценка">⭐ Отзывы</button>');
+      row.querySelector('[data-s="rv"]').onclick = ev => { ev.stopPropagation(); reviewsBox(p, el.querySelector('[data-gis]')); };
+    }
+    if (row && !row.querySelector('[data-s="biz"]')){
+      const it = lastItem && lastItem.name === p.name && Math.abs(+lastItem.lon - p.lng) < 1e-5 ? lastItem : null;
+      const mineB = it?.bid && myBiz.includes(it.bid);
+      row.insertAdjacentHTML('beforeend', `<button class="chip" data-s="biz" title="${mineB ? 'Изменить мою карточку' : 'Добавить организацию здесь'}">${mineB ? '✏ Моя карточка' : '🏢 Это моё дело'}</button>`);
+      row.querySelector('[data-s="biz"]').onclick = ev => { ev.stopPropagation(); openBiz(p, it); };
+    }
+    return el;
+  };
+
+  // ---------- 1.8: пробки по данным наших водителей (бета) ----------
+  let probeOn = store.get('probeOn', null);
+  $('#setProbe').checked = !!probeOn; $('#setProbe').onchange = e => { probeOn = e.target.checked; store.set('probeOn', probeOn); };
+  $('#probeYes').onclick = () => { probeOn = true; store.set('probeOn', true); $('#setProbe').checked = true; $('#probeAsk').hidden = true; mascot('happy', 'Спасибо! Вместе соберём пробки Астаны 🐾', 5000); };
+  $('#probeNo').onclick = () => { probeOn = false; store.set('probeOn', false); $('#probeAsk').hidden = true; };
+  const live = { sent:0, t:0 };
+  const startNav2 = startNav;
+  startNav = async function(isDemo){
+    await startNav2(isDemo);
+    if (!driving || isDemo || state.mode !== 'car') return;
+    if (probeOn === null) setTimeout(() => { if (driving && !lastKmh) $('#probeAsk').hidden = false; }, 2500);
+    live.sent = 0; clearInterval(live.t); live.t = setInterval(sendLive, 120e3);
+  };
+  const stopDrive2 = stopDrive;
+  stopDrive = function(){ if (driving && !demo) sendLive(); clearInterval(live.t); stopDrive2(); };
+  async function sendLive(){
+    const st = nav.stats; if (!probeOn || !st || st.demo || !st.track?.length) return;
+    const start = st.track[0], end = state.to ? [state.to.lng, state.to.lat] : null;
+    const pts = st.track.slice(live.sent).filter(q => dist(start, q) > 300 && (!end || dist(end, q) > 300))
+      .map(([x, y, t]) => [+x.toFixed(5), +y.toFixed(5), Math.round((t - st.t0) / 1000)]);
+    live.sent = st.track.length;
+    if (pts.length < 2) return;
+    try{ await fetch('/api/probes', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ live:true, t0:st.t0, pts }) }); }catch{}
+  }
+  OVL.push({ id:'traffic', e:'🚦', n:'Пробки — бета, по данным водителей «Карты Астаны»', kind:'traffic' });
+  const ovlOn2 = ovlOn, ovlOff2 = ovlOff;
+  let trafT = 0;
+  ovlOn = o => o.kind === 'traffic' ? loadTraffic(true) : ovlOn2(o);
+  ovlOff = o => { if (o.kind !== 'traffic') return ovlOff2(o); clearInterval(trafT); if (map.getLayer('o-traffic')) map.removeLayer('o-traffic'); };
+  async function loadTraffic(first){
+    try{
+      const j = await (await fetch('/api/traffic')).json();
+      const fc = { type:'FeatureCollection', features:(j.cells || []).map(([x, y, v, n]) => ({ type:'Feature', geometry:{ type:'Point', coordinates:[x, y] }, properties:{ v, n } })) };
+      if (!ovlIsOn(ovlById('traffic'))) return;
+      if (!map.getSource('o-traffic')) map.addSource('o-traffic', { type:'geojson', data:fc }); else map.getSource('o-traffic').setData(fc);
+      if (!map.getLayer('o-traffic')) map.addLayer({ id:'o-traffic', type:'circle', source:'o-traffic',
+        paint:{ 'circle-color':['step', ['get', 'v'], '#e53935', 15, '#fb8c00', 35, '#43a047'], 'circle-opacity':0.75, 'circle-blur':0.3,
+          'circle-radius':['interpolate', ['linear'], ['zoom'], 11, 3, 15, 9, 17, 14] } }, beforeAlts());
+      if (first) toast(fc.features.length ? `🚦 Бета: скорость по ${j.drivers} поездкам за последние 30 минут. 🔴 медленно · 🟠 средне · 🟢 свободно` : '🚦 Пока мало данных: пробки появятся, когда водители включат «Помогать считать пробки»');
+      clearInterval(trafT); trafT = setInterval(() => loadTraffic(false), 180e3);
+    }catch{ if (first) toast('Пробки сейчас не загрузились'); }
+  }
+
+  // ---------- 1.8: экономия батареи ----------
+  let eco = store.get('eco', false);
+  $('#setEco').checked = eco;
+  const animateDashes0 = animateDashes;
+  animateDashes = t => { if (!eco) animateDashes0(t); };
+  const start3DCar0 = start3DCar;
+  start3DCar = async () => { if (!eco) return start3DCar0(); };
+  const applySnow0 = applySnow;
+  applySnow = () => eco ? setSnow(false) : applySnow0();
+  function setEco(on){
+    eco = on; store.set('eco', on); document.body.classList.toggle('eco', on);
+    if (on){ if (state.d3) $('#t3d').click(); setSnow(false); stop3DCar(); toast('🔋 Экономия: 2D, без анимаций и снега'); }
+    else { applySnow(); requestAnimationFrame(animateDashes); }
+  }
+  $('#setEco').onchange = e => setEco(e.target.checked);
+  if (eco) setTimeout(() => setEco(true), 800);
+
+  // ---------- 1.8: интерфейс на казахском ----------
+  const KK = {
+    'Адрес, улица или место':'Мекенжай, көше немесе орын', 'Маршрут':'Маршрут', '· Откуда':'· Қайдан', '· Куда':'· Қайда', 'Определяю…':'Анықтап жатырмын…',
+    'Адрес или точка на карте':'Мекенжай немесе картадағы нүкте', 'Моё местоположение':'Менің орным', '＋ Остановка':'＋ Аялдама', '🔍 По пути':'🔍 Жол бойында',
+    '🕒 Выезд':'🕒 Шығу', 'Сейчас':'Қазір', 'Через 15 мин':'15 минуттан кейін', 'Через 30 мин':'30 минуттан кейін', 'Через 1 час':'1 сағаттан кейін', 'Через 2 часа':'2 сағаттан кейін',
+    'Утром в 8:30':'Таңертең 8:30-да', 'Днём в 13:00':'Күндіз 13:00-де', 'Вечером в 18:30':'Кешке 18:30-да', 'Ночью в 23:30':'Түнде 23:30-да',
+    '🚗 Авто':'🚗 Көлік', '🚶 Пешком':'🚶 Жаяу', '🚲 Вело':'🚲 Велосипед', '🛴 Самокат':'🛴 Самокат', '🚗 Поехали':'🚗 Жүрдік', '▶ Демо':'▶ Демо', '▶ Демо-проезд':'▶ Демо-жол',
+    'Поделиться':'Бөлісу', 'Сбросить':'Тазалау', 'Как ехать':'Қалай жүру керек', 'Строю маршрут…':'Маршрут құрып жатырмын…', '■ Завершить':'■ Аяқтау', '■ Остановить':'■ Тоқтату',
+    'Настройки':'Баптаулар', 'Голос подсказок':'Нұсқау дауысы', 'Вид в поездке':'Жолдағы көрініс', 'За машиной':'Көліктің артынан', 'Классика':'Классика', 'Сверху':'Жоғарыдан',
+    'Тёмная карта':'Қараңғы карта', 'Цвет машины':'Көліктің түсі', 'Снег на карте':'Картадағы қар', 'Стоимость поездки':'Жол құны', 'Маршрут для авто':'Көлікке арналған маршрут',
+    'Без платных дорог':'Ақылы жолдарсыз', 'Без автомагистралей':'Автомагистральдарсыз', 'Мои места':'Менің орындарым', 'Мои поездки':'Менің сапарларым', 'Без интернета':'Интернетсіз',
+    '⬇ Скачать карту Астаны':'⬇ Астана картасын жүктеу', '📲 Установить как приложение':'📲 Қосымша ретінде орнату', 'Очистить историю поиска':'Іздеу тарихын тазалау',
+    '🔄 Проверить обновления':'🔄 Жаңартуды тексеру', 'Как пользоваться':'Қалай пайдалану керек', 'Предупреждения в поездке':'Жолдағы ескертулер',
+    '🐆 Барсёнок Барыс — помощник на карте':'🐆 Барыс барысшасы — картадағы көмекші', '🏢 Добавить свою организацию — бесплатно':'🏢 Ұйымыңызды қосу — тегін',
+    '🔋 Экономия батареи: без 3D, анимаций и снега':'🔋 Батареяны үнемдеу: 3D, анимация мен қарсыз', '🚦 Помогать считать пробки (анонимно)':'🚦 Кептелістерді санауға көмектесу (жасырын)',
+    'Звук':'Дыбыс', 'Событие':'Оқиға', 'Барыс':'Барыс', 'Ещё':'Тағы', 'Стоп':'Тоқта', 'Вид':'Көрініс', 'Ночь':'Түн', 'На стекло':'Әйнекке', 'По пути':'Жолда', 'Ссылка':'Сілтеме',
+    'км/ч':'км/сағ', 'Вы на месте':'Сіз келдіңіз', 'Готово':'Дайын', '⭐ В избранное':'⭐ Таңдаулыға', 'Что на дороге?':'Жолда не болды?', 'Найти по пути':'Жол бойынан табу',
+    'Найти рядом':'Жақыннан табу', 'Недавние':'Соңғылар', 'Очистить':'Тазалау', 'Слои карты':'Карта қабаттары', 'Основа':'Негіз', 'Поверх карты':'Карта үстінде', 'Инструменты':'Құралдар',
+    '🗺 Схема':'🗺 Сызба', '🛰 Спутник':'🛰 Серік', 'Спут':'Серік', '📏 Линейка и площадь':'📏 Сызғыш және аудан', '🚚 Диспетчер':'🚚 Диспетчер', '⏺ Записать поездку':'⏺ Сапарды жазу',
+    '📂 Открыть GPX / KML':'📂 GPX / KML ашу', '🛡 Провожалка':'🛡 Шығарып салу', '🎯 Квесты Барыса':'🎯 Барыстың тапсырмалары', '🐆 Эй, Барыс':'🐆 Әй, Барыс',
+    'Или напишите команду…':'Немесе команданы жазыңыз…', '🚕 Такси сюда':'🚕 Мұнда такси', 'Здесь не так?':'Мұнда қате ме?', 'Отправить (+5 очков)':'Жіберу (+5 ұпай)',
+    '🏠 Дом':'🏠 Үй', '🏠 Дом +':'🏠 Үй +', '💼 Работа':'💼 Жұмыс', '💼 Работа +':'💼 Жұмыс +', 'Отсюда':'Осы жерден', 'Сюда':'Осында', '＋ Заехать':'＋ Соғу',
+    '⛽ АЗС':'⛽ ЖҚС', '🔌 Зарядка':'🔌 Зарядтау', '🍔 Еда':'🍔 Тамақ', '☕ Кофе':'☕ Кофе', '💊 Аптека':'💊 Дәріхана', '🛒 Продукты':'🛒 Азық-түлік', '🏧 Банкомат':'🏧 Банкомат',
+    '🅿️ Парковка':'🅿️ Тұрақ', '🚿 Автомойка':'🚿 Көлік жуу', '🛞 Шиномонтаж':'🛞 Шиномонтаж', '🚻 Туалет':'🚻 Дәретхана', '💧 Вода':'💧 Су', '🐕 Для собак':'🐕 Иттерге',
+    '🛝 Детская площадка':'🛝 Балалар алаңы', '🏥 Больница':'🏥 Аурухана', '🟢 Открыто сейчас':'🟢 Қазір ашық', '⭐ Отзывы':'⭐ Пікірлер', '🏢 Это моё дело':'🏢 Бұл менің ісім',
+    'Сохранить карточку':'Карточканы сақтау', '🏢 Ваша организация на карте':'🏢 Сіздің ұйымыңыз картада', 'Название *':'Атауы *', 'Чем занимаетесь':'Немен айналысасыз',
+    'Адрес':'Мекенжай', 'Часы работы':'Жұмыс уақыты', 'Коротко о вас':'Өзіңіз туралы қысқаша', 'Продвижение':'Жарнама', 'Бесплатная карточка':'Тегін карточка',
+    'Язык интерфейса · Тіл':'Интерфейс тілі · Язык', 'Нет интернета · карта из памяти':'Интернет жоқ · карта жадтан', 'Дальше ▶':'Әрі қарай ▶', '✓ Я дошёл':'✓ Жеттім',
+  };
+  let uiLang = store.get('uiLang', 'ru');
+  $('#setLang').value = uiLang;
+  $('#setLang').onchange = e => { store.set('uiLang', e.target.value); toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
+  const KK_ATTR = ['placeholder', 'aria-label', 'title', 'data-l'];
+  function trNode(n){ const t = n.nodeValue, k = t && t.trim(); if (k && KK[k] && KK[k] !== k) n.nodeValue = t.replace(k, KK[k]); }
+  function trTree(root){
+    if (root.nodeType === 3) return trNode(root);
+    if (root.nodeType !== 1 || root.closest?.('#map .maplibregl-canvas-container, script, style')) return;
+    KK_ATTR.forEach(a => { const v = root.getAttribute(a)?.trim(); if (v && KK[v] && KK[v] !== v) root.setAttribute(a, KK[v]); });
+    if (root.tagName === 'OPTION' || root.tagName === 'BUTTON' || root.childNodes.length) root.childNodes.forEach(trTree);
+  }
+  if (uiLang === 'kk'){
+    document.documentElement.lang = 'kk';
+    trTree(document.body);
+    new MutationObserver(ms => ms.forEach(m => { if (m.type === 'characterData') trNode(m.target); else m.addedNodes.forEach(trTree); }))
+      .observe(document.body, { childList:true, subtree:true, characterData:true });
+    setTimeout(() => { if (!voiceId.startsWith('az:kk')) toast('Дауыс нұсқаулары қазақша болуы үшін баптауларда Айгүл немесе Дәулет дауысын таңдаңыз'); }, 2500);
+  }
 
   // ---------- Настройки ----------
   function openSettings(){

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Карточки и реклама</title>
+<style>
+:root{--bg:#f4f6f8;--fg:#14202b;--muted:#5d6c79;--line:#dfe4ea;--card:#fff;--accent:#0a8f8a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1620;--fg:#e7eef3;--muted:#9aa8b4;--line:#253241;--card:#16202c;--accent:#20b8b0}}
+:root[data-theme="dark"]{--bg:#0f1620;--fg:#e7eef3;--muted:#9aa8b4;--line:#253241;--card:#16202c;--accent:#20b8b0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px}
+h1{font-size:20px;margin:0 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input,select,button{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+button{cursor:pointer}
+button.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;display:grid;gap:6px}
+.muted{color:var(--muted);font-size:13px}
+.want{background:#fff3c4;color:#6b5200;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700}
+.on{background:#e5f4e4;color:#1f6b2a;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700}
+main{max-width:760px;margin:0 auto}
+</style>
+</head>
+<body>
+<main>
+<h1>🏢 Карточки организаций и реклама</h1>
+<div class="row"><input id="key" type="password" placeholder="Ключ администратора" style="flex:1;min-width:0"><button class="pri" id="load">Открыть</button></div>
+<p class="muted" id="info">Ключ — значение Secret ADMIN_KEY в настройках Cloudflare Pages.</p>
+<div class="row"><label><input type="checkbox" id="onlyWant"> только заявки на продвижение</label></div>
+<div id="list"></div>
+</main>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  let items = [];
+  try{ $('#key').value = sessionStorage.getItem('ak') || ''; }catch{}
+  const api = (m, q, body) => fetch(`/api/business?admin=${encodeURIComponent($('#key').value)}${q || ''}`, { method:m, headers:{ 'Content-Type':'application/json' }, body:body && JSON.stringify(body) }).then(r => r.json());
+  async function load(){
+    try{ sessionStorage.setItem('ak', $('#key').value); }catch{}
+    const j = await api('GET').catch(() => ({}));
+    if (!j.admin){ $('#info').textContent = 'Ключ не подошёл или ADMIN_KEY не задан в Cloudflare.'; return; }
+    items = j.items.sort((a, b) => b.ts - a.ts);
+    const wants = items.filter(x => x.want).length;
+    $('#info').textContent = `Карточек: ${items.length} · заявок на продвижение: ${wants}`;
+    render();
+  }
+  function render(){
+    const list = $('#onlyWant').checked ? items.filter(x => x.want) : items;
+    $('#list').innerHTML = list.map(x => `<div class="card">
+      <div><b>${esc(x.name)}</b> ${x.want ? `<span class="want">хочет: ${x.want === 'logo' ? 'логотип 100 000 ₸' : 'приоритет 50 000 ₸'}</span>` : ''} ${x.promo && x.promo !== 'none' ? `<span class="on">включено: ${x.promo}${x.until ? ' до ' + new Date(x.until).toLocaleDateString('ru-RU') : ''}</span>` : ''} ${x.hidden ? '<span class="want">скрыта</span>' : ''}</div>
+      <div class="muted">${esc(x.addr)} · ${esc(x.phone)} · ${esc(x.web)} · ${esc(x.hours)}</div>
+      ${x.contact ? `<div>📞 Связаться: <a href="tel:${esc(x.contact.replace(/[^\d+]/g, ''))}">${esc(x.contact)}</a> · <a target="_blank" rel="noopener" href="https://wa.me/${esc(x.contact.replace(/\D/g, ''))}">WhatsApp</a></div>` : ''}
+      <div class="muted">${esc(x.desc)} · добавлено ${new Date(x.ts).toLocaleString('ru-RU')}</div>
+      <div class="row">
+        <button data-a="priority" data-id="${esc(x.id)}">Приоритет на 30 дней</button>
+        <button data-a="logo" data-id="${esc(x.id)}">Логотип на 30 дней</button>
+        <button data-a="none" data-id="${esc(x.id)}">Снять рекламу</button>
+        <button data-a="hide" data-id="${esc(x.id)}">${x.hidden ? 'Показать' : 'Скрыть'}</button>
+        <button data-a="del" data-id="${esc(x.id)}">Удалить</button>
+      </div></div>`).join('') || '<p class="muted">Пока пусто.</p>';
+    document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.id, a = b.dataset.a, x = items.find(y => y.id === id);
+      if (a === 'del'){ if (!confirm('Удалить карточку «' + x.name + '»?')) return; await api('DELETE', '&id=' + encodeURIComponent(id)); }
+      else if (a === 'hide') await api('PATCH', '', { id, hidden:!x.hidden });
+      else await api('PATCH', '', { id, promo:a, until:a === 'none' ? 0 : Date.now() + 30 * 864e5 });
+      load();
+    });
+  }
+  $('#load').onclick = load; $('#onlyWant').onchange = render;
+  if ($('#key').value) load();
+})();
+</script>
+</body>
+</html>
