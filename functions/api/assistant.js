@@ -6,7 +6,7 @@
 const MODELS = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'];
 const CATS = ['fuel', 'ev', 'food', 'cafe', 'pharm', 'shop', 'atm', 'park', 'wash', 'tyre', 'wc'];
 const EVENTS = ['accident', 'jam', 'works', 'closed', 'police', 'pothole', 'danger', 'ice', 'snow'];
-const ACTIONS = ['route_to', 'find_category', 'report', 'eta', 'weather', 'taxi', 'start_nav', 'stop_nav', 'my_car', 'quests', 'none'];
+const ACTIONS = ['route_to', 'find_category', 'report', 'eta', 'weather', 'taxi', 'start_nav', 'stop_nav', 'my_car', 'quests', 'about', 'open_now', 'where_am_i', 'fuel_price', 'events_ahead', 'nearby', 'facts', 'none'];
 
 // грубое ограничение: не больше 40 запросов в час с одного адреса (в памяти воркера)
 const hits = new Map();
@@ -33,7 +33,21 @@ function prompt(lang, ctx) {
 - stop_nav {} — завершить поездку
 - my_car {} — где я оставил машину
 - quests {} — открыть квесты
+- about {"query":"место или тема"} — рассказать о месте Астаны (из Википедии)
+- open_now {"query":"название или категория"} — работает ли сейчас
+- where_am_i {} — где я, какой район
+- fuel_price {"kind":"a92|a95|dt|gas"} — где дешевле топливо
+- events_ahead {} — что на дороге впереди: ДТП, пробки, камеры
+- nearby {} — что интересного рядом
+- facts {"topic":"sos|parking|lrt|scooter|districts|roads"} — справка по городу
 - none {} — просто ответить
+Факты об Астане (используй, не выдумывай другие):
+- Районы: Есиль, Алматы, Сарыарка, Байқоңыр, Нұра.
+- Экстренные номера: 112, 101 пожарные, 102 полиция, 103 скорая, 104 газ, 109 iKomek (городские проблемы).
+- Парковки: зоны 200/150/100 ₸ в час, оплата за день до 23:59 в UIMS Parking.
+- LRT: 18 станций от аэропорта до «Нұрлы жол», 6:00–23:00, поездка 200 ₸, месяц 7 500 ₸, оплата QR в Kaspi.
+- Самокаты: с 25.08.2026 по тротуарам нельзя, штраф 8 650 ₸.
+- Трассы: КазАвтоЖол 1403, приложение Sapar.
 Контекст: ${JSON.stringify(ctx).slice(0, 600)}
 Не выдумывай адреса, цены и часы работы. Если не знаешь — так и скажи.`;
 }
