@@ -447,7 +447,7 @@ body.navmode #tQuest{display:none}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.5.0</p>
+    <p class="set-ver">Версия 1.5.1</p>
   </div>
 </div>
 
@@ -3757,11 +3757,31 @@ body.navmode #tQuest{display:none}
     if (muted) mascot('happy', t, 6000); else speak({ ru:t, kk:t });
   }
   const waitRoute = prev => new Promise(ok => { const t0 = Date.now(); const k = setInterval(() => { if ((state.routes.length && state.routes !== prev) || Date.now() - t0 > 9000){ clearInterval(k); ok(state.routes[state.active]); } }, 250); });
-  async function routeToPlace(query){
-    const text = query.replace(/[.!?]+$/, '').trim(); if (text.length < 2) return 'Куда едем? Скажите название или адрес.';
-    let it = (await searchPlaces(text).catch(() => []))[0];
-    if (!it) it = (await searchPhoton(text).catch(() => []))[0];
-    if (!it) return `Не нашёл «${text}» в Астане. Скажите адрес по-другому.`;
+  // Как жители называют места → как они записаны на карте
+  const ALIAS = [[/хан ?шат[ыи]р/, 'Хан Шатыр'], [/байтерек|бәйтерек/, 'Байтерек'], [/(^|\s)мег[аиуеой]|mega|силк ве/, 'Mega Silk Way'],
+    [/экспо|expo|нур[ -]?алем|нұр әлем/, 'Нур Алем'], [/старый вокзал|астана[ -]?1|жд вокзал астана/, 'Астана-1'], [/нурлы|нұрлы|новый вокзал|вокзал/, 'Нұрлы жол'],
+    [/аэропорт|әуежай|аэропорт/, 'Международный аэропорт Нурсултан Назарбаев'], [/акорд|ақорда/, 'Акорда'], [/пирамид|дворец мира/, 'Дворец мира и согласия'],
+    [/астана[ -]?арен/, 'Астана Арена'], [/барыс[ -]?арен/, 'Барыс Арена'], [/хазрет|хазірет|султан мечет/, 'Хазрет Султан'], [/керуен/, 'Керуен'],
+    [/азия ?парк|asia park/, 'Asia Park'], [/абу ?даби/, 'Abu Dhabi Plaza'], [/ботаническ/, 'Ботанический сад'], [/центральн[а-я]* парк/, 'Центральный парк'],
+    [/назарбаев университет|назарбаев универ/, 'Назарбаев Университет'], [/атамекен|карта казахстана/, 'Атамекен'], [/триумфальн|арка мангилик/, 'Мәңгілік Ел'],
+    [/шабыт|дворец творчества/, 'Шабыт'], [/опер|астана опера/, 'Астана Опера'], [/хан ?шатр/, 'Хан Шатыр']];
+  // «шатыра», «мегу», «Хан Шатырға» → основа слова для поиска
+  const stem = q => q.split(/\s+/).map(w => w.length > 4 ? w.replace(/(ға дейін|ге дейін|ғa|ға|ге|қа|ке|дан|ден|тан|тен|нан|нен|ого|его|ому|ему|ой|ей|ую|юю|ом|ем|ам|ям|ах|ях|ы|и|у|ю|а|я|е)$/, '') : w).join(' ');
+  async function findPlace(q){
+    const tries = [], a = ALIAS.find(([re]) => re.test(q));
+    if (a) tries.push(a[1]);
+    tries.push(q); const st = stem(q); if (st !== q) tries.push(st);
+    for (const t of tries){
+      const ov = (await searchPlaces(t).catch(() => []))[0]; if (ov) return ov;
+      const ph = (await searchPhoton(t).catch(() => []))[0]; if (ph) return ph;
+    }
+    return null;
+  }
+  async function routeToPlace(query, mode, found){
+    const text = String(query || '').replace(/[.!?,]+/g, ' ').replace(/\s+/g, ' ').trim(); if (text.length < 2) return 'Куда едем? Скажите название или адрес.';
+    if (mode && mode !== state.mode && !driving) setMode(mode);
+    const it = found || await findPlace(low(text));
+    if (!it) return `Не нашёл «${text}» в Астане. Скажите по-другому: название места или улицу с номером дома.`;
     const p = { lng:+it.lon, lat:+it.lat, name:title(it) || text };
     if (driving && !demo && nav.shown) return changeDest(p);
     const prev = state.routes;
@@ -3807,12 +3827,37 @@ body.navmode #tQuest{display:none}
     }
   }
   // простые команды — без ИИ и без интернета
+  const WAKE = /^(?:(?:эй|ей|хей|окей|ok|слушай|привет|сәлем|салем)\s+)*(?:барыс|барис|борис|барсик|барсеночек|барсенок)(?=\s|$)\s*/;
+  const FILL = /(^|\s)(пожалуйста|пожалуйсто|плиз|please|пж|срочно|быстрее|быстро|сейчас|меня|нас|мне|ка|давай|ну|короче|слушай|можешь|можно|ты)(?=\s|$)/g;
+  const MODE_W = [[/пешком|пешочком|жаяу/, 'foot'], [/на (велосипеде|велике|вело)/, 'bike'], [/на самокате|самокат/, 'scoot'], [/на (машине|авто|автомобиле|колесах)|көлікпен/, 'car']];
+  function cleanCmd(raw){
+    let t = low(raw).replace(/[.,!?;:«»"“”()]/g, ' ').replace(/\s+/g, ' ').trim();
+    for (let i = 0; i < 2; i++) t = t.replace(WAKE, '').trim();
+    return t;
+  }
+  // «построй маршрут до хан шатыра пешком» → { place:'хан шатыра', mode:'foot' }
+  function parseRoute(t){
+    let mode = null, s = t;
+    for (const [re, m] of MODE_W) if (re.test(s)){ mode = m; s = s.replace(re, ' '); }
+    s = s.replace(FILL, ' ').replace(/\s+/g, ' ').trim();
+    const INTENT = /(поехали|поедем|поехать|едем|ехать|еду|отвези|отвезти|довези|подвези|вези|маршрут|проложи|построй|доехать|добраться|проехать|попасть|пройти|дойти|веди|навигац|направь|хочу|надо|нужно|собираюсь|го|двигаем|поехал)/;
+    const im = s.match(INTENT);
+    const kk = s.match(/^(.{2,}?)(?:ға|ге|қа|ке)?\s+(?:апар|бар|барамыз|барайық|жол көрсет)(?=\s|$)/);
+    if (kk) return { place:kk[1], mode };
+    if (!im) return null;
+    const after = s.slice(im.index + im[0].length).trim();
+    const pm = after.match(/(?:^|\s)(?:маршрут\s+)?(?:в|во|до|на|к|ко|в сторону|к дому)\s+(.{2,})$/);
+    if (pm) return { place:pm[1].trim(), mode };
+    const rest = after.replace(/^(маршрут|туда)\s*/, '').trim();
+    if (rest.length >= 2 && !/^(домой|на работу)$/.test(rest)) return { place:rest, mode };
+    return null;
+  }
   function localCmd(raw){
-    const t = low(raw).replace(/^(эй|слушай|привет|сәлем)?,?\s*барыс,?\s*/, '').trim();
+    const t = cleanCmd(raw);
     if (!t) return () => 'Слушаю! Скажите, например: «домой» или «найди заправку».';
     if (/^(привет|сәлем|салем|здравствуй)/.test(t)) return () => 'Сәлем! Я Барыс. Скажите, куда едем, или «найди заправку».';
     if (/(что ты умеешь|помощь|команды|не знаю что)/.test(t)) return () => 'Могу: «домой», «на работу», «едем в …», «найди аптеку», «сообщи о ДТП», «сколько ехать», «где моя машина», «погода», «такси», «квесты».';
-    if (/(^|\s)(домой|үйге|додому)(\s|$)/.test(t)) return () => places.home ? routeToHome('home') : 'Дом не сохранён. Зажмите точку на карте и нажмите 🏠.';
+    if (/(^|\s)(домой|үйге|додому|до дома)(\s|$)/.test(t)){ const md = MODE_W.find(([re]) => re.test(t)); if (md && !driving) setMode(md[1]); return () => places.home ? routeToHome('home') : 'Дом не сохранён. Зажмите точку на карте и нажмите 🏠.'; }
     if (/(на работу|в офис|жұмысқа)/.test(t)) return () => places.work ? routeToHome('work') : 'Работа не сохранена. Зажмите точку на карте и нажмите 💼.';
     if (/(где|найди|найти|покажи|моя|мою).{0,12}машин|көлігім/.test(t)) return () => goToCar();
     if (/(без звука|выключи (звук|голос)|замолчи|тише|дыбысты өшір)/.test(t)) return () => { muted = true; $('#navMute').textContent = '🔇'; speechSynthesis?.cancel(); return 'Молчу. Скажите «включи звук», чтобы вернуть голос.'; };
@@ -3826,9 +3871,9 @@ body.navmode #tQuest{display:none}
     const isReport = /(сообщи|отметь|отметить|там|впереди|вижу|тут|здесь|хабарла)/.test(t);
     for (const [type, re] of EV_WORDS) if (re.test(t) && (isReport || t.split(/\s+/).length <= 2)) return () => reportHere(type);
     for (const [id, re] of CAT_WORDS) if (re.test(t)) return () => doAction('find_category', { cat:id });
-    let m = t.match(/^(?:(?:поехали|едем|поедем|маршрут|проложи(?: маршрут)?|построй(?: маршрут)?|как (?:доехать|добраться|пройти)|веди|отвези|навигатор|хочу)\s+)?(?:в|во|до|на|к|ко)\s+(.{2,})$/);
-    if (m) return () => routeToPlace(m[1]);
-    m = t.match(/^(.{2,}?)(?:ға|ге|қа|ке|на|не|а|е)?\s+(?:апар|бар|жол көрсет|барамыз)$/);
+    const rt = parseRoute(t);
+    if (rt) return () => routeToPlace(rt.place, rt.mode);
+    const m = t.match(/^(?:в|во|до|на|к|ко)\s+(.{2,})$/);
     if (m) return () => routeToPlace(m[1]);
     return null;
   }
@@ -3848,12 +3893,21 @@ body.navmode #tQuest{display:none}
     try{
       const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null };
       const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:voiceLang(), ctx }) });
-      if (r.status === 503 || r.status === 404) return reply('Сложные вопросы я научусь понимать совсем скоро. А пока скажите проще: «домой», «найди аптеку», «едем в Хан Шатыр».');
+      if (r.status === 503 || r.status === 404) return reply(await placeFallback(text));
       if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
       const j = await r.json(); if (!j.ok) throw 0;
       const extra = await doAction(j.action, j.args || {}, text);
       reply(extra && j.action !== 'none' ? extra : j.say);
-    }catch{ reply('Не получилось спросить — проверьте интернет. Простые команды работают и без него.'); }
+    }catch{ reply(await placeFallback(text)); }
+  }
+  // ИИ недоступен: короткую фразу пробуем как название места («Хан Шатыр», «Абая 78»)
+  async function placeFallback(text){
+    const t = cleanCmd(text).replace(FILL, ' ').replace(/\s+/g, ' ').trim();
+    if (t && t.split(' ').length <= 6){
+      const it = await findPlace(t);
+      if (it) return routeToPlace(t, null, it);
+    }
+    return 'Не понял 🙈 Скажите так: «едем в Хан Шатыр», «маршрут до Абая 78», «найди аптеку», «домой», «сколько ехать».';
   }
 
   // ---------- Настройки ----------
