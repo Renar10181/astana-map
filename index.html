@@ -447,7 +447,7 @@ body.navmode #tQuest{display:none}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.5.1</p>
+    <p class="set-ver">Версия 1.6.0</p>
   </div>
 </div>
 
@@ -499,7 +499,7 @@ body.navmode #tQuest{display:none}
     <div class="sheet-head"><h2>Слои карты</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
     <div class="set-row"><label>Основа</label><div class="chips"><button class="chip" data-base="map">🗺 Схема</button><button class="chip" data-base="sat">🛰 Спутник</button></div></div>
     <div class="set-row"><label>Поверх карты</label><div id="ovlList" style="display:grid;gap:8px"></div></div>
-    <div class="set-row"><label>Инструменты</label><div class="chips"><button class="chip" id="rulerBtn">📏 Линейка и площадь</button><button class="chip" id="dispBtn">🚚 Диспетчер</button><button class="chip" id="recBtn">⏺ Записать поездку</button></div></div>
+    <div class="set-row"><label>Инструменты</label><div class="chips"><button class="chip" id="rulerBtn">📏 Линейка и площадь</button><button class="chip" id="dispBtn">🚚 Диспетчер</button><button class="chip" id="recBtn">⏺ Записать поездку</button><button class="chip" id="impBtn">📂 Открыть GPX / KML</button><button class="chip" id="impClear" hidden>✕ Убрать трек</button><button class="chip" id="walkBtn">🛡 Провожалка</button></div><input type="file" id="impFile" accept=".gpx,.kml,.geojson,.json,application/gpx+xml,application/vnd.google-earth.kml+xml" hidden></div>
     <p class="hint">Слои 📐🟥🏙 — открытые данные геопортала Астаны (gis.esaulet.kz); их сервер иногда недоступен. Зажмите точку на карте → «ℹ ГИС», чтобы увидеть данные участка.</p>
   </div>
 </div>
@@ -524,6 +524,7 @@ body.navmode #tQuest{display:none}
     <label class="set-check"><input type="checkbox" id="fixOsm" checked> Отправить и в OpenStreetMap — её исправят картографы, и ошибка уйдёт из всех карт</label>
     <button class="btn primary" id="fixSend">Отправить (+5 очков)</button>
     <p class="hint">Без регистрации. Мы получим сообщение и координаты точки — больше ничего.</p>
+    <p class="hint">Яма во дворе, не горит фонарь, мусор? Это к акимату: <a href="tel:109">📞 109 — iKomek</a>. Скажите им код места из «📤».</p>
   </div>
 </div>
 <div class="rulerbar" id="dispBar" hidden><div id="dispInfo" class="disp-info">🚚 Диспетчер</div><button class="btn" id="dispCar">＋ Машина</button><button class="btn" id="dispCall">📍 Вызов</button><button class="btn primary" id="dispDone">Готово</button></div>
@@ -559,6 +560,15 @@ body.navmode #tQuest{display:none}
   </div>
 </div>
 <div class="rulerbar" id="gpsBar" hidden><div class="disp-info" id="gpsInfo">📡 Нет GPS</div><button class="btn" id="gpsPrev" aria-label="Предыдущий шаг">◀</button><button class="btn primary" id="gpsNext">Дальше ▶</button></div>
+<div class="sheet" id="walkSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Провожалка">
+    <div class="sheet-head"><h2>🛡 Провожалка</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="hint">Идёте поздно одни? Включите таймер. Если не нажмёте «Я дошёл» вовремя, Барыс громко позовёт вас и предложит одним нажатием отправить близким, где вы сейчас. Сами мы никому ничего не отправляем.</p>
+    <div class="chips" id="walkChips"><button class="chip" data-wm="10">10 мин</button><button class="chip" data-wm="15">15 мин</button><button class="chip" data-wm="20">20 мин</button><button class="chip" data-wm="30">30 мин</button><button class="chip" data-wm="45">45 мин</button></div>
+    <p class="hint">В опасности сразу звоните: <a href="tel:102">102 — полиция</a> · <a href="tel:112">112 — служба спасения</a> · <a href="tel:103">103 — скорая</a></p>
+  </div>
+</div>
+<div class="rulerbar" id="walkBar" hidden><b id="walkInfo">🛡 Провожалка</b><button class="btn" id="walkSos">📤 Где я</button><button class="btn primary" id="walkDone">✓ Я дошёл</button></div>
 <div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
 <div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
   <div class="m-bubble" id="mBubble" hidden></div>
@@ -697,7 +707,7 @@ body.navmode #tQuest{display:none}
   map.on('click', e => {
     res.hidden = true;
     if (e.defaultPrevented || driving) return;
-    const hitLayers = ['cams', 'events', 'o-lrt-st', 'o-paidpark'].filter(l => map.getLayer(l));
+    const hitLayers = ['cams', 'events', 'o-lrt-st', 'o-paidpark', 'o-wheel', 'imp-pt'].filter(l => map.getLayer(l));
     if (hitLayers.length && map.queryRenderedFeatures(e.point, { layers:hitLayers }).length) return;   // нажали на камеру или событие
     const p = { lng:e.lngLat.lng, lat:e.lngLat.lat };
     if (ruler.on) return rulerAdd(p);
@@ -2110,12 +2120,13 @@ body.navmode #tQuest{display:none}
         items = items.map(x => { const r = lineDist([x.lng, x.lat], line); return { ...x, off:r.d, at:r.at }; })
           .filter(x => x.off < 600).sort((a, b) => a.at - b.at);
       } else items = items.map(x => ({ ...x, d:dist(c, [x.lng, x.lat]) })).sort((a, b) => a.d - b.d);
+      if (openOnly) items = items.filter(x => x.hours && openNow(x.hours) === true);
       items = items.slice(0, 25);
       clearPoi();
       if (!items.length){ $('#catList').innerHTML = `<p class="hint">${cat.e} ${cat.n}: ничего не нашлось ${line ? 'вдоль маршрута' : 'рядом'}. Данные OpenStreetMap могут быть неполными.</p>`; return; }
       const canStop = state.from && state.to;
       $('#catList').innerHTML = (id === 'ev' ? evHead(items) : '') + items.map((x, i) => `<div class="poi-row" data-op="${esc(x.op || '')}"><div style="min-width:0"><b>${cat.e} ${esc(x.name)}</b>
-        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + esc(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}${id === 'ev' && x.op ? ' · ' + esc(x.op) : ''}</div></div>
+        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + ohBadge(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}${id === 'ev' && x.op ? ' · ' + esc(x.op) : ''}</div></div>
         <button class="btn${canStop ? '' : ' primary'}" data-i="${i}">${canStop ? '＋ Заехать' : 'Сюда'}</button></div>`).join('');
       if (id === 'ev') evFilter();
       $('#catList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => {
@@ -3328,7 +3339,7 @@ body.navmode #tQuest{display:none}
   map.on('click', 'o-lrt-st', e => {
     e.preventDefault(); const f = e.features[0]; if (!f) return;
     const [lng, lat] = f.geometry.coordinates;
-    showPopup({ lng, lat, name:'🚈 ' + f.properties.name }, '<div class="hint" style="margin-bottom:6px">LRT Tarlan · поездка 200 ₸ · абонемент 7 500 ₸ в месяц · поезд каждые 5–6 минут.<br>Билет — QR-код в приложении Kaspi.kz.</div><a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://kaspi.kz/">Открыть Kaspi.kz</a>');
+    showPopup({ lng, lat, name:'🚈 ' + f.properties.name }, '<div class="hint" style="margin-bottom:6px">LRT · 06:00–23:00 · поезд каждые 5–6 минут · от аэропорта до «Нұрлы жол» ~40 мин.<br>Поездка 200 ₸ · день 500 ₸ · 30 поездок 5 000 ₸ · месяц 7 500 ₸.<br>Оплата: QR в Kaspi.kz, банковской картой у турникета.</div><a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://kaspi.kz/">Открыть Kaspi.kz</a>');
   });
 
   let paidFC = null;
@@ -3347,7 +3358,7 @@ body.navmode #tQuest{display:none}
         paint:{ 'circle-color':'#1e63d6', 'circle-radius':['interpolate',['linear'],['zoom'],12,3,17,9], 'circle-stroke-color':'#ffd200', 'circle-stroke-width':2 } });
     }catch{ toast('Парковки сейчас не загрузились. Попробуйте позже.'); }
   }
-  const parkHtml = (fee, pay = true) => `<div class="hint" style="margin-bottom:6px">🅿 Платная парковка${fee ? ' · ' + esc(fee) : ''}. По городу зоны 200 / 150 / 100 ₸ в час — смотрите табличку. Оплата за день — до 23:59.</div><div class="chips"><button class="chip" data-park>🅿 Я здесь припарковался</button>${pay ? `<a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://play.google.com/store/search?q=UIMS%20Parking&c=apps">Оплатить</a>` : ''}</div>`;
+  const parkHtml = (fee, pay = true) => `<div class="hint" style="margin-bottom:6px">🅿 Платная парковка${fee ? ' · ' + esc(fee) : ''}. Зоны: 1 — 200 ₸/ч, 2 — 150 ₸/ч, 3 — 100 ₸/ч (смотрите табличку). Стоянка дольше 5 минут — уже парковка. Оплата за день — до 23:59 в UIMS Parking. Электромобили и люди с инвалидностью I–II групп — льготы.</div><div class="chips"><button class="chip" data-park>🅿 Я здесь припарковался</button>${pay ? `<a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://play.google.com/store/search?q=UIMS%20Parking&c=apps">Оплатить</a>` : ''}</div>`;
   function bindPark(el, p){ el?.querySelector('[data-park]')?.addEventListener('click', ev => { saveCarSpot(p, true); ev.target.textContent = '✓ Напомню в 23:00'; try{ window.Notification?.requestPermission?.(); }catch{} toast('Запомнил машину. В 23:00 напомню оплатить парковку'); }); }
   map.on('click', 'o-paidpark', e => {
     e.preventDefault(); const f = e.features[0]; if (!f) return;
@@ -3565,6 +3576,7 @@ body.navmode #tQuest{display:none}
       const ev = events.filter(x => lineDist([x.lng, x.lat], c).d < 45).map(x => EV[x.type]).filter(Boolean);
       if (ev.length) parts.push('на пути ' + [...new Set(ev.map(t => t.e + ' ' + t.n.toLowerCase()))].join(', '));
       const z = routeAvgZone(r); if (z) parts.push(`на трассе ${z.ru} контроль средней скорости`);
+      if (c.some(q => dist(CITY_C, q) > 25000)) parts.push('за городом перекрытия трасс уточняйте в КазАвтоЖол: 1403 или приложение Sapar');
     }
     if (r._lit != null) parts.push(r._lit >= 0.7 ? `улицы освещены (~${Math.round(r._lit * 100)}%)` : `освещено только ~${Math.round(r._lit * 100)}% пути — возьмите фонарик`);
     if (r._bike != null && state.mode === 'scoot') parts.push(`по велодорожкам ~${Math.round(r._bike * 100)}%`);
@@ -3598,7 +3610,7 @@ body.navmode #tQuest{display:none}
   };
   // самокат: подсказка о правилах и слой велодорожек
   document.querySelectorAll('[data-mode="scoot"]').forEach(b => b.addEventListener('click', () => {
-    toast('🛴 С 25.08.2026 по тротуарам на самокате нельзя — только велодорожки. Маршрут по велопрофилю');
+    toast('🛴 С 25.08.2026 по тротуарам нельзя — велодорожка или правый край дороги (на дороге — с 18 лет, с правами и в шлеме). Штраф 8 650 ₸');
     if (!ovlIsOn(OVL[1])) setOvl('bike', true);
   }));
 
@@ -3909,6 +3921,210 @@ body.navmode #tQuest{display:none}
     }
     return 'Не понял 🙈 Скажите так: «едем в Хан Шатыр», «маршрут до Абая 78», «найди аптеку», «домой», «сколько ехать».';
   }
+
+  // =====================================================================
+  // ---------- 1.6: «Открыто сейчас» и новые категории ----------
+  let openOnly = false;
+  function ohBadge(oh){
+    const s = openNow(oh);
+    return (s === true ? '<b style="color:#1f9d55">открыто</b> · ' : s === false ? '<b style="color:#e53935">закрыто</b> · ' : '') + esc(oh.length > 40 ? oh.slice(0, 39) + '…' : oh);
+  }
+  CATS.push(
+    { id:'water', e:'💧', n:'Вода', q:'nwr["amenity"="drinking_water"]' },
+    { id:'dog', e:'🐕', n:'Для собак', q:'nwr["leisure"="dog_park"]' },
+    { id:'kids', e:'🛝', n:'Детская площадка', q:'nwr["leisure"="playground"]' },
+    { id:'hosp', e:'🏥', n:'Больница', q:'nwr["amenity"~"^(hospital|clinic)$"]' },
+  );
+  const openCats0 = openCats;
+  openCats = function(id){
+    openCats0(id);
+    $('#catChips').insertAdjacentHTML('afterbegin', `<button class="chip${openOnly ? ' on' : ''}" id="openOnly" title="Только те, что сейчас открыты (по часам работы из OpenStreetMap)">🟢 Открыто сейчас</button>`);
+    $('#openOnly').onclick = () => {
+      openOnly = !openOnly; $('#openOnly').classList.toggle('on', openOnly);
+      const cur = $('#catChips [data-c].on')?.dataset.c; if (cur) findCat(cur);
+    };
+  };
+
+  // ---------- 1.6: слой доступности для колясок ----------
+  OVL.push({ id:'wheel', e:'♿', n:'Доступность для колясок (OpenStreetMap)', kind:'wheel' });
+  OVL.push({ id:'fog', e:'🗺', n:'Мои открытые кварталы — игра «Открой Астану»', kind:'fog' });
+  const ovlOn1 = ovlOn, ovlOff1 = ovlOff;
+  ovlOn = o => o.kind === 'wheel' ? loadWheel() : o.kind === 'fog' ? drawFog() : ovlOn1(o);
+  ovlOff = o => { if (o.kind === 'wheel' || o.kind === 'fog'){ const l = 'o-' + o.id; if (map.getLayer(l)) map.removeLayer(l); return; } ovlOff1(o); };
+  let wheelFC = null;
+  const WHEEL = { yes:['#1f9d55', 'можно с коляской'], limited:['#f9a825', 'частично доступно'], no:['#e53935', 'недоступно для коляски'] };
+  async function loadWheel(){
+    try{
+      if (!wheelFC){
+        toast('Загружаю доступность…');
+        const j = await overpass(`[out:json][timeout:25];nwr["wheelchair"~"^(yes|limited|no)$"]["name"](${CITY});out center tags 3000;`);
+        wheelFC = { type:'FeatureCollection', features:(j.elements || []).map(e => ({ type:'Feature', geometry:{ type:'Point', coordinates:[e.lon ?? e.center?.lon, e.lat ?? e.center?.lat] },
+          properties:{ name:e.tags.name, w:e.tags.wheelchair, toilets:e.tags['toilets:wheelchair'] || '' } })).filter(f => f.geometry.coordinates[0] != null) };
+        toast(`♿ Мест с отметкой доступности: ${wheelFC.features.length}. Помогите дополнить — ответьте на квесты 🎯`);
+      }
+      if (!ovlIsOn(ovlById('wheel'))) return;
+      if (!map.getSource('o-wheel')) map.addSource('o-wheel', { type:'geojson', data:wheelFC });
+      if (!map.getLayer('o-wheel')) map.addLayer({ id:'o-wheel', type:'circle', source:'o-wheel', minzoom:11,
+        paint:{ 'circle-color':['match', ['get', 'w'], 'yes', WHEEL.yes[0], 'limited', WHEEL.limited[0], WHEEL.no[0]], 'circle-radius':['interpolate',['linear'],['zoom'],11,3,17,8], 'circle-stroke-color':'#fff', 'circle-stroke-width':1.5 } });
+    }catch{ toast('Доступность сейчас не загрузилась. Попробуйте позже.'); }
+  }
+  map.on('click', 'o-wheel', e => {
+    e.preventDefault(); const f = e.features[0]; if (!f) return;
+    const [lng, lat] = f.geometry.coordinates, w = WHEEL[f.properties.w] || WHEEL.no;
+    showPopup({ lng, lat, name:f.properties.name }, `<div class="hint" style="margin-bottom:6px">♿ <b style="color:${w[0]}">${w[1]}</b>${f.properties.toilets === 'yes' ? ' · есть доступный туалет' : ''}</div>`);
+  });
+
+  // ---------- 1.6: игра «Открой Астану» — кварталы, где вы побывали ----------
+  const FOG_LAT = 0.003, FOG_LNG = 0.0045, FOG_TOTAL = 7600;   // клетка ~330 × 315 м; Астана ≈ 800 км²
+  let fog = new Set(store.get('fog', [])), fogDirty = false, fogNew = 0;
+  const fogKey = (lng, lat) => Math.floor(lat / FOG_LAT) + ':' + Math.floor(lng / FOG_LNG);
+  function fogVisit(lng, lat){
+    if (!inAstana({ lng, lat })) return;
+    const k = fogKey(lng, lat); if (fog.has(k)) return;
+    fog.add(k); fogDirty = true; fogNew++;
+    if (fogNew % 5 === 0) addPts(1, 'за новые кварталы');
+    if ([10, 50, 100, 250, 500, 1000].includes(fog.size)) mascot('happy', `🗺 Вы открыли ${fog.size} кварталов Астаны — это ${fogPct()}% города!`, 7000);
+    if (map.getSource('o-fog')) map.getSource('o-fog').setData(fogFC());
+  }
+  const fogPct = () => (fog.size / FOG_TOTAL * 100).toFixed(fog.size < 76 ? 1 : 0).replace('.', ',');
+  setInterval(() => { if (fogDirty){ fogDirty = false; store.set('fog', [...fog]); } }, 15000);
+  addEventListener('pagehide', () => { if (fogDirty) store.set('fog', [...fog]); });
+  function fogFC(){
+    return { type:'FeatureCollection', features:[...fog].map(k => { const [a, b] = k.split(':').map(Number), s = a * FOG_LAT, w = b * FOG_LNG;
+      return { type:'Feature', geometry:{ type:'Polygon', coordinates:[[[w, s], [w + FOG_LNG, s], [w + FOG_LNG, s + FOG_LAT], [w, s + FOG_LAT], [w, s]]] }, properties:{} }; }) };
+  }
+  function drawFog(){
+    if (!map.getSource('o-fog')) map.addSource('o-fog', { type:'geojson', data:fogFC() }); else map.getSource('o-fog').setData(fogFC());
+    if (!map.getLayer('o-fog')) map.addLayer({ id:'o-fog', type:'fill', source:'o-fog', paint:{ 'fill-color':'#00a3e0', 'fill-opacity':0.22, 'fill-outline-color':'#0077a8' } }, beforeAlts());
+    toast(`🗺 Открыто кварталов: ${fog.size} — ${fogPct()}% Астаны. Гуляйте и ездите — карта откроется`);
+  }
+  const showMe0 = showMe;
+  showMe = function(p){ showMe0(p); fogVisit(p.lng, p.lat); };
+  const onFix1 = onFix;
+  onFix = function(f){ onFix1(f); if (!demo && !f.manual) fogVisit(f.lng, f.lat); };
+  const renderLevel0 = renderLevel;
+  renderLevel = function(){ renderLevel0(); $('#myLevel').insertAdjacentHTML('beforeend', `<span class="hint">🗺 Открой Астану: ${fog.size} кварталов · ${fogPct()}% города</span>`); };
+
+  // ---------- 1.6: таймер парковки ----------
+  let parkT = 0;
+  function scheduleParkTimer(){
+    clearTimeout(parkT);
+    if (!carSpot?.until) return;
+    const ms = carSpot.until - 10 * 60e3 - Date.now();
+    const fire = () => { mascot('happy', '⏱ Через 10 минут заканчивается оплаченная парковка', 9000); toast('⏱ Парковка закончится через 10 минут');
+      try{ navigator.vibrate?.([300, 150, 300]); if (window.Notification?.permission === 'granted') new Notification('Карта Астаны', { body:'Парковка закончится через 10 минут', icon:'icons/icon-192.png' }); }catch{} };
+    if (ms > 0) parkT = setTimeout(fire, ms); else if (carSpot.until > Date.now()) fire();
+  }
+  function setParkTimer(h){
+    const p = carSpot && Date.now() - carSpot.t < 3600e3 ? carSpot : myPos(); if (!p) return toast('Не знаю, где машина — включите геолокацию');
+    saveCarSpot(p, true); carSpot.until = Date.now() + h * 3600e3; store.set('carSpot', carSpot); scheduleParkTimer();
+    try{ window.Notification?.requestPermission?.(); }catch{}
+    toast(`⏱ Напомню за 10 минут до конца: в ${hhmm(new Date(carSpot.until - 10 * 60e3))}`);
+  }
+  scheduleParkTimer();
+  const parkTimerHtml = '<div class="chips" style="margin-top:4px"><span class="hint">⏱ Оплатил на:</span><button class="chip" data-ph="1">1 ч</button><button class="chip" data-ph="2">2 ч</button><button class="chip" data-ph="3">3 ч</button></div>';
+  function bindParkTimer(el){ el?.querySelectorAll('[data-ph]').forEach(b => b.onclick = () => { setParkTimer(+b.dataset.ph); b.classList.add('on'); }); }
+  map.on('click', 'o-paidpark', () => setTimeout(() => { const el = popup?.getElement(); if (el && !el.querySelector('[data-ph]')){ el.querySelector('[data-park]')?.parentElement.insertAdjacentHTML('afterend', parkTimerHtml); bindParkTimer(el); } }, 0));
+  const showArrival1 = showArrival;
+  showArrival = function(st){
+    showArrival1(st);
+    const g = $('#arrGrid'); g.parentElement.querySelector('.park-t')?.remove();
+    if (st && !st.demo && state.mode === 'car'){ g.insertAdjacentHTML('afterend', `<div class="park-t">${parkTimerHtml}</div>`); bindParkTimer(g.parentElement.querySelector('.park-t')); }
+  };
+
+  // ---------- 1.6: «Что рядом в Википедии» в карточке точки ----------
+  const showPopup0 = showPopup;
+  showPopup = function(p, extra){
+    const el = showPopup0(p, extra);
+    const row = el.querySelector('.pop-save');
+    if (row && !row.querySelector('[data-s="wiki"]')){
+      row.insertAdjacentHTML('beforeend', '<button class="chip" data-s="wiki" title="Что рядом — статьи Википедии">📖</button>');
+      row.querySelector('[data-s="wiki"]').onclick = ev => { ev.stopPropagation(); wikiNear(p, el.querySelector('[data-gis]')); };
+    }
+    return el;
+  };
+  async function wikiNear(p, box){
+    if (!box) return; box.innerHTML = '<p class="hint">Ищу статьи рядом…</p>';
+    try{
+      const j = await (await fetch(`https://ru.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${(+p.lat).toFixed(5)}|${(+p.lng).toFixed(5)}&gsradius=1000&gslimit=6&format=json&origin=*`)).json();
+      const list = j.query?.geosearch || [];
+      box.innerHTML = list.length ? '<div class="gis-res">' + list.map(a => `<div class="hint">📖 <a target="_blank" rel="noopener" href="https://ru.wikipedia.org/?curid=${a.pageid}">${esc(a.title)}</a> · ${fmtDist(a.dist)}</div>`).join('') + '</div>'
+        : '<p class="hint">Рядом статей в Википедии нет.</p>';
+    }catch{ box.innerHTML = '<p class="hint">Википедия сейчас недоступна.</p>'; }
+  }
+
+  // ---------- 1.6: открыть свой трек GPX / KML / GeoJSON ----------
+  $('#impBtn').onclick = () => $('#impFile').click();
+  $('#impFile').onchange = async e => {
+    const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+    if (f.size > 8e6) return toast('Файл слишком большой (больше 8 МБ)');
+    try{
+      const txt = await f.text(), fc = parseTrack(txt, f.name);
+      if (!fc.features.length) return toast('В файле не нашёл ни трека, ни точек');
+      if (!map.getSource('imp')) map.addSource('imp', { type:'geojson', data:fc }); else map.getSource('imp').setData(fc);
+      if (!map.getLayer('imp-line')) map.addLayer({ id:'imp-line', type:'line', source:'imp', filter:['==', ['geometry-type'], 'LineString'], layout:{ 'line-cap':'round', 'line-join':'round' }, paint:{ 'line-color':'#e91e63', 'line-width':4, 'line-opacity':0.85 } });
+      if (!map.getLayer('imp-pt')) map.addLayer({ id:'imp-pt', type:'circle', source:'imp', filter:['==', ['geometry-type'], 'Point'], paint:{ 'circle-color':'#e91e63', 'circle-radius':6, 'circle-stroke-color':'#fff', 'circle-stroke-width':2 } });
+      const all = fc.features.flatMap(x => x.geometry.type === 'Point' ? [x.geometry.coordinates] : x.geometry.coordinates);
+      const bb = new maplibregl.LngLatBounds(all[0], all[0]); all.forEach(c => bb.extend(c));
+      map.fitBounds(bb, { padding:60, maxZoom:16, duration:800 });
+      $('#layersSheet').hidden = true; $('#impClear').hidden = false;
+      let len = 0; fc.features.filter(x => x.geometry.type === 'LineString').forEach(x => { const c = x.geometry.coordinates; for (let i = 1; i < c.length; i++) len += dist(c[i - 1], c[i]); });
+      toast(`📂 ${f.name}: ${len ? 'трек ' + fmtDist(len) : ''}${fc.features.some(x => x.geometry.type === 'Point') ? ' · точек ' + fc.features.filter(x => x.geometry.type === 'Point').length : ''}`);
+    }catch{ toast('Не получилось прочитать файл. Нужен GPX, KML или GeoJSON.'); }
+  };
+  $('#impClear').onclick = () => { ['imp-line', 'imp-pt'].forEach(l => map.getLayer(l) && map.removeLayer(l)); if (map.getSource('imp')) map.removeSource('imp'); $('#impClear').hidden = true; };
+  map.on('click', 'imp-pt', e => { e.preventDefault(); const f = e.features[0]; if (!f) return; const [lng, lat] = f.geometry.coordinates; showPopup({ lng, lat, name:f.properties.name || 'Точка из файла' }); });
+  function parseTrack(txt, name){
+    const feats = [];
+    if (/\.(geo)?json$/i.test(name) || /^\s*\{/.test(txt)){
+      const j = JSON.parse(txt), arr = j.type === 'FeatureCollection' ? j.features : j.type === 'Feature' ? [j] : [{ type:'Feature', geometry:j, properties:{} }];
+      arr.forEach(x => { const g = x.geometry; if (!g) return;
+        if (g.type === 'Point' || g.type === 'LineString') feats.push({ type:'Feature', geometry:g, properties:x.properties || {} });
+        if (g.type === 'MultiLineString') g.coordinates.forEach(c => feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates:c }, properties:{} }));
+        if (g.type === 'Polygon') feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates:g.coordinates[0] }, properties:{} }); });
+      return { type:'FeatureCollection', features:feats };
+    }
+    const doc = new DOMParser().parseFromString(txt, 'application/xml');
+    const nm = el => el.querySelector('name')?.textContent || '';
+    if (doc.querySelector('gpx')){
+      doc.querySelectorAll('trkseg, rte').forEach(seg => { const c = [...seg.querySelectorAll('trkpt, rtept')].map(q => [+q.getAttribute('lon'), +q.getAttribute('lat')]); if (c.length > 1) feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates:c }, properties:{} }); });
+      doc.querySelectorAll('wpt').forEach(q => feats.push({ type:'Feature', geometry:{ type:'Point', coordinates:[+q.getAttribute('lon'), +q.getAttribute('lat')] }, properties:{ name:nm(q) } }));
+    } else {
+      doc.querySelectorAll('Placemark').forEach(pm => {
+        pm.querySelectorAll('LineString coordinates, LinearRing coordinates').forEach(cc => { const c = cc.textContent.trim().split(/\s+/).map(t => t.split(',').slice(0, 2).map(Number)); if (c.length > 1) feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates:c }, properties:{} }); });
+        const pt = pm.querySelector('Point coordinates'); if (pt){ const [x, y] = pt.textContent.trim().split(',').map(Number); feats.push({ type:'Feature', geometry:{ type:'Point', coordinates:[x, y] }, properties:{ name:nm(pm) } }); }
+      });
+    }
+    return { type:'FeatureCollection', features:feats.filter(x => x.geometry.coordinates.flat().every(Number.isFinite)) };
+  }
+
+  // ---------- 1.6: «Провожалка» — таймер безопасной дороги домой ----------
+  const walk = { end:0, t:0, alarm:0 };
+  $('#walkBtn').onclick = () => { $('#layersSheet').hidden = true; $('#walkSheet').hidden = false; };
+  $('#walkChips').querySelectorAll('[data-wm]').forEach(b => b.onclick = () => {
+    walk.end = Date.now() + +b.dataset.wm * 60e3; $('#walkSheet').hidden = true; $('#walkBar').hidden = false;
+    clearInterval(walk.t); walk.t = setInterval(walkTick, 1000); walkTick();
+    if (!geoMarker) locateMe(false);
+    try{ window.Notification?.requestPermission?.(); }catch{}
+    mascot('happy', `🛡 Я с вами. Нажмите «Я дошёл», когда будете на месте — до ${hhmm(new Date(walk.end))}`, 6000);
+  });
+  function walkTick(){
+    const left = Math.round((walk.end - Date.now()) / 1000);
+    if (left > 0){ $('#walkInfo').textContent = `🛡 Провожаю · осталось ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; return; }
+    $('#walkInfo').textContent = '🛡 Вы дошли? Нажмите «Я дошёл» или отправьте, где вы';
+    if (Date.now() - walk.alarm > 60e3){
+      walk.alarm = Date.now(); unlockSpeech();
+      speak({ ru:'Вы дошли? Нажмите «Я дошёл». Если нужна помощь, отправьте близким, где вы.', kk:'Жеттіңіз бе? «Жеттім» батырмасын басыңыз.' });
+      try{ navigator.vibrate?.([500, 200, 500, 200, 500]); beep(); if (window.Notification?.permission === 'granted') new Notification('Провожалка', { body:'Вы дошли? Откройте карту', icon:'icons/icon-192.png', requireInteraction:true }); }catch{}
+    }
+  }
+  $('#walkDone').onclick = () => { clearInterval(walk.t); walk.end = 0; $('#walkBar').hidden = true; mascot('happy', 'Рад, что вы дома 🐾', 4000); };
+  $('#walkSos').onclick = async () => {
+    const h = myPos();
+    const text = h ? `Я здесь: https://www.google.com/maps?q=${h.lat.toFixed(6)},${h.lng.toFixed(6)} (Карта Астаны: ${location.origin}/#p=${h.lng.toFixed(6)},${h.lat.toFixed(6)})` : 'Не могу определить место — позвони мне';
+    try{ if (navigator.share){ await navigator.share({ title:'Где я', text }); return; } }catch{ return; }
+    location.href = 'https://wa.me/?text=' + encodeURIComponent(text);
+  };
 
   // ---------- Настройки ----------
   function openSettings(){
