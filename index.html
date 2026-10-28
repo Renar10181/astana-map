@@ -88,8 +88,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .pt .lbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pt .lbl.ph{color:var(--muted)}
 .pt.active{border-color:var(--accent)}
-.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--bg);padding:4px;border-radius:12px}
-.modes button{border:0;background:transparent;border-radius:9px;padding:8px 4px;font-weight:500;color:var(--muted)}
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--bg);padding:4px;border-radius:12px}
+.modes button{border:0;background:transparent;border-radius:9px;padding:8px 2px;font-weight:500;color:var(--muted);font-size:13px;white-space:nowrap}
 .modes button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .routes{display:grid;gap:6px}
 .route{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:transparent;text-align:left;width:100%}
@@ -318,6 +318,25 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
 .depart{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .depart select{flex:1;min-width:0;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
 .route .free{grid-column:1 / -1;color:var(--muted);font-size:12px}
+.tool{position:relative}
+.q-badge{position:absolute;right:-4px;top:-4px;min-width:18px;height:18px;border-radius:9px;background:#e53935;color:#fff;font:700 11px/18px var(--font);padding:0 4px}
+.tool.mic.on{background:#e53935;color:#fff;animation:mic-pulse 1s ease-in-out infinite}
+@keyframes mic-pulse{50%{box-shadow:0 0 0 8px rgba(229,57,53,.25)}}
+body.navmode #tQuest{display:none}
+.mic-big{justify-self:center;width:84px;height:84px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:36px;box-shadow:var(--shadow)}
+.mic-big.on{background:#e53935;color:#fff;animation:mic-pulse 1s ease-in-out infinite}
+.asst-heard{text-align:center;color:var(--muted);margin:0;font-size:14px}
+.asst-ans{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:12px;padding:10px 12px;margin:0;font-size:15px;line-height:1.4}
+.asst-form{display:flex;gap:6px}
+.asst-form input{flex:1;min-width:0;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px}
+.nt-sig{grid-column:1 / -1;justify-self:start;background:#212121;color:#fff;border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
+#gpsBar{top:calc(120px + env(safe-area-inset-top,0px));bottom:auto;z-index:8}
+#gpsBar .disp-info{flex:1 1 100%;font-weight:600;font-size:14px}
+.r-sum{background:color-mix(in srgb,#ffd200 16%,transparent);border-radius:10px;padding:8px 10px}
+.q-row .q-ans{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.q-row{display:block}
+.q-done{opacity:.55}
+.poi-pin.q-pin{width:24px;height:24px;font-size:13px;border-width:2px}
 .offline-bar{position:fixed;z-index:7;left:50%;transform:translateX(-50%);top:calc(4px + env(safe-area-inset-top,0px));background:#e53935;color:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600}
 @media (prefers-reduced-motion: reduce){ .pin.pulse::before{animation:none} }
 </style>
@@ -336,7 +355,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   <div class="results" id="results" hidden></div>
 </div>
 
-<div class="zoom" aria-label="Масштаб и настройки"><button class="tool" id="zIn" aria-label="Приблизить">+</button><button class="tool" id="zOut" aria-label="Отдалить">−</button><button class="tool" id="tSet" aria-label="Настройки" title="Настройки">⚙</button></div>
+<div class="zoom" aria-label="Масштаб и настройки"><button class="tool" id="zIn" aria-label="Приблизить">+</button><button class="tool" id="zOut" aria-label="Отдалить">−</button><button class="tool" id="tSet" aria-label="Настройки" title="Настройки">⚙</button><button class="tool mic" id="tMic" title="Эй, Барыс — скажите голосом" aria-label="Голосовой помощник">🎤</button><button class="tool" id="tQuest" title="Квесты Барыса" aria-label="Квесты Барыса">🎯<span class="q-badge" id="questN" hidden></span></button></div>
 <div class="tools">
   <button class="tool on" id="t3d" title="Переключить 3D / 2D">3D</button>
   <button class="tool" id="tSat" title="Спутник">Спут</button>
@@ -369,6 +388,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       <button data-mode="car" aria-pressed="true">🚗 Авто</button>
       <button data-mode="foot" aria-pressed="false">🚶 Пешком</button>
       <button data-mode="bike" aria-pressed="false">🚲 Вело</button>
+      <button data-mode="scoot" aria-pressed="false">🛴 Самокат</button>
     </div>
     <div class="routes" id="routes"></div>
     <p class="err" id="err" hidden></p>
@@ -387,6 +407,10 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     <div class="sheet-head"><h2>Настройки</h2><button class="icon-btn" id="setClose" aria-label="Закрыть">✕</button></div>
     <div class="level" id="myLevel"></div>
     <label class="set-check"><input type="checkbox" id="setMascot" checked> 🐆 Барсёнок Барыс — помощник на карте</label>
+    <div class="set-row"><label>Предупреждения в поездке</label>
+      <label class="set-check"><input type="checkbox" id="setSig"> 🚦 Светофоры — голосом (значок на экране всегда)</label>
+      <label class="set-check"><input type="checkbox" id="setSchool" checked> 🏫 Школы у дороги — в учебные дни с 7 до 19</label>
+      <label class="set-check"><input type="checkbox" id="setLane" checked> 🚌 Выделенные полосы — не занимать</label></div>
     <div class="set-row"><label for="voiceSel">Голос подсказок</label>
       <div class="voice-row"><select id="voiceSel"></select><button class="btn" id="voiceTest" type="button" aria-label="Послушать">▶</button></div></div>
     <div class="set-row"><label for="setView">Вид в поездке</label>
@@ -417,16 +441,20 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       <p>В поездке ⚠ — сообщить о ДТП, пробке, ремонте, яме или камере: увидят все водители. Пробок от сервиса пока нет — только отметки водителей.</p>
       <p>🗂 Слои: автобусы (нажмите на остановку — какие автобусы ходят), велодорожки, тропы, земельные участки и красные линии геопортала, 📏 линейка и площадь. Нажмите на значок кафе, аптеки и т. п. — карточка с часами работы и телефоном.</p>
       <p>🐆 Барыс подсказывает голосом, радуется наградам и рассказывает о Байтереке, Хан Шатыре и других местах, когда вы проезжаете рядом. Очки — за отметки на дороге, цены на АЗС, километры и новые места коллекции.</p>
+      <p>🎤 «Эй, Барыс» — нажмите микрофон и скажите: «домой», «найди заправку по пути», «сообщи о ДТП», «сколько ехать», «где моя машина», «едем в Хан Шатыр». На ходу Барыс отвечает только голосом.</p>
+      <p>🎯 Квесты — короткие вопросы о местах рядом (часы работы, вход, пандус, остановка). Отвечайте рядом с местом и получайте очки. Когда трое ответили одинаково, факт считается проверенным.</p>
+      <p>📡 Пропал GPS — навигатор переходит в режим «по шагам»: листайте подсказки кнопками или нажмите на карту, где вы сейчас.</p>
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.4.0</p>
+    <p class="set-ver">Версия 1.5.0</p>
   </div>
 </div>
 
 <div class="navtop" id="navTop" hidden>
   <div class="nt-main"><span class="nt-arrow" id="ntArrow">↑</span><div class="nt-text"><div class="nt-dist" id="ntDist">—</div><div class="nt-street" id="ntStreet">Строю маршрут…</div></div></div>
   <div class="nt-lanes" id="ntLanes" hidden></div>
+  <div class="nt-sig" id="ntSig" hidden></div>
 </div>
 <div class="nav" id="nav" hidden>
   <div class="nav-top"><span class="nav-turn" id="navTurn">↑</span>
@@ -434,7 +462,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   <div class="nav-street" id="navStreet">Строю маршрут…</div>
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
-  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navReport" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navFind" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" aria-label="Поделиться поездкой">📤</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
+  <div class="nav-btns"><button class="btn" id="navMute" aria-label="Выключить голос">🔊</button><button class="btn" id="navView" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" aria-label="Ночной режим">☀</button><button class="btn" id="navHud">HUD</button><button class="btn" id="navReport" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navFind" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" aria-label="Поделиться поездкой">📤</button><button class="btn" id="navMic" aria-label="Голосовой помощник">🎤</button><button class="btn" id="navCenter" hidden>⌖ К машине</button><button class="btn stop" id="navStop">Стоп</button></div>
 </div>
 <div class="hud" id="hud" hidden>
   <div class="hud-inner" id="hudInner">
@@ -463,7 +491,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   <div class="sheet-card" role="dialog" aria-label="Вы на месте">
     <div class="arr-head"><div class="big">🏁</div><h2>Вы на месте</h2><p id="arrTo"></p></div>
     <div class="arr-grid" id="arrGrid"></div>
-    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn" id="arrGpx">⬇ GPX</button><button class="btn" id="arrProbe" title="Отправить трек анонимно — для расчёта скоростей улиц">📡 +5</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
+    <div class="row"><button class="btn" id="arrFav" style="flex:1">⭐ В избранное</button><button class="btn" id="arrGpx">⬇ GPX</button><button class="btn" id="arrProbe" title="Отправить трек анонимно — для расчёта скоростей улиц">📡 +5</button><button class="btn" id="arrPark" title="Здесь платная парковка — напомнить об оплате до 23:59">🅿 Платная</button><button class="btn primary" data-close style="flex:1">Готово</button></div>
   </div>
 </div>
 <div class="sheet" id="layersSheet" hidden>
@@ -500,6 +528,37 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
 </div>
 <div class="rulerbar" id="dispBar" hidden><div id="dispInfo" class="disp-info">🚚 Диспетчер</div><button class="btn" id="dispCar">＋ Машина</button><button class="btn" id="dispCall">📍 Вызов</button><button class="btn primary" id="dispDone">Готово</button></div>
 <div class="rulerbar" id="recBar" hidden><b id="recInfo">⏺ Запись…</b><button class="btn primary" id="recStop">Остановить</button></div>
+<div class="sheet" id="asstSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Голосовой помощник Барыс">
+    <div class="sheet-head"><h2>🐆 Эй, Барыс</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <button class="mic-big" id="asstMic" type="button" aria-label="Сказать голосом">🎤</button>
+    <p class="asst-heard" id="asstHeard">Нажмите 🎤 и скажите, например: «Домой» или «Найди заправку по пути»</p>
+    <p class="asst-ans" id="asstAns" hidden></p>
+    <div class="chips" id="asstEx"></div>
+    <form class="asst-form" id="asstForm"><input id="asstText" type="text" placeholder="Или напишите команду…" autocomplete="off" aria-label="Команда текстом"><button class="btn primary" type="submit" aria-label="Отправить">➤</button></form>
+    <p class="hint">Простые команды Барыс понимает сам, даже без интернета. Сложные вопросы разбирает ИИ. Мы не храним ваши запросы.</p>
+  </div>
+</div>
+<div class="sheet" id="questSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Квесты Барыса">
+    <div class="sheet-head"><h2>🎯 Квесты Барыса</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="hint" id="questInfo">Ищу задания рядом…</p>
+    <div class="poi-list" id="questList"></div>
+    <details class="set-help"><summary>Как это работает</summary>
+      <p>Барыс задаёт короткие вопросы о местах рядом: до скольких работает, где вход, есть ли пандус, что на остановке. Ответить можно, когда вы не дальше 150 м от места.</p>
+      <p>За ответ — очки и уровень. Когда трое разных людей ответили одинаково, факт считается проверенным, и его увидят все в карточке места. До 30 ответов в день.</p>
+      <p>За рулём квесты скрыты — отвечайте пешком или на стоянке.</p></details>
+  </div>
+</div>
+<div class="sheet" id="taxiSheet" hidden>
+  <div class="sheet-card" role="dialog" aria-label="Такси">
+    <div class="sheet-head"><h2>🚕 Такси сюда</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="hint" id="taxiDest"></p>
+    <div class="row"><button class="btn primary" id="taxiYa" style="flex:1">Yandex Go</button><button class="btn" id="taxiIn" style="flex:1">inDrive</button></div>
+    <p class="hint">Yandex Go откроется сразу с адресами. Для inDrive адрес скопируется — вставьте его в поле «Куда».</p>
+  </div>
+</div>
+<div class="rulerbar" id="gpsBar" hidden><div class="disp-info" id="gpsInfo">📡 Нет GPS</div><button class="btn" id="gpsPrev" aria-label="Предыдущий шаг">◀</button><button class="btn primary" id="gpsNext">Дальше ▶</button></div>
 <div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
 <div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
   <div class="m-bubble" id="mBubble" hidden></div>
@@ -540,7 +599,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   const VIEWBOX = '71.20,51.30,71.75,50.95';
   const BBOX = '71.20,50.95,71.75,51.30';
   const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
-  const ROUTER = { car:'routed-car', foot:'routed-foot', bike:'routed-bike' };
+  const ROUTER = { car:'routed-car', foot:'routed-foot', bike:'routed-bike', scoot:'routed-bike' };
   const PITCH_3D = 55;
 
   const $ = s => document.querySelector(s);
@@ -638,7 +697,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   map.on('click', e => {
     res.hidden = true;
     if (e.defaultPrevented || driving) return;
-    const hitLayers = ['cams', 'events'].filter(l => map.getLayer(l));
+    const hitLayers = ['cams', 'events', 'o-lrt-st', 'o-paidpark'].filter(l => map.getLayer(l));
     if (hitLayers.length && map.queryRenderedFeatures(e.point, { layers:hitLayers }).length) return;   // нажали на камеру или событие
     const p = { lng:e.lngLat.lng, lat:e.lngLat.lat };
     if (ruler.on) return rulerAdd(p);
@@ -773,7 +832,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
   async function buildRoute(){
     updMore();
     if (!state.from || !state.to) return;
-    if (state.to.ent === undefined && state.mode !== 'bike') await findEntrance(state.to);
+    if (state.to.ent === undefined && !['bike', 'scoot'].includes(state.mode)) await findEntrance(state.to);
     stopDrive();
     const id = ++routeReq;
     $('#routes').innerHTML = '<p class="hint">Строю маршрут…</p>'; showErr('');
@@ -1119,6 +1178,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
 
   function arrive(){
     if (nav.said.arrived) return; nav.said.arrived = 1; speak(say('arrive')); toast('Вы на месте');
+    if (!demo && state.mode === 'car' && nav.shown) saveCarSpot({ lng:nav.shown[0], lat:nav.shown[1] }, false);
     const st = nav.stats;
     setTimeout(() => { stopDrive(); showArrival(st); }, 2500);
   }
@@ -1672,7 +1732,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       map.flyTo({ center:[p.lng, p.lat], zoom:17, duration:900 }); setTimeout(() => showPopup(p), 950);
       return;
     }
-    const m = location.hash.match(/^#r=(.+)~(car|foot|bike)$/);
+    const m = location.hash.match(/^#r=(.+)~(car|foot|bike|scoot)$/);
     if (!m) return;
     const pts = m[1].split('~').map(x => x.split(',').map(Number)).filter(a => a.length === 2 && a.every(Number.isFinite));
     if (pts.length < 2) return;
@@ -2042,7 +2102,8 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       const j = await overpass(`[out:json][timeout:20];${cat.q}(${s},${w},${n},${e});out center 300;`);
       if (my !== catReq) return;
       let items = (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat,
-        name:el.tags?.name || el.tags?.brand || el.tags?.operator || cat.n, hours:el.tags?.opening_hours || '' })).filter(x => x.lng != null);
+        name:el.tags?.name || el.tags?.brand || el.tags?.operator || cat.n, hours:el.tags?.opening_hours || '',
+        op:[...new Set([el.tags?.operator, el.tags?.network, el.tags?.brand].filter(Boolean))].join(' / ').slice(0, 40) })).filter(x => x.lng != null);
       items = items.concat(await ovForCat(cat, s, w, n, e, items));
       if (id === 'fuel'){ await loadFuel(); items.forEach(x => { const f = fuelAt(x); if (f) x.price = f; }); }
       if (line && line.length > 1){
@@ -2053,9 +2114,10 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
       clearPoi();
       if (!items.length){ $('#catList').innerHTML = `<p class="hint">${cat.e} ${cat.n}: ничего не нашлось ${line ? 'вдоль маршрута' : 'рядом'}. Данные OpenStreetMap могут быть неполными.</p>`; return; }
       const canStop = state.from && state.to;
-      $('#catList').innerHTML = items.map((x, i) => `<div class="poi-row"><div style="min-width:0"><b>${cat.e} ${esc(x.name)}</b>
-        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + esc(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}</div></div>
+      $('#catList').innerHTML = (id === 'ev' ? evHead(items) : '') + items.map((x, i) => `<div class="poi-row" data-op="${esc(x.op || '')}"><div style="min-width:0"><b>${cat.e} ${esc(x.name)}</b>
+        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + esc(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}${id === 'ev' && x.op ? ' · ' + esc(x.op) : ''}</div></div>
         <button class="btn${canStop ? '' : ' primary'}" data-i="${i}">${canStop ? '＋ Заехать' : 'Сюда'}</button></div>`).join('');
+      if (id === 'ev') evFilter();
       $('#catList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => {
         const x = items[+b.dataset.i]; $('#catSheet').hidden = true;
         const p = { lng:x.lng, lat:x.lat, name:x.name };
@@ -2858,7 +2920,7 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     try{ await loadQr(); const qr = qrcode(0, 'M'); qr.addData(url); qr.make(); $('#ptQr').innerHTML = qr.createSvgTag({ cellSize:4, margin:2, scalable:true }); }
     catch{ $('#ptQr').innerHTML = '<p class="hint">QR не загрузился — проверьте интернет.</p>'; }
   }
-  function taxiTo(p){
+  function yandexTo(p){
     const from = geoMarker ? geoMarker.getLngLat() : state.from;
     const qs = (from ? `start-lat=${from.lat.toFixed(6)}&start-lon=${from.lng.toFixed(6)}&` : '') + `end-lat=${(+p.lat).toFixed(6)}&end-lon=${(+p.lng).toFixed(6)}`;
     location.href = `https://3.redirect.appmetrica.yandex.com/route?${qs}&ref=astanamap&appmetrica_tracking_id=1178268795219780156`;
@@ -3120,6 +3182,679 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
     $('#fixSheet').hidden = true; addPts(5, 'за исправление');
     mascot('happy', 'Спасибо! Вместе сделаем карту точнее 🐾 +5 очков', 5000);
   };
+
+  // =====================================================================
+  // ---------- 1.5: общие помощники ----------
+  let lastKmh = 0;
+  const myPos = () => driving && nav.shown ? { lng:nav.shown[0], lat:nav.shown[1] } : geoMarker ? geoMarker.getLngLat() : null;
+  const fastNow = () => driving && !demo && lastKmh > 10;
+  const low = t => String(t || '').toLowerCase().replace(/ё/g, 'е');
+  function setMode(m){
+    state.mode = m;
+    document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mode === m));
+  }
+  // «сетка» точек линий: быстро проверить, лежит ли точка рядом с линиями (освещённые улицы, велодорожки)
+  function lineGrid(lines, step = 15){
+    const g = new Map(), cell = 0.0004;
+    const put = (x, y) => { const k = Math.floor(x / cell) + ':' + Math.floor(y / cell); (g.get(k) || g.set(k, []).get(k)).push([x, y]); };
+    lines.forEach(c => { for (let i = 0; i < c.length - 1; i++){ const n = Math.max(1, Math.ceil(dist(c[i], c[i + 1]) / step)); for (let k = 0; k <= n; k++) put(c[i][0] + (c[i + 1][0] - c[i][0]) * k / n, c[i][1] + (c[i + 1][1] - c[i][1]) * k / n); } });
+    return { near(p, m = 20){ const cx = Math.floor(p[0] / cell), cy = Math.floor(p[1] / cell);
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const q of g.get((cx + dx) + ':' + (cy + dy)) || []) if (dist(p, q) < m) return true;
+      return false; } };
+  }
+  // доля маршрута (0…1), идущая рядом с линиями сетки
+  function shareNear(coords, grid){
+    let ok = 0, all = 0;
+    for (let i = 0; i < coords.length - 1; i++){
+      const n = Math.max(1, Math.round(dist(coords[i], coords[i + 1]) / 25));
+      for (let k = 0; k < n; k++){ const p = [coords[i][0] + (coords[i + 1][0] - coords[i][0]) * k / n, coords[i][1] + (coords[i + 1][1] - coords[i][1]) * k / n]; all++; if (grid.near(p)) ok++; }
+    }
+    return all ? ok / all : 0;
+  }
+  function bboxOf(coords, pad = 0.002){
+    let s = 90, w = 180, n = -90, e = -180;
+    coords.forEach(([x, y]) => { s = Math.min(s, y); n = Math.max(n, y); w = Math.min(w, x); e = Math.max(e, x); });
+    return [s - pad, w - pad, n + pad, e + pad];
+  }
+
+  // ---------- 1.5: «Где моя машина» и оплата парковки до 23:59 ----------
+  let carSpot = store.get('carSpot', null);
+  function saveCarSpot(p, paid){
+    carSpot = { lng:+(+p.lng).toFixed(6), lat:+(+p.lat).toFixed(6), t:Date.now(), paid:!!paid };
+    store.set('carSpot', carSpot); schedulePay();
+  }
+  function goToCar(){
+    if (!carSpot) return 'Я пока не знаю, где машина. Она запомнится сама в конце поездки «Поехали».';
+    if (driving) stopDrive();
+    setMode('foot');
+    const here = myPos();
+    if (here) setPoint('from', { lng:here.lng, lat:here.lat, name:'Моё местоположение', me:true });
+    goTo({ lng:carSpot.lng, lat:carSpot.lat, name:'🚗 Моя машина' });
+    const ago = Math.max(1, Math.round((Date.now() - carSpot.t) / 60000));
+    return `Машина там, где вы её оставили ${ago < 60 ? ago + ' мин' : Math.round(ago / 60) + ' ч'} назад. Веду пешком.`;
+  }
+  let payT = 0;
+  function payAlert(){
+    mascot('happy', '🅿 Не забудьте оплатить парковку до 23:59 — иначе штраф', 9000); toast('🅿 Оплатите парковку до 23:59');
+    try{ if (window.Notification?.permission === 'granted') new Notification('Карта Астаны', { body:'Оплатите парковку до 23:59', icon:'icons/icon-192.png' }); }catch{}
+  }
+  function schedulePay(){
+    clearTimeout(payT);
+    if (!carSpot?.paid || new Date(carSpot.t).toDateString() !== new Date().toDateString()) return;
+    const at = new Date(); at.setHours(23, 0, 0, 0);
+    const ms = at - Date.now();
+    if (ms > 0) payT = setTimeout(payAlert, ms); else if (new Date().getHours() === 23) payAlert();
+  }
+  schedulePay();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') schedulePay(); });
+  $('#arrPark').onclick = () => {
+    const p = carSpot && Date.now() - carSpot.t < 600e3 ? carSpot : myPos(); if (!p) return toast('Не знаю, где вы — включите геолокацию');
+    saveCarSpot(p, true); $('#arrPark').disabled = true; $('#arrPark').textContent = '✓ Напомню';
+    try{ window.Notification?.requestPermission?.(); }catch{}
+    toast('Запомнил машину. В 23:00 напомню оплатить парковку до 23:59');
+  };
+
+  // ---------- 1.5: такси — Yandex Go и inDrive ----------
+  let taxiP = null;
+  function taxiTo(p){
+    taxiP = p; popup?.remove();
+    $('#taxiDest').textContent = 'Куда: ' + (p.name && !/Определяю/.test(p.name) ? p.name : coords(p));
+    $('#taxiSheet').hidden = false;
+  }
+  $('#taxiYa').onclick = () => { $('#taxiSheet').hidden = true; if (taxiP) yandexTo(taxiP); };
+  $('#taxiIn').onclick = async () => {
+    $('#taxiSheet').hidden = true; if (!taxiP) return;
+    const addr = taxiP.name && !/Точка|Определяю|Моё/.test(taxiP.name) ? taxiP.name : coords(taxiP);
+    try{ await navigator.clipboard.writeText(addr); toast('Адрес скопирован — вставьте его в inDrive в поле «Куда»'); }catch{ toast('Адрес: ' + addr); }
+    const android = /Android/i.test(navigator.userAgent);
+    setTimeout(() => { location.href = android ? 'intent://#Intent;package=sinet.startup.inDriver;S.browser_fallback_url=https%3A%2F%2Findrive.com%2F;end' : 'https://indrive.com/'; }, 900);
+  };
+
+  // ---------- 1.5: зарядки — кто оператор и чем платить ----------
+  function evHead(items){
+    const ops = [...new Set(items.map(x => x.op).filter(Boolean))].slice(0, 8);
+    return `<p class="hint">🔌 Оплата зарядки: Kaspi.kz (около 30 сетей), приложения Vlife и Qazaq Energy Charge.</p>` +
+      (ops.length > 1 ? `<div class="chips" id="evOps"><button class="chip on" data-op="">Все</button>${ops.map(o => `<button class="chip" data-op="${esc(o)}">${esc(o)}</button>`).join('')}</div>` : '');
+  }
+  function evFilter(){
+    document.querySelectorAll('#evOps [data-op]').forEach(b => b.onclick = () => {
+      document.querySelectorAll('#evOps [data-op]').forEach(x => x.classList.toggle('on', x === b));
+      document.querySelectorAll('#catList .poi-row').forEach(r => { r.hidden = !!b.dataset.op && r.dataset.op !== b.dataset.op; });
+    });
+  }
+
+  // ---------- 1.5: новые слои — LRT, платные парковки, выделенные полосы ----------
+  OVL.push(
+    { id:'lrt', e:'🚈', n:'LRT Tarlan — линия и станции', kind:'lrt' },
+    { id:'paidpark', e:'🅿', n:'Платные парковки (100–200 ₸ в час)', kind:'paidpark' },
+    { id:'lanes', e:'🟧', n:'Выделенные полосы для автобусов', kind:'lanes' },
+  );
+  const MULTI = { lrt:['o-lrt-st-lbl', 'o-lrt-st', 'o-lrt'], paidpark:['o-paidpark'], lanes:['o-lanes'] };
+  const ovlOn0 = ovlOn, ovlOff0 = ovlOff;
+  ovlOn = o => o.kind === 'lrt' ? loadLrt() : o.kind === 'paidpark' ? loadPaid() : o.kind === 'lanes' ? loadLanes(true) : ovlOn0(o);
+  ovlOff = o => { if (!MULTI[o.kind]) return ovlOff0(o); MULTI[o.kind].forEach(l => { if (map.getLayer(l)) map.removeLayer(l); }); };
+  const beforeAlts = () => map.getLayer('alts') ? 'alts' : undefined;
+  const ovlById = id => OVL.find(o => o.id === id);
+
+  let lrtFC = null, lrtSt = [];
+  async function fetchLrt(silent){
+    if (lrtFC) return lrtFC;
+    if (!silent) toast('Загружаю LRT…');
+    const j = await overpass(`[out:json][timeout:25];(relation["route"~"^(light_rail|train|tram|subway)$"]["name"~"LRT|ЛРТ|Tarlan|Тарлан",i](${CITY});)->.r;way(r.r);out geom;(node["railway"~"^(station|halt)$"]["station"~"light_rail|subway"](${CITY});node["public_transport"="station"]["light_rail"="yes"](${CITY});node["railway"="station"]["name"~"LRT|ЛРТ",i](${CITY}););out;`);
+    const els = j.elements || [];
+    lrtSt = els.filter(e => e.type === 'node' && e.tags).map(e => ({ lng:e.lon, lat:e.lat, name:e.tags['name:ru'] || e.tags.name || 'Станция LRT' }))
+      .filter((s, i, a) => a.findIndex(x => dist([x.lng, x.lat], [s.lng, s.lat]) < 80) === i);
+    lrtFC = { type:'FeatureCollection', features:[
+      ...els.filter(e => e.type === 'way' && e.geometry).map(w => ({ type:'Feature', geometry:{ type:'LineString', coordinates:w.geometry.map(g => [g.lon, g.lat]) }, properties:{} })),
+      ...lrtSt.map(s => ({ type:'Feature', geometry:{ type:'Point', coordinates:[s.lng, s.lat] }, properties:{ name:s.name, st:1 } })) ] };
+    return lrtFC;
+  }
+  async function loadLrt(){
+    try{
+      await fetchLrt(false);
+      if (!lrtFC.features.length){ toast('Линии LRT пока нет в данных OpenStreetMap — появится, когда её нарисуют картографы'); return; }
+      if (!ovlIsOn(ovlById('lrt'))) return;
+      if (!map.getSource('o-lrt')) map.addSource('o-lrt', { type:'geojson', data:lrtFC });
+      if (!map.getLayer('o-lrt')) map.addLayer({ id:'o-lrt', type:'line', source:'o-lrt', filter:['!has', 'st'], layout:{ 'line-cap':'round', 'line-join':'round' },
+        paint:{ 'line-color':'#8e24aa', 'line-width':['interpolate',['linear'],['zoom'],10,2.5,16,7] } }, beforeAlts());
+      if (!map.getLayer('o-lrt-st')) map.addLayer({ id:'o-lrt-st', type:'circle', source:'o-lrt', filter:['has', 'st'],
+        paint:{ 'circle-color':'#fff', 'circle-stroke-color':'#8e24aa', 'circle-stroke-width':3, 'circle-radius':['interpolate',['linear'],['zoom'],10,3,16,8] } });
+      if (!map.getLayer('o-lrt-st-lbl')) try{ map.addLayer({ id:'o-lrt-st-lbl', type:'symbol', source:'o-lrt', filter:['has', 'st'], minzoom:12,
+        layout:{ 'text-field':['get', 'name'], 'text-font':['Noto Sans Regular'], 'text-size':12, 'text-offset':[0, 1.3], 'text-anchor':'top' },
+        paint:{ 'text-color':'#6a1b9a', 'text-halo-color':'#fff', 'text-halo-width':1.5 } }); }catch{}
+      toast(`🚈 LRT: станций ${lrtSt.length}. Нажмите на станцию — тарифы и билет`);
+    }catch{ toast('LRT сейчас не загрузился. Попробуйте позже.'); }
+  }
+  map.on('click', 'o-lrt-st', e => {
+    e.preventDefault(); const f = e.features[0]; if (!f) return;
+    const [lng, lat] = f.geometry.coordinates;
+    showPopup({ lng, lat, name:'🚈 ' + f.properties.name }, '<div class="hint" style="margin-bottom:6px">LRT Tarlan · поездка 200 ₸ · абонемент 7 500 ₸ в месяц · поезд каждые 5–6 минут.<br>Билет — QR-код в приложении Kaspi.kz.</div><a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://kaspi.kz/">Открыть Kaspi.kz</a>');
+  });
+
+  let paidFC = null;
+  async function loadPaid(){
+    try{
+      if (!paidFC){
+        toast('Загружаю платные парковки…');
+        const j = await overpass(`[out:json][timeout:25];nwr["amenity"="parking"]["fee"]["fee"!="no"](${CITY});out center tags 1500;`);
+        paidFC = { type:'FeatureCollection', features:(j.elements || []).map(e => ({ type:'Feature', geometry:{ type:'Point', coordinates:[e.lon ?? e.center?.lon, e.lat ?? e.center?.lat] },
+          properties:{ name:e.tags?.name || 'Платная парковка', fee:e.tags?.charge || '' } })).filter(f => f.geometry.coordinates[0] != null) };
+        toast(`🅿 Платных парковок в данных: ${paidFC.features.length}. Цена зависит от зоны: 100, 150 или 200 ₸ в час`);
+      }
+      if (!ovlIsOn(ovlById('paidpark'))) return;
+      if (!map.getSource('o-paidpark')) map.addSource('o-paidpark', { type:'geojson', data:paidFC });
+      if (!map.getLayer('o-paidpark')) map.addLayer({ id:'o-paidpark', type:'circle', source:'o-paidpark', minzoom:12,
+        paint:{ 'circle-color':'#1e63d6', 'circle-radius':['interpolate',['linear'],['zoom'],12,3,17,9], 'circle-stroke-color':'#ffd200', 'circle-stroke-width':2 } });
+    }catch{ toast('Парковки сейчас не загрузились. Попробуйте позже.'); }
+  }
+  const parkHtml = (fee, pay = true) => `<div class="hint" style="margin-bottom:6px">🅿 Платная парковка${fee ? ' · ' + esc(fee) : ''}. По городу зоны 200 / 150 / 100 ₸ в час — смотрите табличку. Оплата за день — до 23:59.</div><div class="chips"><button class="chip" data-park>🅿 Я здесь припарковался</button>${pay ? `<a class="chip" style="text-decoration:none;color:var(--fg)" target="_blank" rel="noopener" href="https://play.google.com/store/search?q=UIMS%20Parking&c=apps">Оплатить</a>` : ''}</div>`;
+  function bindPark(el, p){ el?.querySelector('[data-park]')?.addEventListener('click', ev => { saveCarSpot(p, true); ev.target.textContent = '✓ Напомню в 23:00'; try{ window.Notification?.requestPermission?.(); }catch{} toast('Запомнил машину. В 23:00 напомню оплатить парковку'); }); }
+  map.on('click', 'o-paidpark', e => {
+    e.preventDefault(); const f = e.features[0]; if (!f) return;
+    const [lng, lat] = f.geometry.coordinates, p = { lng, lat, name:f.properties.name };
+    bindPark(showPopup(p, parkHtml(f.properties.fee)), p);
+  });
+
+  let lanesFC = null, lanesBox = [];
+  async function loadLanes(show){
+    try{
+      if (!lanesFC){
+        if (show) toast('Загружаю выделенные полосы…');
+        const b = `(${CITY})`;
+        const j = await overpass(`[out:json][timeout:30];(way["busway"~"lane"]${b};way["busway:right"~"lane"]${b};way["busway:left"~"lane"]${b};way["busway:both"~"lane"]${b};way["lanes:bus"]${b};way["lanes:psv"]${b};way["bus:lanes"~"designated"]${b};way["psv:lanes"~"designated"]${b};way["bus:lanes:forward"~"designated"]${b};way["psv:lanes:forward"~"designated"]${b};);out geom;`);
+        lanesFC = { type:'FeatureCollection', features:(j.elements || []).filter(w => w.geometry).map(w => ({ type:'Feature', geometry:{ type:'LineString', coordinates:w.geometry.map(g => [g.lon, g.lat]) }, properties:{} })) };
+        lanesBox = lanesFC.features.map(f => ({ c:f.geometry.coordinates, b:bboxOf(f.geometry.coordinates, 0.0003) }));
+        if (show) toast(`🟧 Участков выделенных полос в данных: ${lanesFC.features.length}`);
+      }
+      if (!show || !ovlIsOn(ovlById('lanes'))) return;
+      if (!map.getSource('o-lanes')) map.addSource('o-lanes', { type:'geojson', data:lanesFC });
+      if (!map.getLayer('o-lanes')) map.addLayer({ id:'o-lanes', type:'line', source:'o-lanes', layout:{ 'line-cap':'round', 'line-join':'round' },
+        paint:{ 'line-color':'#ff6d00', 'line-width':['interpolate',['linear'],['zoom'],11,1.5,17,6], 'line-dasharray':[2, 1.2] } }, beforeAlts());
+    }catch{ if (show) toast('Полосы сейчас не загрузились. Попробуйте позже.'); }
+  }
+  ['o-lrt-st', 'o-paidpark'].forEach(l => { map.on('mouseenter', l, () => map.getCanvas().style.cursor = 'pointer'); map.on('mouseleave', l, () => map.getCanvas().style.cursor = ''); });
+
+  // ---------- 1.5: светофоры, школы, контроль средней скорости, выделенные полосы — в поездке ----------
+  let sigVoice = store.get('sigVoice', false), schoolWarn = store.get('schoolWarn', true), laneWarn = store.get('laneWarn', true);
+  $('#setSig').checked = sigVoice; $('#setSchool').checked = schoolWarn; $('#setLane').checked = laneWarn;
+  $('#setSig').onchange = e => { sigVoice = e.target.checked; store.set('sigVoice', sigVoice); };
+  $('#setSchool').onchange = e => { schoolWarn = e.target.checked; store.set('schoolWarn', schoolWarn); };
+  $('#setLane').onchange = e => { laneWarn = e.target.checked; store.set('laneWarn', laneWarn); };
+  async function loadRoadInfo(){
+    nav.sigs = []; nav.schools = [];
+    if (state.mode !== 'car' || !nav.pts.length) return;
+    const [s, w, n, e] = bboxOf(nav.pts, 0.001);
+    if ((n - s) * (e - w) > 0.5) return;
+    try{
+      const j = await overpass(`[out:json][timeout:20];(node["highway"="traffic_signals"](${s},${w},${n},${e});nwr["amenity"~"^(school|kindergarten)$"](${s},${w},${n},${e}););out center 600;`);
+      (j.elements || []).forEach(el => {
+        const p = [el.lon ?? el.center?.lon, el.lat ?? el.center?.lat]; if (p[0] == null) return;
+        const pr = project(p, 0, true);
+        if (el.tags?.highway === 'traffic_signals'){ if (pr.dist < 18) nav.sigs.push({ id:el.id, at:pr.along }); }
+        else if (pr.dist < 90) nav.schools.push({ id:el.id, at:pr.along });
+      });
+      nav.sigs.sort((a, b) => a.at - b.at); nav.schools.sort((a, b) => a.at - b.at);
+      // светофоры одного перекрёстка (ближе 60 м) считаем одним
+      nav.sigs = nav.sigs.filter((x, i, a) => !i || x.at - a[i - 1].at > 60);
+    }catch{}
+  }
+  const schoolTime = () => { const d = new Date(), h = d.getHours(), m = d.getMonth(); return d.getDay() >= 1 && d.getDay() <= 5 && h >= 7 && h < 19 && m !== 6 && m !== 7; };
+  function checkRoad(along){
+    const sig = (nav.sigs || []).find(x => x.at > along + 5), el = $('#ntSig');
+    if (sig && sig.at - along <= 300){
+      const d = sig.at - along; el.hidden = false; el.textContent = `🚦 ${fmtDist(d)}`;
+      if (sigVoice && d <= 200 && d > 40 && !nav.said['sig' + sig.id]){ nav.said['sig' + sig.id] = 1; speak({ ru:`Через ${spokenDist(d)} светофор`, kk:`${distKk(d)} кейін бағдаршам` }); }
+    } else el.hidden = true;
+    if (schoolWarn && schoolTime()){
+      const sc = (nav.schools || []).find(x => x.at > along && x.at - along <= 200);
+      if (sc && !nav.said['sch' + sc.id]){ nav.said['sch' + sc.id] = 1; speak({ ru:'Рядом школа, будьте внимательны', kk:'Жақын жерде мектеп, абай болыңыз' }); toast('🏫 Рядом школа — снизьте скорость'); }
+    }
+  }
+  // участки контроля средней скорости на трассах из Астаны (направления из города)
+  const AVG = [
+    { id:'shch', ru:'Астана — Щучинск', brg:338 },
+    { id:'temir', ru:'Астана — Темиртау', brg:138 },
+  ];
+  const CITY_C = [71.4304, 51.1282];
+  const brgDiff = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
+  function avgZone(p){ if (dist(CITY_C, p) < 22000) return null; const b = brng(CITY_C, p); return AVG.find(z => brgDiff(b, z.brg) < 18) || null; }
+  function routeAvgZone(r){ const c = r.geometry.coordinates; for (let i = 0; i < c.length; i += Math.max(1, Math.floor(c.length / 60))){ const z = avgZone(c[i]); if (z) return z; } return null; }
+  let laneSaid = 0;
+  function checkLane(p){
+    if (!laneWarn || !lanesBox.length || lastKmh < 10 || Date.now() - laneSaid < 180e3) return;
+    for (const l of lanesBox){
+      const [s, w, n, e] = l.b; if (p[1] < s || p[1] > n || p[0] < w || p[0] > e) continue;
+      if (lineDist(p, l.c).d < 12){ laneSaid = Date.now(); speak({ ru:'Рядом выделенная полоса для автобусов. Не занимайте её', kk:'Жанында автобусқа арналған бөлінген жолақ. Оған шықпаңыз' }); toast('🟧 Выделенная полоса — только автобусы и такси'); return; }
+    }
+  }
+
+  // ---------- 1.5: режим без GPS — «по шагам» ----------
+  const gps = { last:0, on:false, i:0 };
+  window.__t15 = { nav, gps, st:() => ({ driving, demo, mode:state.mode, kmh:lastKmh }) };   // для автотестов
+  const navSteps = () => nav.steps.filter(st => st.k > 0 && !st.s._cont);
+  function gpsShow(){
+    const list = navSteps(), st = list[gps.i]; if (!st) return;
+    $('#gpsInfo').innerHTML = `📡 Нет GPS — едем по шагам (${gps.i + 1} из ${list.length})<br><span style="font-weight:500">${esc(stepText(st.s))}${st.s.distance > 0 ? ' · затем ' + fmtDist(st.s.distance) : ''}</span><br><span class="hint">«Дальше» — когда выполнили манёвр. Или нажмите на карту, где вы.</span>`;
+  }
+  function gpsOnMode(){
+    if (gps.on || !driving || demo) return;
+    gps.on = true;
+    const along = nav.total - (nav.left ?? nav.total), list = navSteps();
+    gps.i = Math.max(0, list.findIndex(st => st.at > along + 8)); if (gps.i < 0) gps.i = 0;
+    $('#gpsBar').hidden = false; gpsShow();
+    speak({ ru:'Сигнал GPS пропал. Подсказываю по шагам', kk:'GPS сигналы жоғалды. Қадамдап айтамын' });
+  }
+  function gpsOff(){ if (!gps.on) return; gps.on = false; $('#gpsBar').hidden = true; toast('📡 GPS снова есть'); }
+  function gpsJump(k){
+    const list = navSteps(); gps.i = Math.max(0, Math.min(list.length - 1, gps.i + k)); const st = list[gps.i]; if (!st) return;
+    const [lng, lat] = st.s.maneuver.location;
+    onFix0({ lng, lat, speed:0, heading:null, manual:true }); gpsShow();
+    speak(say('now', { s:st.s }));
+  }
+  $('#gpsNext').onclick = () => gpsJump(1);
+  $('#gpsPrev').onclick = () => gpsJump(-1);
+  map.on('click', e => { if (gps.on && driving){ onFix0({ lng:e.lngLat.lng, lat:e.lngLat.lat, speed:0, heading:null, manual:true }); toast('Отметил: вы здесь'); } });
+  setInterval(() => { if (driving && !demo && !gps.on && gps.last && Date.now() - gps.last > 20000) gpsOnMode(); }, 4000);
+
+  // перехват каждой точки GPS: без GPS-режим, светофоры, полосы, средняя скорость
+  const onFix0 = onFix;
+  onFix = function(f){
+    if (!demo && !f.manual){ gps.last = Date.now(); if (gps.on) gpsOff(); }
+    if (!f.manual) lastKmh = demo ? 40 : Math.round((f.speed ?? 0) * 3.6);
+    onFix0(f);
+    if (!driving) return;
+    const along = nav.total - (nav.left ?? nav.total), p = [f.lng, f.lat];
+    if (state.mode === 'car'){
+      checkRoad(along);
+      if (!demo) checkLane(p);
+      const z = avgZone(p);
+      if (z && !nav.said['avg' + z.id]){ nav.said['avg' + z.id] = 1; speak({ ru:`Трасса ${z.ru}: контроль средней скорости. Держите разрешённую`, kk:`${z.ru} трассасы: орташа жылдамдық бақылауы` }); toast(`📷 ${z.ru}: камеры средней скорости`); }
+    }
+  };
+  const loadRoute0 = loadRoute;
+  loadRoute = function(r){ loadRoute0(r); loadRoadInfo(); };
+  const startNav0 = startNav;
+  startNav = async function(isDemo){
+    gps.last = Date.now(); gps.on = false; $('#gpsBar').hidden = true;
+    await startNav0(isDemo);
+    if (driving){ drawQMk(); if (state.mode === 'car' && laneWarn && !isDemo) loadLanes(false); }
+  };
+  const stopDrive0 = stopDrive;
+  stopDrive = function(){ const was = driving; stopDrive0(); gps.on = false; $('#gpsBar').hidden = true; $('#ntSig').hidden = true; if (was) setTimeout(drawQMk, 0); };
+
+  // ---------- 1.5: воздух (смог) ----------
+  let aqi = null;
+  async function loadAir(){
+    try{
+      const j = await (await fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=51.13&longitude=71.43&current=us_aqi,pm2_5&timezone=auto')).json();
+      aqi = j.current?.us_aqi ?? null;
+      const chip = $('#wxChip'); if (aqi >= 150 && chip.textContent && !chip.textContent.includes('😷')) chip.textContent += ' 😷';
+    }catch{}
+  }
+  loadAir(); setInterval(loadAir, 30 * 60e3);
+  const wxWarn0 = wxWarn;
+  wxWarn = function(){
+    const a = [wxWarn0()];
+    if (aqi >= 100) a.push(`😷 Воздух ${aqi >= 150 ? 'плохой' : 'так себе'} (индекс ${aqi})${state.mode !== 'car' ? ' — пешком выбирайте путь покороче, через ТРЦ и переходы' : ' — закройте окна, включите рециркуляцию'}`);
+    return a.filter(Boolean).join('. ');
+  };
+
+  // ---------- 1.5: освещённость пешего маршрута ночью и велодорожки для самоката ----------
+  const isDarkOut = () => { const t = sunTimes(new Date()), now = Date.now(); return now < t.rise || now > t.set; };
+  let litFor = null, bikeFor = null;
+  async function annotateRoutes(){
+    const rs = state.routes; if (!rs.length) return;
+    if (state.mode === 'foot' && isDarkOut() && litFor !== rs){
+      litFor = rs;
+      const [s, w, n, e] = bboxOf(rs.flatMap(r => r.geometry.coordinates));
+      if ((n - s) * (e - w) < 0.01) try{
+        const j = await overpass(`[out:json][timeout:20];way["highway"]["lit"~"^(yes|24/7|automatic)$"](${s},${w},${n},${e});out geom;`);
+        if (litFor !== rs) return;
+        const g = lineGrid((j.elements || []).filter(x => x.geometry).map(x => x.geometry.map(q => [q.lon, q.lat])));
+        rs.forEach(r => { r._lit = shareNear(r.geometry.coordinates, g); });
+        selectRoute(state.active);
+      }catch{}
+    }
+    if (['scoot', 'bike'].includes(state.mode) && bikeFor !== rs){
+      bikeFor = rs;
+      try{
+        if (!bikeFC){
+          const b = `(${CITY})`;
+          const j = await overpass(`[out:json][timeout:30];(way["highway"="cycleway"]${b};way["cycleway"~"^(lane|track)$"]${b};way["cycleway:right"~"^(lane|track)$"]${b};way["cycleway:left"~"^(lane|track)$"]${b};way["cycleway:both"~"^(lane|track)$"]${b};);out geom;`);
+          bikeFC = { type:'FeatureCollection', features:(j.elements || []).filter(w => w.geometry).map(w => ({ type:'Feature', geometry:{ type:'LineString', coordinates:w.geometry.map(g => [g.lon, g.lat]) }, properties:{} })) };
+        }
+        if (bikeFor !== rs) return;
+        const g = lineGrid(bikeFC.features.map(f => f.geometry.coordinates));
+        rs.forEach(r => { r._bike = shareNear(r.geometry.coordinates, g); });
+        selectRoute(state.active);
+      }catch{}
+    }
+  }
+
+  // ---------- 1.5: «пешком + LRT» — подсказка для длинных пеших маршрутов ----------
+  let lrtHintFor = null, lrtHint = null;
+  async function lrtSuggest(){
+    const r = state.routes[state.active]; if (state.mode !== 'foot' || !r || r.distance < 2000 || !state.from || !state.to) return null;
+    if (lrtHintFor === r) return lrtHint;
+    lrtHintFor = r; lrtHint = null;
+    try{ await fetchLrt(true); }catch{ return null; }
+    if (lrtSt.length < 2) return null;
+    const nearest = p => lrtSt.map(s => ({ s, d:dist([p.lng, p.lat], [s.lng, s.lat]) * 1.25 })).sort((a, b) => a.d - b.d)[0];
+    const a = nearest(state.from), b = nearest(state.to);
+    if (a.s === b.s || a.d > 1500 || b.d > 1500) return null;
+    const ride = dist([a.s.lng, a.s.lat], [b.s.lng, b.s.lat]) * 1.25 / 9.7, total = (a.d + b.d) / 1.3 + 6 * 60 + ride;
+    if (total > r.duration * 0.85) return null;
+    lrtHint = { st:a.s, html:`<p class="hint r-sum">🚈 Быстрее на LRT: пешком ${fmtDist(a.d)} до станции «${esc(a.s.name)}», поезд до «${esc(b.s.name)}» ~${fmtTime(ride)}, затем ${fmtDist(b.d)} пешком. Всего ~${fmtTime(total)}, 200 ₸ (оценка). <button class="linkbtn" data-lrtgo>Пешком до станции</button></p>` };
+    return lrtHint;
+  }
+
+  // ---------- 1.5: «Барыс о маршруте» — короткая сводка одной фразой ----------
+  let sumSaidFor = null;
+  function routeSummary(r){
+    const parts = [], rs = state.routes, c = r.geometry.coordinates;
+    if (rs.length > 1){
+      const others = rs.filter(x => x !== r), best = others.reduce((m, x) => x.duration < m.duration ? x : m, others[0]);
+      const dm = Math.round((best.duration - r.duration) * (r._f || 1) / 60), dk = (best.distance - r.distance) / 1000;
+      if (dm >= 2) parts.push(`быстрее соседнего на ${dm} мин`);
+      else if (dm <= -2) parts.push(`на ${-dm} мин дольше${dk > 0.5 ? `, зато короче на ${dk.toFixed(1).replace('.', ',')} км` : ''}`);
+      else parts.push('по времени как соседний');
+    }
+    if (state.mode === 'car'){
+      const nc = cams.filter(x => lineDist([x.lng, x.lat], c).d < 25).length;
+      if (nc) parts.push(`${nc} ${nc === 1 ? 'камера' : nc < 5 ? 'камеры' : 'камер'}`);
+      const ev = events.filter(x => lineDist([x.lng, x.lat], c).d < 45).map(x => EV[x.type]).filter(Boolean);
+      if (ev.length) parts.push('на пути ' + [...new Set(ev.map(t => t.e + ' ' + t.n.toLowerCase()))].join(', '));
+      const z = routeAvgZone(r); if (z) parts.push(`на трассе ${z.ru} контроль средней скорости`);
+    }
+    if (r._lit != null) parts.push(r._lit >= 0.7 ? `улицы освещены (~${Math.round(r._lit * 100)}%)` : `освещено только ~${Math.round(r._lit * 100)}% пути — возьмите фонарик`);
+    if (r._bike != null && state.mode === 'scoot') parts.push(`по велодорожкам ~${Math.round(r._bike * 100)}%`);
+    if (state.mode === 'scoot') parts.push('по тротуарам на самокате нельзя (с 25.08.2026)');
+    if (!parts.length) return '';
+    const t = parts.join(', ');
+    return t[0].toUpperCase() + t.slice(1) + '.';
+  }
+  const selectRoute0 = selectRoute;
+  selectRoute = function(i, fit){
+    selectRoute0(i, fit);
+    const r = state.routes[i]; if (!r) return;
+    document.querySelectorAll('#routes [data-r]').forEach(b => {
+      const x = state.routes[+b.dataset.r], eta = b.querySelector('.eta'); if (!x || !eta) return;
+      if (x._lit != null) eta.insertAdjacentText('beforeend', ` · 💡 ${Math.round(x._lit * 100)}% освещено`);
+      if (x._bike != null) eta.insertAdjacentText('beforeend', ` · 🚲 ${Math.round(x._bike * 100)}% велодорожки`);
+    });
+    if (state.routes.length > 1 && state.routes.some(x => x._lit != null)){
+      const lit = state.routes.reduce((m, x, k) => (x._lit ?? 0) > (state.routes[m]._lit ?? 0) ? k : m, 0), fast = state.routes.reduce((m, x, k) => x.duration < state.routes[m].duration ? k : m, 0);
+      if (lit !== fast && (state.routes[lit]._lit - state.routes[fast]._lit) >= 0.15) document.querySelector(`#routes [data-r="${lit}"] .dist`)?.insertAdjacentText('beforeend', ' · освещённый');
+    }
+    const sum = routeSummary(r);
+    if (sum) $('#routes').insertAdjacentHTML('afterbegin', `<p class="hint r-sum">🐆 ${esc(sum)}</p>`);
+    if (sum && sumSaidFor !== state.routes && !driving){ sumSaidFor = state.routes; mascot('happy', sum, 7000); }
+    annotateRoutes();
+    lrtSuggest().then(h => {
+      if (!h || state.routes[state.active] !== r || document.querySelector('[data-lrtgo]')) return;
+      $('#routes').insertAdjacentHTML('beforeend', h.html);
+      document.querySelector('[data-lrtgo]').onclick = () => goTo({ lng:h.st.lng, lat:h.st.lat, name:'🚈 ' + h.st.name });
+    });
+  };
+  // самокат: подсказка о правилах и слой велодорожек
+  document.querySelectorAll('[data-mode="scoot"]').forEach(b => b.addEventListener('click', () => {
+    toast('🛴 С 25.08.2026 по тротуарам на самокате нельзя — только велодорожки. Маршрут по велопрофилю');
+    if (!ovlIsOn(OVL[1])) setOvl('bike', true);
+  }));
+
+  // ---------- 1.5: Квесты Барыса ----------
+  const QK = {
+    hours:{ e:'🕘', pts:10, q:n => `До скольких работает «${n}»?`, a:['Круглосуточно', 'До 20:00', 'До 21:00', 'До 22:00', 'До 23:00', 'После 23:00'] },
+    open:{ e:'🏪', pts:5, q:n => `«${n}» ещё работает?`, a:['Работает', 'Закрылось', 'Переехало'] },
+    entrance:{ e:'🚪', pts:10, q:n => `Где вход в «${n}»?`, a:['С улицы', 'Со двора', 'С торца', 'Внутри ТРЦ / БЦ'] },
+    access:{ e:'♿', pts:5, q:n => `В «${n}» можно заехать с коляской (пандус, без ступенек)?`, a:['Да', 'Нет', 'Частично'] },
+    stop:{ e:'🚏', pts:5, q:n => `Что есть на остановке «${n}»?`, a:['Тёплый павильон', 'Навес', 'Табло', 'Ничего нет'] },
+  };
+  const Q_RADIUS = 500, Q_NEAR = 150;
+  let qDone = new Set(store.get('qDone', [])), qSrv = {}, qList = [], qAt = null, qMk = [], qLoading = false;
+  const qDay = () => { const d = store.get('qDay', { d:'', n:0 }); return d.d === new Date().toDateString() ? d : { d:new Date().toDateString(), n:0 }; };
+  async function loadQSrv(){ try{ const j = await (await fetch('/api/quests')).json(); qSrv = j.q || {}; }catch{} }
+  const hash = s => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) | 0; return (h >>> 0).toString(36); };
+  async function buildQuests(c){
+    const out = [];
+    try{
+      const j = await overpass(`[out:json][timeout:20];(nwr(around:${Q_RADIUS},${c.lat},${c.lng})["amenity"~"^(pharmacy|cafe|restaurant|fast_food|bank|clinic|dentist|post_office)$"]["name"];nwr(around:${Q_RADIUS},${c.lat},${c.lng})["shop"]["name"];node(around:${Q_RADIUS},${c.lat},${c.lng})["highway"="bus_stop"];);out center tags 250;`);
+      (j.elements || []).forEach(el => {
+        const t = el.tags || {}, lng = el.lon ?? el.center?.lon, lat = el.lat ?? el.center?.lat; if (lng == null) return;
+        const base = { lng, lat, ref:el.type[0] + el.id };
+        if (t.highway === 'bus_stop'){ if (!t.shelter && !t.bench) out.push({ ...base, kind:'stop', name:t.name || 'Остановка' }); return; }
+        if (!t.opening_hours) out.push({ ...base, kind:'hours', name:t.name });
+        if (!t.wheelchair) out.push({ ...base, kind:'access', name:t.name });
+      });
+    }catch{}
+    try{
+      const db = await loadPlaces();
+      db.forEach(p => {
+        const [lng, lat, name] = p.r; if (!name || dist([c.lng, c.lat], [lng, lat]) > Q_RADIUS) return;
+        const ref = 'ov' + hash(name + lng.toFixed(4) + lat.toFixed(4));
+        if (out.some(x => x.name === name && dist([x.lng, x.lat], [lng, lat]) < 60)) return;
+        out.push({ lng, lat, ref, kind:'open', name });
+        if (parseInt(hash(name), 36) % 3 === 0) out.push({ lng, lat, ref, kind:'entrance', name });
+      });
+    }catch{}
+    return out.map(x => ({ ...x, id:x.kind + ':' + x.ref, d:dist([c.lng, c.lat], [x.lng, x.lat]) }))
+      .filter(x => !qDone.has(x.id) && !qSrv[x.id]?.ok).sort((a, b) => a.d - b.d).slice(0, 30);
+  }
+  async function refreshQuests(open){
+    if (qLoading) return; qLoading = true;
+    let c = myPos();
+    if (!c && open){ try{ const p = await getPos(); c = { lng:p.coords.longitude, lat:p.coords.latitude }; showMe(c); }catch{} }
+    if (!c){ qLoading = false; if (open){ $('#questInfo').textContent = 'Включите геолокацию — квесты привязаны к местам рядом с вами.'; $('#questList').innerHTML = ''; } return; }
+    qAt = c;
+    await loadQSrv();
+    qList = await buildQuests(c);
+    qLoading = false;
+    const n = qList.length; $('#questN').hidden = !n; $('#questN').textContent = n > 9 ? '9+' : n;
+    drawQMk();
+    if (!$('#questSheet').hidden) renderQuests();
+    return n;
+  }
+  function drawQMk(){
+    qMk.forEach(m => m.remove()); qMk = [];
+    if (driving) return;
+    qList.slice(0, 15).forEach(x => {
+      const el = document.createElement('div'); el.className = 'poi-pin q-pin'; el.textContent = '🎯'; el.title = QK[x.kind].q(x.name);
+      el.onclick = ev => { ev.stopPropagation(); const p = { lng:x.lng, lat:x.lat };
+        if (ruler.on) return rulerAdd(p); if (disp.on) return dispClick(p); if (addStopMode){ addStopMode = false; $('#addStop').classList.remove('on'); return addStop({ ...p, name:x.name }); }
+        openQuests(x.id); };
+      qMk.push(new maplibregl.Marker({ element:el, offset:[16, -16] }).setLngLat([x.lng, x.lat]).addTo(map));
+    });
+  }
+  function renderQuests(focus){
+    const day = qDay();
+    $('#questInfo').innerHTML = qList.length ? `Рядом ${qList.length} заданий · сегодня отвечено ${day.n} из 30 · 🐆 ${levelOf(score.pts).name}, ${score.pts} очков` : 'Рядом пока нет заданий — загляните позже или в другом районе 🐾';
+    const here = myPos() || qAt;
+    $('#questList').innerHTML = qList.map((x, i) => {
+      const k = QK[x.kind], d = here ? dist([here.lng, here.lat], [x.lng, x.lat]) : x.d, ok = d <= Q_NEAR, srv = qSrv[x.id];
+      const votes = srv ? Object.values(srv.t || {}).reduce((a, b) => a + b, 0) : 0;
+      return `<div class="poi-row q-row" data-qid="${esc(x.id)}"><b>${k.e} ${esc(k.q(x.name))}</b>
+        <div class="hint">${fmtDist(d)} от вас · +${k.pts} очков${votes ? ` · уже ответили: ${votes}` : ''}</div>
+        <div class="q-ans">${ok ? k.a.map((a, j) => `<button class="chip" data-qa="${i}:${j}">${esc(a)}</button>`).join('') + `<button class="chip" data-qa="${i}:-1">Не знаю</button>`
+          : `<span class="hint">Подойдите ближе — ответить можно в ${Q_NEAR} м</span><button class="chip" data-qgo="${i}">🚶 Сюда</button>`}</div></div>`;
+    }).join('');
+    $('#questList').querySelectorAll('[data-qa]').forEach(b => b.onclick = () => { const [i, j] = b.dataset.qa.split(':').map(Number); answerQuest(qList[i], j, b); });
+    $('#questList').querySelectorAll('[data-qgo]').forEach(b => b.onclick = () => { const x = qList[+b.dataset.qgo]; $('#questSheet').hidden = true; setMode('foot'); goTo({ lng:x.lng, lat:x.lat, name:x.name }); });
+    if (focus) document.querySelector(`[data-qid="${CSS.escape(focus)}"]`)?.scrollIntoView({ block:'center' });
+  }
+  async function answerQuest(x, j, btn){
+    if (!x) return;
+    if (j < 0){ qDone.add(x.id); store.set('qDone', [...qDone].slice(-2000)); qList = qList.filter(y => y !== x); renderQuests(); drawQMk(); return; }
+    const day = qDay(); if (day.n >= 30) return toast('На сегодня всё — 30 ответов. Завтра будут новые задания 🐾');
+    const v = QK[x.kind].a[j];
+    btn.disabled = true;
+    try{
+      const r = await fetch('/api/quests', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ id:x.id, kind:x.kind, v, lng:x.lng, lat:x.lat, name:x.name }) });
+      const res2 = await r.json().catch(() => ({}));
+      if (r.status === 429) return toast('На сегодня всё — 30 ответов. Спасибо! 🐾');
+      if (!r.ok || !res2.ok) throw 0;
+      qDone.add(x.id); store.set('qDone', [...qDone].slice(-2000));
+      day.n++; store.set('qDay', day);
+      addPts(QK[x.kind].pts, 'за квест');
+      mascot('happy', res2.confirmed ? `Факт подтверждён жителями! ✔ «${x.name}»: ${v}. +${QK[x.kind].pts}` : `Спасибо! +${QK[x.kind].pts} очков. Ещё ${Math.max(0, (res2.need || 3) - (res2.votes || 1))} ответа — и факт будет проверен 🐾`, 5000);
+      qList = qList.filter(y => y !== x); $('#questN').textContent = qList.length; $('#questN').hidden = !qList.length;
+      renderQuests(); drawQMk();
+    }catch{ btn.disabled = false; toast('Не удалось отправить. Проверьте интернет.'); }
+  }
+  function openQuests(focus){
+    if (fastNow()) return toast('Квесты — на стоянке или пешком 🙂');
+    $('#questSheet').hidden = false;
+    if (qList.length && !focus) renderQuests(); else if (focus) renderQuests(focus);
+    else $('#questInfo').textContent = 'Ищу задания рядом…';
+    if (!qList.length || !qAt) refreshQuests(true);
+  }
+  $('#tQuest').onclick = () => openQuests();
+  setTimeout(() => refreshQuests(false), 8000);
+  setInterval(() => { if (document.visibilityState === 'visible' && !driving) refreshQuests(false); }, 10 * 60e3);
+  // проверенные жителями факты — в карточке организации
+  const openOrg0 = openOrg;
+  openOrg = async function(o){
+    await openOrg0(o);
+    const box = popup?.getElement()?.querySelector('[data-org]'); if (!box) return;
+    if (o.sub === 'parking' || o.cls === 'parking'){ box.insertAdjacentHTML('beforeend', parkHtml('', false)); bindPark(box, { lng:o.lng, lat:o.lat }); }
+    const facts = Object.values(qSrv).filter(f => f.ok && f.n === o.name && dist([f.lng, f.lat], [o.lng, o.lat]) < 100);
+    if (facts.length) box.insertAdjacentHTML('beforeend', facts.map(f => `<div class="hint">✔ Проверено жителями: ${QK[f.k]?.e || ''} ${esc(f.ok)}${f.at ? ' · ' + new Date(f.at).toLocaleDateString('ru-RU', { month:'long', year:'numeric' }) : ''}</div>`).join(''));
+  };
+  const showArrival0 = showArrival;
+  showArrival = function(st){
+    showArrival0(st);
+    $('#arrPark').hidden = !!st?.demo; $('#arrPark').disabled = false; $('#arrPark').textContent = '🅿 Платная';
+    if (st && !st.demo) setTimeout(async () => { const n = await refreshQuests(false); if (n) mascot('wave', `Рядом ${n} квестов 🎯 Ответьте, пока вы здесь — получите очки!`, 7000); }, 7000);
+  };
+
+  // ---------- 1.5: голосовой помощник «Эй, Барыс» ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recog = null, listening = false;
+  const EXAMPLES = ['Домой', 'Найди заправку по пути', 'Где ближайшая аптека', 'Сообщи о ДТП', 'Сколько ехать', 'Едем в Хан Шатыр', 'Где моя машина', 'Какая погода', 'Вызови такси', 'Квесты'];
+  $('#asstEx').innerHTML = EXAMPLES.map(t => `<button class="chip" data-ex="${esc(t)}">${esc(t)}</button>`).join('');
+  $('#asstEx').querySelectorAll('[data-ex]').forEach(b => b.onclick = () => handleCmd(b.dataset.ex));
+  $('#asstForm').onsubmit = e => { e.preventDefault(); const t = $('#asstText').value.trim(); if (t){ $('#asstText').value = ''; handleCmd(t); } };
+  function micUi(on){ ['#tMic', '#asstMic'].forEach(s => $(s).classList.toggle('on', on)); $('#navMic').textContent = on ? '🔴' : '🎤'; }
+  function openAsst(){ $('#asstSheet').hidden = false; }
+  function listen(){
+    if (!SR){ openAsst(); return toast('Этот браузер не понимает голос — напишите команду. В Chrome голос работает.'); }
+    if (listening){ try{ recog.stop(); }catch{} return; }
+    unlockSpeech();
+    recog = new SR(); recog.lang = voiceLang() === 'kk' ? 'kk-KZ' : 'ru-RU'; recog.interimResults = true; recog.maxAlternatives = 1;
+    let heard = '';
+    recog.onresult = e => { heard = Array.from(e.results).map(r => r[0].transcript).join(' '); $('#asstHeard').textContent = heard; };
+    recog.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Разрешите микрофон для сайта в настройках браузера'); else if (e.error === 'no-speech') mascot('sad', 'Ничего не услышал. Нажмите 🎤 и говорите 🐾', 3500); };
+    recog.onend = () => { listening = false; micUi(false); if (heard.trim()) handleCmd(heard.trim()); };
+    try{ recog.start(); listening = true; micUi(true); if (!fastNow()) openAsst(); $('#asstHeard').textContent = 'Слушаю…'; mascot('wave', 'Слушаю… 🎤', 6000); }
+    catch{ listening = false; micUi(false); }
+  }
+  $('#tMic').onclick = listen; $('#asstMic').onclick = listen; $('#navMic').onclick = listen;
+  function reply(text, quiet){
+    if (!text) return;
+    let t = text;
+    if (fastNow()){ const w = t.split(/\s+/); if (w.length > 20) t = w.slice(0, 20).join(' ') + '…'; }
+    $('#asstAns').hidden = false; $('#asstAns').textContent = '🐆 ' + t;
+    if (quiet) return;
+    if (muted) mascot('happy', t, 6000); else speak({ ru:t, kk:t });
+  }
+  const waitRoute = prev => new Promise(ok => { const t0 = Date.now(); const k = setInterval(() => { if ((state.routes.length && state.routes !== prev) || Date.now() - t0 > 9000){ clearInterval(k); ok(state.routes[state.active]); } }, 250); });
+  async function routeToPlace(query){
+    const text = query.replace(/[.!?]+$/, '').trim(); if (text.length < 2) return 'Куда едем? Скажите название или адрес.';
+    let it = (await searchPlaces(text).catch(() => []))[0];
+    if (!it) it = (await searchPhoton(text).catch(() => []))[0];
+    if (!it) return `Не нашёл «${text}» в Астане. Скажите адрес по-другому.`;
+    const p = { lng:+it.lon, lat:+it.lat, name:title(it) || text };
+    if (driving && !demo && nav.shown) return changeDest(p);
+    const prev = state.routes;
+    if (!state.from){ const h = myPos(); if (h) setPoint('from', { lng:h.lng, lat:h.lat, name:'Моё местоположение', me:true }, true); }
+    goTo(p);
+    const r = await waitRoute(prev);
+    return r ? `${p.name}: ${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}. Скажите «поехали».` : `Нашёл: ${p.name}. Поставьте точку А, и построю маршрут.`;
+  }
+  async function changeDest(p){
+    state.to = { ...p }; markerTo?.setLngLat([p.lng, p.lat]); $('#toLbl').textContent = p.name; if (nav.stats){ nav.stats.to = p.name; nav.stats.toP = { ...p }; }
+    nav.said = {}; await reroute({ lng:nav.shown[0], lat:nav.shown[1] }, false);
+    return `Меняю маршрут: ${p.name}, ${fmtTime(nav.dur)}.`;
+  }
+  function reportHere(type){
+    const h = myPos(); if (!h) return 'Не знаю, где вы — включите геолокацию.';
+    sendEvent(type, [h.lng, h.lat], false);
+    return `Отметил: ${EV[type].n}. Водители увидят.`;
+  }
+  function etaText(){
+    if (driving && nav.left != null) return `Осталось ${fmtDist(nav.left)}, примерно ${fmtTime(nav.tLeft)}. Прибытие в ${arrival(nav.tLeft)}.`;
+    const r = state.routes[state.active]; if (r) return `${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}. Прибытие в ${arrival(r.duration * (r._f || 1))}.`;
+    return 'Сначала скажите, куда едем.';
+  }
+  const weatherText = () => wx ? `Сейчас ${wx.t}°, ощущается как ${wx.feel}°, ветер ${wx.wind} м/с.${aqi >= 100 ? ` Воздух так себе, индекс ${aqi}.` : ''}${wx.snow ? ' Идёт снег — осторожно, гололёд.' : ''}` : 'Погоду пока не загрузил — проверьте интернет.';
+  const CAT_WORDS = [['ev', /зарядк|электрозаряд|зарядн/], ['fuel', /заправк|азс|бензин|жанармай|газ на/], ['pharm', /аптек|дәріхана|лекарств/], ['cafe', /кофе|кофейн/],
+    ['food', /поесть|покушать|еда|ресторан|кафе|столов|тамақ|фастфуд/], ['atm', /банкомат|снять деньги|наличн|банк/], ['park', /парковк|тұрақ|припарковаться/],
+    ['wash', /мойк|помыть/], ['tyre', /шиномонтаж|колес|шина/], ['wc', /туалет|дәретхана/], ['shop', /продукт|магазин|супермаркет|дүкен/]];
+  const EV_WORDS = [['accident', /дтп|авари|апат/], ['jam', /пробк|кептеліс/], ['works', /ремонт|жөндеу|дорожные работы/], ['closed', /перекр|закрыта дорог|жабық/],
+    ['police', /полици|гаишн|пост дпс|патрул/], ['pothole', /(^|\s)ям|шұңқыр/], ['ice', /гололед|көктайғақ/], ['snow', /занос|сугроб/], ['danger', /опасн|қауіп/]];
+  async function doAction(a, args, text){
+    switch (a){
+      case 'route_to': return routeToPlace(args.query || text);
+      case 'find_category': { const c = CATS.find(x => x.id === args.cat); if (!c) return ''; openCats(c.id); return `Ищу: ${c.n}${activeLine() ? ' по пути' : ' рядом'}.`; }
+      case 'report': return EV[args.type] ? reportHere(args.type) : '';
+      case 'eta': return etaText();
+      case 'weather': return weatherText();
+      case 'taxi': { const p = state.to || myPos(); if (!p) return 'Скажите, куда ехать на такси.'; taxiTo({ ...p, name:p.name || 'Точка на карте' }); return 'Выберите: Yandex Go или inDrive.'; }
+      case 'start_nav': if (!state.routes.length) return 'Сначала скажите, куда едем.'; if (!driving){ $('#asstSheet').hidden = true; startNav(false); } return 'Поехали!';
+      case 'stop_nav': if (driving) stopDrive(); return 'Поездка завершена.';
+      case 'my_car': return goToCar();
+      case 'quests': $('#asstSheet').hidden = true; openQuests(); return 'Вот квесты рядом 🎯';
+      default: return '';
+    }
+  }
+  // простые команды — без ИИ и без интернета
+  function localCmd(raw){
+    const t = low(raw).replace(/^(эй|слушай|привет|сәлем)?,?\s*барыс,?\s*/, '').trim();
+    if (!t) return () => 'Слушаю! Скажите, например: «домой» или «найди заправку».';
+    if (/^(привет|сәлем|салем|здравствуй)/.test(t)) return () => 'Сәлем! Я Барыс. Скажите, куда едем, или «найди заправку».';
+    if (/(что ты умеешь|помощь|команды|не знаю что)/.test(t)) return () => 'Могу: «домой», «на работу», «едем в …», «найди аптеку», «сообщи о ДТП», «сколько ехать», «где моя машина», «погода», «такси», «квесты».';
+    if (/(^|\s)(домой|үйге|додому)(\s|$)/.test(t)) return () => places.home ? routeToHome('home') : 'Дом не сохранён. Зажмите точку на карте и нажмите 🏠.';
+    if (/(на работу|в офис|жұмысқа)/.test(t)) return () => places.work ? routeToHome('work') : 'Работа не сохранена. Зажмите точку на карте и нажмите 💼.';
+    if (/(где|найди|найти|покажи|моя|мою).{0,12}машин|көлігім/.test(t)) return () => goToCar();
+    if (/(без звука|выключи (звук|голос)|замолчи|тише|дыбысты өшір)/.test(t)) return () => { muted = true; $('#navMute').textContent = '🔇'; speechSynthesis?.cancel(); return 'Молчу. Скажите «включи звук», чтобы вернуть голос.'; };
+    if (/(включи (звук|голос)|дыбысты қос)/.test(t)) return () => { muted = false; $('#navMute').textContent = '🔊'; return 'Голос включён.'; };
+    if (/квест/.test(t)) return () => doAction('quests');
+    if (/такси/.test(t)) return () => doAction('taxi');
+    if (/погод|ауа райы|холодно|температур|сколько градус/.test(t)) return () => weatherText();
+    if (/(сколько|когда|қашан|қанша).{0,20}(ехать|осталось|приед|доед|будем|время|жетеміз|қалды)/.test(t) || /^(сколько ехать|когда приедем)/.test(t)) return () => etaText();
+    if (/^(стоп|заверши|останови|закончи|хватит)/.test(t) && driving) return () => doAction('stop_nav');
+    if (/^(поехали|погнали|старт|начать поездку|жүрдік|кеттік|едем)$/.test(t)) return () => doAction('start_nav');
+    const isReport = /(сообщи|отметь|отметить|там|впереди|вижу|тут|здесь|хабарла)/.test(t);
+    for (const [type, re] of EV_WORDS) if (re.test(t) && (isReport || t.split(/\s+/).length <= 2)) return () => reportHere(type);
+    for (const [id, re] of CAT_WORDS) if (re.test(t)) return () => doAction('find_category', { cat:id });
+    let m = t.match(/^(?:(?:поехали|едем|поедем|маршрут|проложи(?: маршрут)?|построй(?: маршрут)?|как (?:доехать|добраться|пройти)|веди|отвези|навигатор|хочу)\s+)?(?:в|во|до|на|к|ко)\s+(.{2,})$/);
+    if (m) return () => routeToPlace(m[1]);
+    m = t.match(/^(.{2,}?)(?:ға|ге|қа|ке|на|не|а|е)?\s+(?:апар|бар|жол көрсет|барамыз)$/);
+    if (m) return () => routeToPlace(m[1]);
+    return null;
+  }
+  async function routeToHome(k){
+    const p = places[k], prev = state.routes;
+    if (driving && !demo && nav.shown) return changeDest({ ...p });
+    const h = myPos(); if (h) setPoint('from', { lng:h.lng, lat:h.lat, name:'Моё местоположение', me:true }, true);
+    goTo(p);
+    const r = await waitRoute(prev);
+    return r ? `${k === 'home' ? 'Домой' : 'На работу'}: ${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}. Скажите «поехали».` : 'Строю маршрут…';
+  }
+  async function handleCmd(text){
+    $('#asstHeard').textContent = '«' + text + '»';
+    const loc = localCmd(text);
+    if (loc){ try{ reply(await loc()); }catch{ reply('Что-то пошло не так. Попробуйте ещё раз.'); } return; }
+    reply('Думаю…', true);
+    try{
+      const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null };
+      const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:voiceLang(), ctx }) });
+      if (r.status === 503 || r.status === 404) return reply('Сложные вопросы я научусь понимать совсем скоро. А пока скажите проще: «домой», «найди аптеку», «едем в Хан Шатыр».');
+      if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
+      const j = await r.json(); if (!j.ok) throw 0;
+      const extra = await doAction(j.action, j.args || {}, text);
+      reply(extra && j.action !== 'none' ? extra : j.say);
+    }catch{ reply('Не получилось спросить — проверьте интернет. Простые команды работают и без него.'); }
+  }
 
   // ---------- Настройки ----------
   function openSettings(){
