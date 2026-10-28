@@ -1,0 +1,28 @@
+name: Заведения OpenStreetMap для Астаны
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * 1'   # каждый понедельник
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/osm.yml'
+      - 'scripts/osm_places.py'
+permissions:
+  contents: write
+jobs:
+  places:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/osm_places.py data/osm-places-astana.json
+      - name: Сохранить в репозиторий
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase -q
+          git add data/osm-places-astana.json
+          git diff --cached --quiet || (git commit -m "Обновлены заведения OpenStreetMap для Астаны" && git push)
