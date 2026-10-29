@@ -1,6 +1,6 @@
 // Голосовой ассистент «Эй, Барыс» — понимание сложных фраз через Cloudflare Workers AI.
 // Простые команды («домой», «найди заправку») приложение разбирает само, без этого сервера.
-// Нужна привязка Workers AI с именем AI_BARRIS: Pages → Settings → Bindings → Add → Workers AI.
+// Нужна привязка Workers AI с именем AI_BARYS: Pages → Settings → Bindings → Add → Workers AI.
 // Бесплатно ~10 000 «нейронов» в сутки ≈ 500 запросов.
 
 const MODELS = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'];
@@ -60,7 +60,7 @@ function parse(text) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const AI = env.AI_BARRIS || env.AI;   // привязка Workers AI: имя AI_BARRIS (или AI)
+  const AI = env.AI_BARYS || env.AI_BARRIS || env.AI;   // привязка Workers AI: имя AI_BARYS
   if (!AI) return Response.json({ ok: false, error: 'no_ai' }, { status: 503 });
   const ip = request.headers.get('CF-Connecting-IP') || '';
   if (limited(ip)) return Response.json({ ok: false, error: 'limit' }, { status: 429 });
