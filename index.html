@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.9.0</p>
+    <p class="set-ver">Версия 1.9.1</p>
   </div>
 </div>
 
@@ -733,10 +733,10 @@ body.night .nav .btn{background:#1d2731;border:0}
     <div class="set-row"><label for="bizDesc">Коротко о вас</label><textarea id="bizDesc" class="inp" rows="2" maxlength="300" placeholder="Что вы предлагаете, чем отличаетесь"></textarea></div>
     <div class="set-row"><label>Продвижение</label>
       <label class="set-check"><input type="radio" name="bizWant" value="" checked> Бесплатная карточка</label>
-      <label class="set-check"><input type="radio" name="bizWant" value="priority"> ⬆ Выше в поиске — 50 000 ₸ в месяц</label>
-      <label class="set-check"><input type="radio" name="bizWant" value="logo"> ⭐ Логотип на карте + выше в поиске — 100 000 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="priority"> ⬆ Выше в поиске — 15 000 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="logo"> ⭐ Логотип на карте + выше в поиске — 30 000 ₸ в месяц</label>
       <input id="bizContact" class="inp" maxlength="60" placeholder="Телефон или WhatsApp — менеджер свяжется" hidden aria-label="Контакт для связи">
-      <p class="hint">Платное размещение помечается словом «Реклама». Оплата — после звонка менеджера.</p></div>
+      <p class="hint">🎁 Первым 20 компаниям — первый месяц бесплатно. Платное размещение помечается словом «Реклама». Оплата — после звонка менеджера.</p></div>
     <button class="btn primary" id="bizSend">Сохранить карточку</button>
   </div>
 </div>
@@ -1165,7 +1165,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       if (!navigator.geolocation) return toast('Браузер не умеет определять местоположение.');
       toast('Определяю, где вы…');
       let pos;
-      try{ pos = await getPos(); }catch{ return toast('Нет доступа к геолокации. Разрешите её в настройках браузера.'); }
+      try{ pos = await getPos(); }catch(e){ return toast(geoErrText(e)); }
       geoMarker?.remove(); geoMarker = null;
       const here = { lng:pos.coords.longitude, lat:pos.coords.latitude };
       await reroute(here, false);
@@ -1888,7 +1888,24 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (mod.includes('right')) return '↱';
     return '↑';
   }
-  function getPos(){ return new Promise((ok, no) => navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy:true, timeout:12000 })); }
+  // Где я: сначала точный GPS, если не ответил — по сети (Wi-Fi, вышки), если и это нет — последняя известная точка
+  function getPos(){
+    return new Promise((ok, no) => {
+      const g = navigator.geolocation; if (!g) return no({ code:2 });
+      g.getCurrentPosition(ok, e => {
+        if (e && e.code === 1) return no(e);
+        g.getCurrentPosition(ok, e2 => {
+          if (geoMarker){ const ll = geoMarker.getLngLat(); return ok({ coords:{ longitude:ll.lng, latitude:ll.lat, speed:null, heading:null, accuracy:500 }, approx:true }); }
+          no(e2 || e);
+        }, { enableHighAccuracy:false, timeout:15000, maximumAge:300000 });
+      }, { enableHighAccuracy:true, timeout:8000, maximumAge:30000 });
+    });
+  }
+  function geoErrText(e){
+    return e && e.code === 1
+      ? 'Нет разрешения на местоположение. Включите: Настройки телефона → Приложения → Chrome (или «Карта Астаны») → Разрешения → Местоположение → «Разрешить». Или нажмите 🔒 слева от адреса сайта → Разрешения → Местоположение.'
+      : 'GPS не ответил. Проверьте, что «Местоположение» включено в шторке телефона, и попробуйте ещё раз — у окна или на улице ловит лучше.';
+  }
 
   function along(pts, cum, d){
     let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
@@ -2046,7 +2063,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     const lbl = $('#fromLbl');
     if (!navigator.geolocation){ if (auto && !state.from) lbl.textContent = 'Адрес или точка на карте'; return toast('Браузер не умеет определять местоположение.'); }
     if (!auto) toast('Определяю, где вы…');
-    navigator.geolocation.getCurrentPosition(pos => {
+    getPos().then(pos => {
       const p = { lng:pos.coords.longitude, lat:pos.coords.latitude };
       if (!inAstana(p)){
         if (!state.from){ lbl.textContent = 'Адрес или точка на карте'; }
@@ -2060,10 +2077,11 @@ body.night .nav .btn{background:#1d2731;border:0}
       if (watchMe == null) watchMe = navigator.geolocation.watchPosition(q => {
         const pp = { lng:q.coords.longitude, lat:q.coords.latitude }; if (inAstana(pp)){ showMe(pp); if (!driving) checkLandmarks([pp.lng, pp.lat], false); }
       }, () => {}, { enableHighAccuracy:false, maximumAge:15000 });
-    }, () => {
+    }).catch(e => {
       if (!state.from) lbl.textContent = 'Адрес или точка на карте';
-      toast(auto ? 'Разрешите доступ к местоположению — так карта сама найдёт, где вы' : 'Нет доступа к геолокации. Разрешите её в настройках браузера.');
-    }, { enableHighAccuracy:true, timeout:10000, maximumAge:30000 });
+      if (auto && e?.code !== 1) return toast('Не удалось определить, где вы. Нажмите ➤ справа внизу, чтобы попробовать снова');
+      toast(geoErrText(e)); if (!auto) mascot('sad', geoErrText(e), 9000);
+    });
   }
   $('#tGeo').onclick = () => locateMe(false);
   $('#collapse').onclick = () => $('#panel').classList.toggle('collapsed');
