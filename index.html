@@ -473,7 +473,7 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.8.0</p>
+    <p class="set-ver">Версия 1.8.1</p>
   </div>
 </div>
 
@@ -3807,7 +3807,7 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
     if (!SR){ openAsst(); return toast('Этот браузер не понимает голос — напишите команду. В Chrome голос работает.'); }
     if (listening){ try{ recog.stop(); }catch{} return; }
     unlockSpeech();
-    recog = new SR(); recog.lang = voiceLang() === 'kk' ? 'kk-KZ' : 'ru-RU'; recog.interimResults = true; recog.maxAlternatives = 1;
+    recog = new SR(); recog.lang = kkMode() ? 'kk-KZ' : 'ru-RU'; recog.interimResults = true; recog.maxAlternatives = 1;
     let heard = '';
     recog.onresult = e => { heard = Array.from(e.results).map(r => r[0].transcript).join(' '); $('#asstHeard').textContent = heard; };
     recog.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Разрешите микрофон для сайта в настройках браузера'); else if (e.error === 'no-speech') mascot('sad', 'Ничего не услышал. Нажмите 🎤 и говорите 🐾', 3500); };
@@ -3960,7 +3960,7 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
     reply('Думаю…', true);
     try{
       const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null };
-      const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:voiceLang(), ctx }) });
+      const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:kkMode() ? 'kk' : 'ru', ctx }) });
       if (r.status === 503 || r.status === 404) return reply(await placeFallback(text));
       if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
       const j = await r.json(); if (!j.ok) throw 0;
@@ -4206,7 +4206,7 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
     const lq = low(q).trim();
     if (/^(это|здесь|тут|рядом|вокруг)( место| здание)?$/.test(lq)) return nearbyWiki(true);
     const lm = LANDMARKS.find(l => low(l.n).includes(lq) || lq.includes(low(l.n)) || low(l.q).includes(stem(lq)));
-    if (lm) return voiceLang() === 'kk' ? lm.kk : lm.ru;
+    if (lm) return kkMode() ? lm.kk : lm.ru;
     try{
       const w = await wikiSummary(ALIAS.find(([re]) => re.test(lq))?.[1] || q);
       if (w){ $('#asstAns').dataset.more = w.text; return firstSentences(w.text, 2); }
@@ -4569,7 +4569,9 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
   };
   let uiLang = store.get('uiLang', 'ru');
   $('#setLang').value = uiLang;
-  $('#setLang').onchange = e => { store.set('uiLang', e.target.value); toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
+  $('#setLang').onchange = e => { store.set('uiLang', e.target.value);
+    if (e.target.value === 'kk' && !voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:kk-KZ-AigulNeural'); }catch{} }
+    if (e.target.value === 'ru' && voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:ru-RU-DmitryNeural'); }catch{} } toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
   const KK_ATTR = ['placeholder', 'aria-label', 'title', 'data-l'];
   function trNode(n){ const t = n.nodeValue, k = t && t.trim(); if (k && KK[k] && KK[k] !== k) n.nodeValue = t.replace(k, KK[k]); }
   function trTree(root){
@@ -4583,9 +4585,37 @@ body.eco .m-all,body.eco .m-eye,body.eco .m-tail,body.eco .pin.pulse::before{ani
     trTree(document.body);
     new MutationObserver(ms => ms.forEach(m => { if (m.type === 'characterData') trNode(m.target); else m.addedNodes.forEach(trTree); }))
       .observe(document.body, { childList:true, subtree:true, characterData:true });
-    setTimeout(() => { if (!voiceId.startsWith('az:kk')) toast('Дауыс нұсқаулары қазақша болуы үшін баптауларда Айгүл немесе Дәулет дауысын таңдаңыз'); }, 2500);
+
   }
 
+
+  // ---------- 1.8.1: Барыс говорит по-казахски, когда выбран қазақша ----------
+  function kkMode(){ return uiLang === 'kk' || voiceLang() === 'kk'; }
+  if (uiLang === 'kk' && !voiceId.startsWith('az:kk')){ voiceId = 'az:kk-KZ-AigulNeural'; try{ localStorage.setItem('voiceId', voiceId); }catch{} }
+  const kkCache = new Map(), isKk = t => /[әғқңөұүһі]/i.test(t) || !/[а-яё]/i.test(t);
+  async function toKk(text){
+    if (kkCache.has(text)) return kkCache.get(text);
+    try{
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
+      const r = await fetch('/api/translate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text }), signal:ctl.signal });
+      const j = await r.json(); if (!j.ok) return null;
+      kkCache.set(text, j.text); if (kkCache.size > 300) kkCache.delete(kkCache.keys().next().value);
+      return j.text;
+    }catch{ return null; }
+  }
+  const reply0 = reply;
+  reply = async function(text, quiet){
+    if (!text || !kkMode() || isKk(text)) return reply0(text, quiet);
+    reply0(text, true);
+    if (quiet) return;
+    const kk = await toKk(text);
+    reply0(kk || text, false);
+  };
+  const mascot0 = mascot;
+  mascot = function(st, text, ms){
+    mascot0(st, text, ms);
+    if (text && st !== 'talk' && kkMode() && !isKk(text)) toKk(text).then(kk => { if (kk && mBubble.textContent === text) mBubble.textContent = kk; });
+  };
   // ---------- Настройки ----------
   function openSettings(){
     $('#setView').value = view().id; $('#setTheme').value = theme;
