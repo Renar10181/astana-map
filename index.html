@@ -4706,7 +4706,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   let uiLang = store.get('uiLang', 'ru');
   $('#setLang').value = uiLang;
   $('#setLang').onchange = e => { store.set('uiLang', e.target.value);
-    if (e.target.value === 'kk' && !voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:kk-KZ-AigulNeural'); }catch{} }
+    if (e.target.value === 'kk' && !voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:kk-KZ-DauletNeural'); }catch{} }
     if (e.target.value === 'ru' && voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:ru-RU-DmitryNeural'); }catch{} } toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
   const KK_ATTR = ['placeholder', 'aria-label', 'title', 'data-l'];
   function trNode(n){ const t = n.nodeValue, k = t && t.trim(); if (k && KK[k] && KK[k] !== k) n.nodeValue = t.replace(k, KK[k]); }
@@ -4727,7 +4727,8 @@ body.night .nav .btn{background:#1d2731;border:0}
 
   // ---------- 1.8.1: Барыс говорит по-казахски, когда выбран қазақша ----------
   function kkMode(){ return uiLang === 'kk' || voiceLang() === 'kk'; }
-  if (uiLang === 'kk' && !voiceId.startsWith('az:kk')){ voiceId = 'az:kk-KZ-AigulNeural'; try{ localStorage.setItem('voiceId', voiceId); }catch{} }
+  if (voiceId === 'az:kk-KZ-AigulNeural' && !store.get('voiceMig', false)){ voiceId = 'az:kk-KZ-DauletNeural'; store.set('voiceMig', true); try{ localStorage.setItem('voiceId', voiceId); }catch{} }   // по умолчанию мужской голос
+  if (uiLang === 'kk' && !voiceId.startsWith('az:kk')){ voiceId = 'az:kk-KZ-DauletNeural'; try{ localStorage.setItem('voiceId', voiceId); }catch{} }
   const kkCache = new Map(), isKk = t => /[әғқңөұүһі]/i.test(t) || !/[а-яё]/i.test(t);
   async function toKk(text){
     if (kkCache.has(text)) return kkCache.get(text);
