@@ -164,7 +164,7 @@ details.steps li span{color:var(--muted);font-variant-numeric:tabular-nums}
 .nav-street{font-size:17px;font-weight:600}
 .nav-left{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px}
 .nav-btns,.nav-more{margin-top:6px;display:grid;grid-template-columns:repeat(4,1fr) 1.5fr;gap:6px}
-.nav-more{grid-template-columns:repeat(5,1fr)}
+.nav-more{grid-template-columns:repeat(6,1fr)}
 .nav-btns .btn,.nav-more .btn{min-width:0;height:52px;padding:4px 2px;font-size:19px;line-height:1.1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;white-space:nowrap;overflow:hidden}
 .nav-btns .btn[data-l]::after,.nav-more .btn[data-l]::after{content:attr(data-l);font-size:10.5px;font-weight:600;opacity:.75}
 #navHud{font-size:14px;font-weight:700}
@@ -456,7 +456,10 @@ body.navmode .mascot{top:auto;bottom:calc(var(--navh,180px) + 30px)}
 .toast{border-radius:var(--r-s);font-weight:500}
 
 /* навигатор: крупный манёвр сверху, время прибытия снизу */
-.navtop{background:#16784f;border-radius:var(--r-m);padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.navtop{background:#1e2126;border-radius:var(--r-m);padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.navtop .nt-arrow{color:#ffcc00}
+.nt-lanes{background:#2a2e35}
+#tSat{display:none}
 .nt-arrow{font-size:44px;min-width:48px}
 .nt-dist{font-size:30px;letter-spacing:-.01em}
 .nt-street{font-size:16px;font-weight:500}
@@ -474,6 +477,9 @@ body.night .tool,body.night .zpill{background:#1b232b;color:#eef3f6}
 body.night .zpill .tool{background:transparent}
 body.night .tool.on{background:var(--accent);color:var(--accent-ink)}
 body.lowroom:not(.navmode) .zoom{display:none}
+.rcar{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -14px;padding:2px 14px;scrollbar-width:none}
+.rcar::-webkit-scrollbar{display:none}
+.rcar .route{flex:0 0 78%;scroll-snap-align:center}
 body.night .nav .btn{background:#1d2731;border:0}
 </style>
 </head>
@@ -591,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.8.1</p>
+    <p class="set-ver">Версия 1.9.0</p>
   </div>
 </div>
 
@@ -607,7 +613,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   <div class="nav-left" id="navLeft">—</div>
   <div class="nav-cam" id="navCam" hidden>📷</div>
   <button class="nav-center" id="navCenter" hidden aria-label="Вернуться к машине">◎</button>
-  <div class="nav-more" id="navMoreBox" hidden><button class="btn" id="navView" data-l="Вид" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" data-l="Ночь" aria-label="Ночной режим">☀</button><button class="btn" id="navHud" data-l="На стекло">HUD</button><button class="btn" id="navFind" data-l="По пути" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" data-l="Ссылка" aria-label="Поделиться поездкой">📤</button></div>
+  <div class="nav-more" id="navMoreBox" hidden><button class="btn" id="navView" data-l="Вид" aria-label="Сменить вид">🎥</button><button class="btn" id="navNight" data-l="Ночь" aria-label="Ночной режим">☀</button><button class="btn" id="navHud" data-l="На стекло">HUD</button><button class="btn" id="navFind" data-l="По пути" aria-label="Найти по пути">🔍</button><button class="btn" id="navShare" data-l="Ссылка" aria-label="Поделиться поездкой">📤</button><button class="btn" id="navSet" data-l="Настройки" aria-label="Настройки">⚙</button></div>
   <div class="nav-btns"><button class="btn" id="navMute" data-l="Звук" aria-label="Выключить голос">🔊</button><button class="btn" id="navReport" data-l="Событие" aria-label="Сообщить о событии на дороге">⚠</button><button class="btn" id="navMic" data-l="Барыс" aria-label="Голосовой помощник">🎤</button><button class="btn" id="navMore" data-l="Ещё" aria-label="Ещё кнопки" aria-expanded="false">⋯</button><button class="btn stop" id="navStop">Стоп</button></div>
 </div>
 <div class="hud" id="hud" hidden>
@@ -4680,7 +4686,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     '🔄 Проверить обновления':'🔄 Жаңартуды тексеру', 'Как пользоваться':'Қалай пайдалану керек', 'Предупреждения в поездке':'Жолдағы ескертулер',
     '🐆 Барсёнок Барыс — помощник на карте':'🐆 Барыс барысшасы — картадағы көмекші', '🏢 Добавить свою организацию — бесплатно':'🏢 Ұйымыңызды қосу — тегін',
     '🔋 Экономия батареи: без 3D, анимаций и снега':'🔋 Батареяны үнемдеу: 3D, анимация мен қарсыз', '🚦 Помогать считать пробки (анонимно)':'🚦 Кептелістерді санауға көмектесу (жасырын)',
-    'Звук':'Дыбыс', 'Событие':'Оқиға', 'Барыс':'Барыс', 'Ещё':'Тағы', 'Стоп':'Тоқта', 'Вид':'Көрініс', 'Ночь':'Түн', 'На стекло':'Әйнекке', 'По пути':'Жолда', 'Ссылка':'Сілтеме',
+    'Звук':'Дыбыс', 'Событие':'Оқиға', 'Барыс':'Барыс', 'Ещё':'Тағы', 'Стоп':'Тоқта', 'Вид':'Көрініс', 'Ночь':'Түн', 'На стекло':'Әйнекке', 'По пути':'Жолда', 'Ссылка':'Сілтеме', 'Настройки':'Баптаулар',
     'км/ч':'км/сағ', 'Вы на месте':'Сіз келдіңіз', 'Готово':'Дайын', '⭐ В избранное':'⭐ Таңдаулыға', 'Что на дороге?':'Жолда не болды?', 'Найти по пути':'Жол бойынан табу',
     'Найти рядом':'Жақыннан табу', 'Недавние':'Соңғылар', 'Очистить':'Тазалау', 'Слои карты':'Карта қабаттары', 'Основа':'Негіз', 'Поверх карты':'Карта үстінде', 'Инструменты':'Құралдар',
     '🗺 Схема':'🗺 Сызба', '🛰 Спутник':'🛰 Серік', 'Спут':'Серік', '📏 Линейка и площадь':'📏 Сызғыш және аудан', '🚚 Диспетчер':'🚚 Диспетчер', '⏺ Записать поездку':'⏺ Сапарды жазу',
@@ -4755,6 +4761,15 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   try{ new ResizeObserver(setPanelH).observe($('#panel')); }catch{}
   addEventListener('resize', setPanelH); setInterval(setPanelH, 1500); setPanelH();
+  // варианты маршрута — листаются вбок, как карточки в Яндексе
+  const selectRoute3 = selectRoute;
+  selectRoute = function(i, fit){
+    selectRoute3(i, fit);
+    const box = $('#routes'), btns = [...box.querySelectorAll(':scope > .route')];
+    if (btns.length < 2 || innerWidth > 700) return;
+    const w = document.createElement('div'); w.className = 'rcar'; btns[0].before(w); btns.forEach(b => w.appendChild(b));
+    w.children[i]?.scrollIntoView({ inline:'center', block:'nearest' });
+  };
 
   // ---------- Настройки ----------
   function openSettings(){
@@ -4764,6 +4779,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     renderVoices(); $('#settings').hidden = false;
   }
   $('#tSet').onclick = openSettings;
+  $('#navSet').onclick = openSettings;
   $('#setClose').onclick = () => $('#settings').hidden = true;
   $('#settings').onclick = e => { if (e.target.id === 'settings') $('#settings').hidden = true; };
   $('#setView').onchange = e => { viewIdx = Math.max(0, VIEWS.findIndex(v => v.id === e.target.value)); try{ localStorage.setItem('navView', view().id); }catch{} };
