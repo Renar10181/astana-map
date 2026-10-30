@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.1.0</p>
+    <p class="set-ver">Версия 2.2.0</p>
   </div>
 </div>
 
@@ -5352,6 +5352,161 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (/(сервис|что умеешь заказать)/.test(t)) return () => { openServices(); return 'Такси, доставка, билеты и парковка — всё здесь.'; };
     return localCmd21(raw);
   };
+
+  // =====================================================================
+  // ---------- 2.2: объёмные символы Астаны, «живой город», праздничный салют, отсчёт до закрытия ----------
+  // Свои 3D-модели (three.js, как наша машина): Байтерек, Хан Шатыр, Дворец мира и согласия, Нур Алем.
+  const LM3D_LL = { baiterek:[71.4304, 51.1283], khanshatyr:[71.4035, 51.1323], pyramid:[71.4636, 51.1229], nuralem:[71.4159, 51.0894] };
+  const lm3dLL = id => { const p = lmPos[id]; return p && isFinite(p.lng) ? [p.lng, p.lat] : LM3D_LL[id]; };
+  function holidayNow(d = new Date()){
+    const m = d.getMonth() + 1, day = d.getDate();
+    if (m === 7 && day >= 5 && day <= 7) return { n:'День столицы', ru:'С Днём столицы! Астане — ура!', kk:'Елорда күні құтты болсын!' };
+    if (m === 3 && day >= 21 && day <= 23) return { n:'Наурыз', ru:'Наурыз құтты болсын! С праздником весны!', kk:'Наурыз құтты болсын!' };
+    if ((m === 12 && day >= 28) || (m === 1 && day <= 2)) return { n:'Новый год', ru:'С Новым годом! Хорошей дороги в новом году!', kk:'Жаңа жылыңыз құтты болсын!' };
+    if (m === 12 && day >= 16 && day <= 17) return { n:'День Независимости', ru:'С Днём Независимости!', kk:'Тәуелсіздік күні құтты болсын!' };
+    return null;
+  }
+  function buildLandmarks(T){
+    const std = (c, o = {}) => new T.MeshStandardMaterial({ color:c, roughness:o.r ?? 0.45, metalness:o.m ?? 0.1, transparent:o.t != null, opacity:o.t ?? 1, emissive:o.e ?? 0x000000, emissiveIntensity:0, side:o.side ?? T.FrontSide });
+    const glow = [];   // материалы, которые светятся ночью
+    const rod = (a, b, r, mat) => {   // цилиндр между двумя точками
+      const va = new T.Vector3(...a), vb = new T.Vector3(...b), len = va.distanceTo(vb);
+      const m = new T.Mesh(new T.CylinderGeometry(r, r, len, 10), mat);
+      m.position.copy(va.clone().add(vb).multiplyScalar(0.5));
+      m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+      return m;
+    };
+    const out = {};
+    // Байтерек: белый «ствол» из стальных лучей, расходящихся кверху, и золотой шар на 97 м
+    { const g = new T.Group(), white = std(0xf4f6f8, { r:0.35, m:0.3, e:0xffffff });
+      g.add(new T.Mesh(new T.CylinderGeometry(9, 11, 6, 32), std(0xd9dde2)));
+      g.add(rod([0, 0, 0], [0, 86, 0], 2.6, white));
+      for (let i = 0; i < 12; i++){
+        const a = i / 12 * Math.PI * 2, a2 = a + 0.35;
+        g.add(rod([Math.cos(a) * 3.2, 4, Math.sin(a) * 3.2], [Math.cos(a2) * 15, 90, Math.sin(a2) * 15], 0.7, white));
+      }
+      const ring = new T.Mesh(new T.TorusGeometry(15, 0.9, 8, 48), white); ring.rotation.x = Math.PI / 2; ring.position.y = 90; g.add(ring);
+      const gold = std(0xffc21a, { r:0.28, m:0.45, e:0xffb300 });
+      const ball = new T.Mesh(new T.SphereGeometry(11, 40, 28), gold); ball.position.y = 99; g.add(ball);
+      glow.push([gold, 1.1], [white, 0.25]);
+      out.baiterek = g; }
+    // Хан Шатыр: шатёр-конус 150 м с прозрачной оболочкой и рёбрами
+    { const g = new T.Group(), skin = std(0xcfe8f3, { t:0.5, r:0.2, m:0.2, e:0x9fdcff, side:T.DoubleSide });
+      const cone = new T.Mesh(new T.ConeGeometry(98, 150, 64, 1, true), skin); cone.position.y = 75; cone.scale.z = 0.82; g.add(cone);
+      const rib = new T.LineBasicMaterial({ color:0xeef6fa, transparent:true, opacity:0.85 }), pts = [];
+      for (let i = 0; i < 28; i++){ const a = i / 28 * Math.PI * 2; pts.push(new T.Vector3(Math.cos(a) * 98, 0, Math.sin(a) * 98 * 0.82), new T.Vector3(0, 150, 0)); }
+      g.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), rib));
+      const tip = std(0xdfe6ea, { m:0.5 }); g.add(rod([0, 140, 0], [3, 160, 2], 1.6, tip));
+      glow.push([skin, 0.55]);
+      out.khanshatyr = g; }
+    // Дворец мира и согласия: пирамида 62 м, стекло на вершине
+    { const g = new T.Group(), stone = std(0xe9e2d3, { r:0.6 }), glass = std(0xffd36b, { t:0.85, r:0.15, m:0.6, e:0xffc040 });
+      const base = new T.Mesh(new T.ConeGeometry(44, 62, 4, 1), stone); base.rotation.y = Math.PI / 4; base.position.y = 31; g.add(base);
+      const top = new T.Mesh(new T.ConeGeometry(12.5, 17.6, 4, 1), glass); top.rotation.y = Math.PI / 4; top.position.y = 62 - 8.6; g.add(top);
+      glow.push([glass, 1.2], [stone, 0.12]);
+      out.pyramid = g; }
+    // Нур Алем: стеклянный шар 80 м
+    { const g = new T.Group(), glass = std(0x6fb6ff, { t:0.82, r:0.12, m:0.4, e:0x38a0ff });
+      const ball = new T.Mesh(new T.SphereGeometry(40, 48, 32), glass); ball.position.y = 50; g.add(ball);
+      g.add(new T.Mesh(new T.CylinderGeometry(22, 26, 12, 32), std(0xcfd6dd)));
+      const bands = new T.LineBasicMaterial({ color:0xe8f4ff, transparent:true, opacity:0.6 });
+      for (let k = -3; k <= 3; k++){ const y = k * 10, r = Math.sqrt(40 * 40 - y * y), c = new T.EllipseCurve(0, 0, r, r).getPoints(64);
+        const l = new T.LineLoop(new T.BufferGeometry().setFromPoints(c.map(p => new T.Vector3(p.x, 50 + y, p.y))), bands); g.add(l); }
+      glow.push([glass, 0.9]);
+      out.nuralem = g; }
+    return { models:out, glow };
+  }
+  let lm3d = null, lmOn = store.get('lm3d', true);
+  async function addLandmarks3D(){
+    if (!lmOn || map.getLayer('lm3d')) return;
+    try{ await loadThree(); }catch{ return; }
+    if (!window.THREE || map.getLayer('lm3d')) return;
+    const T = window.THREE;
+    lm3d = {
+      id:'lm3d', type:'custom', renderingMode:'3d',
+      onAdd(m, gl){
+        this.camera = new T.Camera(); this.scene = new T.Scene();
+        this.scene.add(new T.HemisphereLight(0xffffff, 0x556677, 1.0));
+        const d = new T.DirectionalLight(0xffffff, 0.9); d.position.set(-0.4, 1, 0.5); this.scene.add(d);
+        const b = buildLandmarks(T); this.models = b.models; this.glow = b.glow;
+        Object.values(this.models).forEach(g => { g.visible = false; this.scene.add(g); });
+        this.renderer = new T.WebGLRenderer({ canvas:m.getCanvas(), context:gl, antialias:true });
+        this.renderer.autoClear = false;
+      },
+      render(gl, matrix){
+        if (map.getZoom() < 12) return;
+        const hol = holidayNow(), t = performance.now() / 1000, lit = night || !!hol;
+        this.glow.forEach(([mat, k]) => { mat.emissiveIntensity = lit ? k * (hol ? 0.75 + 0.25 * Math.sin(t * 2) : 1) : k > 1 ? 0.35 : 0; });
+        const bounds = map.getBounds();
+        for (const [id, g] of Object.entries(this.models)){
+          const ll = lm3dLL(id); if (!ll) continue;
+          if (!bounds.contains(ll) && map.getZoom() > 14) continue;
+          const mc = maplibregl.MercatorCoordinate.fromLngLat(ll, 0), s = mc.meterInMercatorCoordinateUnits();
+          const l = new T.Matrix4().makeTranslation(mc.x, mc.y, mc.z).scale(new T.Vector3(s, -s, s)).multiply(new T.Matrix4().makeRotationX(Math.PI / 2));
+          Object.values(this.models).forEach(x => x.visible = x === g);
+          this.camera.projectionMatrix = new T.Matrix4().fromArray(matrix).multiply(l);
+          this.renderer.resetState();
+          this.renderer.render(this.scene, this.camera);
+        }
+        if (lit) map.triggerRepaint();
+      },
+    };
+    try{ map.addLayer(lm3d); }catch(e){ console.warn('lm3d', e); lm3d = null; }
+  }
+  function maybeLandmarks(){ if (lmOn && map.getZoom() >= 11.5 && !map.getLayer('lm3d')) addLandmarks3D(); }
+  map.on('zoomend', maybeLandmarks);
+  map.on('style.load', () => setTimeout(maybeLandmarks, 600));
+  map.once('idle', maybeLandmarks);
+  // включить / выключить в «Слоях»
+  OVL.push({ id:'lm3d', e:'🏛', n:'3D-символы Астаны: Байтерек, Хан Шатыр, Пирамида, Нур Алем', kind:'lm3d', def:true });
+  const ovlOn22 = ovlOn, ovlOff22 = ovlOff;
+  ovlOn = function(o){ if (o?.kind === 'lm3d'){ lmOn = true; store.set('lm3d', true); return addLandmarks3D(); } return ovlOn22.apply(this, arguments); };
+  ovlOff = function(o){ if (o?.kind === 'lm3d'){ lmOn = false; store.set('lm3d', false); try{ map.removeLayer('lm3d'); }catch{} return; } return ovlOff22.apply(this, arguments); };
+  // ---- Праздничный салют над картой (День столицы, Наурыз, Новый год, День Независимости) ----
+  function fireworks(ms = 9000){
+    const c = document.createElement('canvas'); c.style.cssText = 'position:fixed;inset:0;z-index:70;pointer-events:none';
+    document.body.appendChild(c); const x = c.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1);
+    const W = () => (c.width = innerWidth * dpr, c.height = innerHeight * dpr); W();
+    const parts = [], cols = ['#ffcc00', '#00c2ff', '#ff4d6d', '#7cff6b', '#ffffff', '#b388ff'];
+    const burst = () => { const cx = (0.15 + Math.random() * 0.7) * c.width, cy = (0.12 + Math.random() * 0.35) * c.height, col = cols[Math.random() * cols.length | 0];
+      for (let i = 0; i < 70; i++){ const a = Math.random() * Math.PI * 2, v = (1.5 + Math.random() * 3.5) * dpr; parts.push({ x:cx, y:cy, vx:Math.cos(a) * v, vy:Math.sin(a) * v, l:1, col }); } };
+    const t0 = performance.now(); let lastB = 0;
+    const loop = now => {
+      if (now - t0 < ms - 1500 && now - lastB > 650){ burst(); lastB = now; }
+      x.globalCompositeOperation = 'destination-out'; x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = 'lighter';
+      for (const p of parts){ p.x += p.vx; p.y += p.vy; p.vy += 0.045 * dpr; p.vx *= 0.985; p.l -= 0.013; if (p.l > 0){ x.fillStyle = p.col; x.globalAlpha = p.l; x.beginPath(); x.arc(p.x, p.y, 2.2 * dpr, 0, 7); x.fill(); } }
+      x.globalAlpha = 1;
+      for (let i = parts.length - 1; i >= 0; i--) if (parts[i].l <= 0) parts.splice(i, 1);
+      if (now - t0 < ms) requestAnimationFrame(loop); else c.remove();
+    };
+    requestAnimationFrame(loop);
+  }
+  setTimeout(() => {
+    const h = holidayNow(); if (!h || driving) return;
+    const k = 'fw' + new Date().toDateString(); if (store.get('fwDay', '') === k) return; store.set('fwDay', k);
+    fireworks(); mascot('happy', '🎆 ' + h.ru, 8000);
+  }, 4000);
+
+  // ---- Отсчёт до закрытия/открытия в карточке места ----
+  function closeCountdown(oh){
+    if (!oh) return '';
+    const now = new Date(), open = openNow(oh, now); if (open == null || oh.trim() === '24/7') return '';
+    for (let m = 10; m <= 180; m += 10){
+      const s = openNow(oh, new Date(now.getTime() + m * 60e3));
+      if (s !== open) return open ? `⏳ Закроется примерно через ${m < 60 ? m + ' мин' : Math.floor(m / 60) + ' ч' + (m % 60 ? ' ' + m % 60 + ' мин' : '')}` : `🕘 Откроется примерно через ${m < 60 ? m + ' мин' : Math.floor(m / 60) + ' ч' + (m % 60 ? ' ' + m % 60 + ' мин' : '')}`;
+    }
+    return '';
+  }
+  const showPopup22 = showPopup;
+  showPopup = function(p){
+    const r = showPopup22.apply(this, arguments);
+    try{
+      const txt = closeCountdown(p?.hours), t = popup?.getElement()?.querySelector('.pop-t');
+      if (txt && t && !t.parentElement.querySelector('.cdown')) t.insertAdjacentHTML('afterend', `<div class="cdown" style="font-weight:600;margin:2px 0 6px;color:${/Закроется/.test(txt) ? '#e07b00' : '#1f9d55'}">${txt}</div>`);
+    }catch{}
+    return r;
+  };
+  window.__fw = fireworks;   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
