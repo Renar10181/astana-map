@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.9.1</p>
+    <p class="set-ver">Версия 1.9.2</p>
   </div>
 </div>
 
@@ -1890,15 +1890,17 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   // Где я: сначала точный GPS, если не ответил — по сети (Wi-Fi, вышки), если и это нет — последняя известная точка
   function getPos(){
+    // На Android watchPosition часто ловит место быстрее, чем getCurrentPosition: ждём первую точку до 25 секунд
     return new Promise((ok, no) => {
       const g = navigator.geolocation; if (!g) return no({ code:2 });
-      g.getCurrentPosition(ok, e => {
-        if (e && e.code === 1) return no(e);
-        g.getCurrentPosition(ok, e2 => {
-          if (geoMarker){ const ll = geoMarker.getLngLat(); return ok({ coords:{ longitude:ll.lng, latitude:ll.lat, speed:null, heading:null, accuracy:500 }, approx:true }); }
-          no(e2 || e);
-        }, { enableHighAccuracy:false, timeout:15000, maximumAge:300000 });
-      }, { enableHighAccuracy:true, timeout:8000, maximumAge:30000 });
+      let done = false, id = null, lastErr = null;
+      const finish = (f, v) => { if (done) return; done = true; if (id != null) g.clearWatch(id); clearTimeout(t); f(v); };
+      const t = setTimeout(() => {
+        if (geoMarker){ const ll = geoMarker.getLngLat(); return finish(ok, { coords:{ longitude:ll.lng, latitude:ll.lat, speed:null, heading:null, accuracy:500 }, approx:true }); }
+        finish(no, lastErr || { code:3 });
+      }, 25000);
+      g.getCurrentPosition(p => finish(ok, p), e => { lastErr = e; if (e && e.code === 1) finish(no, e); }, { enableHighAccuracy:false, timeout:20000, maximumAge:120000 });
+      try{ id = g.watchPosition(p => finish(ok, p), e => { lastErr = e; if (e && e.code === 1) finish(no, e); }, { enableHighAccuracy:true, timeout:25000, maximumAge:30000 }); }catch{}
     });
   }
   function geoErrText(e){
