@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Проверка местоположения</title>
+<style>
+:root{--bg:#f2f4f6;--card:#fff;--fg:#111a22;--muted:#6b7884;--ok:#1f9d55;--bad:#e53935}
+@media (prefers-color-scheme: dark){:root{--bg:#0e1419;--card:#1b232b;--fg:#eef3f6;--muted:#97a6b2}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px}
+main{max-width:520px;margin:0 auto;display:grid;gap:12px}
+h1{font-size:20px;margin:0}
+button{font:inherit;font-weight:700;padding:14px;border-radius:14px;border:0;background:#0096c7;color:#fff;width:100%}
+.card{background:var(--card);border-radius:14px;padding:12px 14px;display:grid;gap:4px}
+.muted{color:var(--muted);font-size:14px}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>📍 Проверка местоположения</h1>
+<p class="muted">Нажмите кнопку и разрешите доступ, если спросят. Потом сделайте скриншот этой страницы и пришлите.</p>
+<button id="go">Проверить</button>
+<div id="out" class="card">Ещё не проверяли.</div>
+</main>
+<script>
+(() => {
+  const out = document.getElementById('out'), lines = [];
+  const log = (t, cls) => { lines.push(`<div${cls ? ` class="${cls}"` : ''}>${t}</div>`); out.innerHTML = lines.join(''); };
+  const err = e => `код ${e && e.code} (${e && e.code === 1 ? 'нет разрешения' : e && e.code === 2 ? 'место недоступно' : e && e.code === 3 ? 'не успел' : '?'}) ${e && e.message ? '— ' + e.message : ''}`;
+  document.getElementById('go').onclick = async () => {
+    lines.length = 0;
+    log(`Приложение: ${matchMedia('(display-mode: standalone)').matches ? 'установленное' : 'вкладка браузера'} · ${navigator.userAgent.match(/Chrome\/[\d.]+|Firefox\/[\d.]+|Version\/[\d.]+ Mobile/)?.[0] || ''}`);
+    if (!('geolocation' in navigator)) return log('Браузер не поддерживает геолокацию', 'bad');
+    try{ const p = await navigator.permissions.query({ name:'geolocation' }); log(`Разрешение сайта: <b>${p.state}</b>`, p.state === 'granted' ? 'ok' : p.state === 'denied' ? 'bad' : ''); }catch{ log('Разрешение: не узнать'); }
+    const t0 = Date.now();
+    const tryIt = (name, opts) => new Promise(res => {
+      const s = Date.now();
+      navigator.geolocation.getCurrentPosition(p => { log(`${name}: ✅ ${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)} · точность ${Math.round(p.coords.accuracy)} м · ${((Date.now() - s) / 1000).toFixed(1)} с`, 'ok'); res(); },
+        e => { log(`${name}: ❌ ${err(e)} · ${((Date.now() - s) / 1000).toFixed(1)} с`, 'bad'); res(); }, opts);
+    });
+    log('Пробую по сети (Wi-Fi, вышки)…');
+    await tryIt('По сети', { enableHighAccuracy:false, timeout:20000, maximumAge:0 });
+    log('Пробую по GPS…');
+    await tryIt('По GPS', { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+    log(`Готово за ${((Date.now() - t0) / 1000).toFixed(0)} с`);
+  };
+})();
+</script>
+</body>
+</html>
