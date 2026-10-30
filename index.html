@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.9.4</p>
+    <p class="set-ver">Версия 2.0.0</p>
   </div>
 </div>
 
@@ -4869,6 +4869,301 @@ body.night .nav .btn{background:#1d2731;border:0}
       () => {}, { enableHighAccuracy:true, maximumAge:5000, timeout:10000 });
     if (hiddenAt && Date.now() - hiddenAt > 15000) toast('Пока карта была свёрнута, телефон не давал GPS. Держите карту на экране — тогда подсказки и время точные');
   });
+
+  // =====================================================================
+  // ---------- 2.0 (этапы E и F): интерфейс без придирок + умный навигатор ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+  /* крупные кнопки в поездке: удобно попасть пальцем на ходу */
+  .nav-btns,.nav-more{gap:10px!important}
+  .nav-btns .btn,.nav-more .btn{height:62px!important;font-size:22px!important;border-radius:16px!important}
+  .nav-btns .btn[data-l]::after,.nav-more .btn[data-l]::after{font-size:13px!important;opacity:.85!important}
+  .nav-btns .btn.stop{font-size:19px!important}
+  .cat .cn{font-size:12.5px}
+  /* карточка места — шторкой снизу, как у Google и Яндекса */
+  @media (max-width:700px){
+    .maplibregl-popup.sheetpop{position:fixed!important;transform:none!important;left:8px!important;right:8px!important;top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;max-width:none!important;z-index:40}
+    .sheetpop .maplibregl-popup-tip{display:none}
+    .sheetpop .maplibregl-popup-content{border-radius:20px;padding:10px 16px 14px;max-height:62vh;overflow:auto;box-shadow:0 -6px 30px rgba(0,0,0,.25)}
+    .sheetpop .maplibregl-popup-content::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 8px}
+    .sheetpop .pop-t{font-size:19px;font-weight:700;padding-right:26px}
+    .sheetpop .row:not(.pop-save) .btn{min-height:48px;font-size:16px;flex:1}
+    .sheetpop .pop-save{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+    .sheetpop .pop-save::-webkit-scrollbar{display:none}
+    .sheetpop .pop-save .chip{padding:8px 12px;font-size:15px;flex:0 0 auto}
+    body.popopen #panel,body.popopen .zoom,body.popopen .mascot{visibility:hidden}
+    .sheetpop .maplibregl-popup-close-button{font-size:26px;width:40px;height:40px;right:6px;top:6px}
+  }
+  .pros{display:block;margin-top:4px;font-size:12.5px;line-height:1.35;color:var(--muted)}
+  .pros b{color:#1f9d55;font-weight:600}
+  .lens{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .lens button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:14px;padding:8px 2px;font:600 12px/1.2 var(--font);display:grid;gap:2px;justify-items:center}
+  .lens button .ic{font-size:22px}
+  .lens button.on{border-color:#ffcc00;background:color-mix(in srgb,#ffcc00 18%,var(--surface))}
+  #setFind{width:100%;box-sizing:border-box;margin:2px 0 10px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);font:15px var(--font)}
+  .parkcard{position:fixed;left:10px;right:10px;top:calc(var(--navtoph,118px) + 14px);z-index:45;background:#1e2126;color:#eef3f6;border-radius:18px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);font-family:var(--font);max-width:460px;margin:0 auto}
+  .parkcard h4{margin:0 0 8px;font-size:16px}
+  .parkcard .pk{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}
+  .parkcard .pk span{flex:1;font-size:14.5px}
+  .parkcard .pk button{background:#ffcc00;color:#111;border:0;border-radius:12px;padding:10px 14px;font:700 14px var(--font)}
+  .parkcard .x{position:absolute;right:8px;top:6px;background:none;border:0;color:#aab;font-size:22px}
+  .visits button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--fg);padding:8px 0;border-bottom:1px solid var(--line);font:14px var(--font)}
+  .visits small{color:var(--muted)}
+  </style>`);
+
+  // ---- E2: карточка места шторкой на телефоне ----
+  const showPopup20 = showPopup;
+  showPopup = function(){
+    const r = showPopup20.apply(this, arguments);
+    try{
+      if (innerWidth <= 700 && popup){
+        const pp = popup; pp.addClassName('sheetpop'); document.body.classList.add('popopen');
+        pp.on('close', () => { if (popup === pp || !document.querySelector('.sheetpop')) document.body.classList.remove('popopen'); });
+      }
+    }catch{}
+    return r;
+  };
+
+  // ---- E6: три уровня голоса: всё / кратко (повороты, камеры) / тишина ----
+  const NAV_KINDS = ['start','ahead','now','off','camera','arrive','via','event','limit','lane'];
+  const say20 = say;
+  say = function(kind){ const p = say20.apply(this, arguments); if (p && NAV_KINDS.includes(kind)) p._nav = true; return p; };
+  let voiceLvl = store.get('voiceLvl', 0), userAskedAt = 0;
+  const VL = [{ e:'🔊', l:'Звук', t:'Голос: все подсказки' }, { e:'🔉', l:'Кратко', t:'Голос: только повороты и камеры' }, { e:'🔇', l:'Тихо', t:'Голос выключен' }];
+  function applyVoiceLvl(show){
+    muted = voiceLvl === 2;
+    const b = $('#navMute'); b.textContent = VL[voiceLvl].e; b.dataset.l = VL[voiceLvl].l; b.setAttribute('aria-label', VL[voiceLvl].t);
+    if (muted){ try{ speechSynthesis?.cancel(); }catch{} }
+    if (show) toast(VL[voiceLvl].t);
+  }
+  $('#navMute').onclick = () => { voiceLvl = (voiceLvl + 1) % 3; store.set('voiceLvl', voiceLvl); applyVoiceLvl(true); };
+  applyVoiceLvl(false);
+  const speak20 = speak;
+  speak = function(p){
+    if (voiceLvl === 1 && !(p && p._nav) && Date.now() - userAskedAt > 20000) return;   // «кратко»: Барыс отвечает, только если его спросили
+    return speak20.apply(this, arguments);
+  };
+  const handleCmd20 = handleCmd;
+  handleCmd = function(){ userAskedAt = Date.now(); return handleCmd20.apply(this, arguments); };
+
+  // ---- E6: всплывашки не мешают во время манёвра ----
+  nav._dNext = 1e9;
+  const toast20 = toast, toastWait = new Set();
+  toast = function(t){
+    if (t && driving && !demo && nav._dNext < 250 && !toastWait.has(t)){ toastWait.add(t); setTimeout(() => { toastWait.delete(t); toast(t); }, 6000); return; }
+    return toast20.apply(this, arguments);
+  };
+
+  // ---- F5: досчёт положения без GPS (тоннель, подземный паркинг) до 30 секунд ----
+  let lastSpd = 0, drAlong = null, drT = 0;
+  const onFix20 = onFix;
+  onFix = function(f){
+    const r = onFix20.apply(this, arguments);
+    try{
+      if (driving && nav.total){
+        const along = nav.total - (nav.left ?? nav.total);
+        const nx = nav.steps.find(st => st.k > 0 && !st.s._cont && st.at > along + 8);
+        nav._dNext = nx ? nx.at - along : 1e9;
+        if (!f.manual){ lastSpd = f.speed != null && !isNaN(f.speed) ? f.speed : lastSpd; drAlong = null; }
+        if (!demo && state.mode === 'car' && !f.manual) parkNear();
+      }
+    }catch{}
+    return r;
+  };
+  setInterval(() => {
+    if (!driving || demo || gps.on || !nav.total) { drAlong = null; return; }
+    const since = Date.now() - gps.last;
+    if (since < 2500 || since > 30000 || lastSpd < 3 || (nav.left ?? 0) < 60){ if (since <= 2500) drAlong = null; return; }
+    const now = Date.now();
+    if (drAlong == null){ drAlong = nav.total - (nav.left ?? nav.total); drT = now; }
+    drAlong = Math.min(nav.total - 30, drAlong + lastSpd * (now - drT) / 1000); drT = now;
+    const p = along(nav.pts, nav.cum, drAlong), b = along(nav.pts, nav.cum, Math.max(0, drAlong - 8));
+    onFix({ lng:p[0], lat:p[1], speed:lastSpd, heading:brng(b, p), manual:true, dr:true });
+  }, 1000);
+
+  // ---- F6: голосом «займите полосу» заранее ----
+  const renderLanes20 = renderLanes;
+  renderLanes = function(s, d){
+    const r = renderLanes20.apply(this, arguments);
+    try{
+      const lanes = s?.intersections?.[0]?.lanes;
+      if (driving && lanes && lanes.length >= 2 && d <= 700 && d > 120){
+        const key = 'lane' + (s.maneuver?.location || []).join(',');
+        const ok = lanes.map(l => !!l.valid), n = ok.length, cnt = ok.filter(Boolean).length;
+        if (!nav.said[key] && cnt && cnt < n){
+          nav.said[key] = 1;
+          const first = ok.indexOf(true), last = ok.lastIndexOf(true);
+          let ru, kk;
+          if (first === 0){ ru = cnt === 1 ? 'Займите крайнюю левую полосу' : `Займите одну из ${cnt} левых полос`; kk = 'Сол жақ жолаққа шығыңыз'; }
+          else if (last === n - 1){ ru = cnt === 1 ? 'Займите крайнюю правую полосу' : `Займите одну из ${cnt} правых полос`; kk = 'Оң жақ жолаққа шығыңыз'; }
+          else { ru = 'Держитесь средних полос'; kk = 'Ортаңғы жолақта болыңыз'; }
+          speak({ ru, kk, _nav:true });
+        }
+      }
+    }catch{}
+    return r;
+  };
+
+  // ---- F2: парковка у цели — за 700 м до места ----
+  async function parkNear(){
+    if (!state.to || nav.said.park || (nav.left ?? 1e9) > 700) return;
+    nav.said.park = 1;
+    const t = state.to;
+    try{
+      const j = await overpass(`[out:json][timeout:15];nwr["amenity"="parking"]["access"!~"^(private|no)$"](around:450,${t.lat},${t.lng});out center 30;`);
+      const list = (j.elements || []).map(e => { const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon; return lat ? { lng, lat, name:e.tags?.name || (e.tags?.parking === 'underground' ? 'Подземная парковка' : e.tags?.parking === 'multi-storey' ? 'Паркинг' : 'Парковка'), fee:e.tags?.fee, d:dist([lng, lat], [t.lng, t.lat]) } : null; })
+        .filter(Boolean).sort((a, b) => a.d - b.d).slice(0, 3);
+      if (!list.length || !driving) return;
+      document.querySelector('.parkcard')?.remove();
+      const box = document.createElement('div'); box.className = 'parkcard';
+      box.innerHTML = `<button class="x" aria-label="Закрыть">✕</button><h4>🅿️ Парковки у «${esc(t.name || 'цели')}»</h4>` + list.map((p, i) =>
+        `<div class="pk"><span>${esc(p.name)} · ${fmtDist(p.d)} пешком${p.fee === 'yes' ? ' · 💳 платная' : p.fee === 'no' ? ' · бесплатная' : ''}</span><button data-pk="${i}">Сюда</button></div>`).join('');
+      document.body.appendChild(box);
+      const close = () => box.remove(); setTimeout(close, 30000);
+      box.querySelector('.x').onclick = close;
+      box.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { const p = list[+b.dataset.pk]; close(); changeDest({ lng:p.lng, lat:p.lat, name:p.name }).then(t => toast(t)).catch(() => {}); });
+      speak({ ru:'Рядом с местом есть парковки. Показываю на экране', kk:'Межелі жердің жанында тұрақтар бар' });
+    }catch{}
+  }
+  const stopDrive20 = stopDrive;
+  stopDrive = function(){ document.querySelector('.parkcard')?.remove(); return stopDrive20.apply(this, arguments); };
+
+  // ---- F1 + F3: плюсы и минусы вариантов маршрута, «закроется к вашему приезду» ----
+  const leftTurns = r => (r.legs || []).flatMap(l => l.steps || []).filter(s => {
+    const t = s.maneuver?.type, m = s.maneuver?.modifier || '';
+    return ['turn', 'end of road', 'fork', 'on ramp', 'off ramp'].includes(t) && /left|uturn/.test(m) && !/slight/.test(m);
+  }).length;
+  const camsOn = r => { try{ const c = r.geometry.coordinates; return cams.filter(x => lineDist([x.lng, x.lat], c).d < 25).length; }catch{ return 0; } };
+  const selectRoute20 = selectRoute;
+  selectRoute = function(i){
+    const out = selectRoute20.apply(this, arguments);
+    try{
+      const rs = state.routes, n = rs.length;
+      if (state.mode === 'car' && n){
+        const L = rs.map(leftTurns), C = rs.map(camsOn);
+        const minL = Math.min(...L), maxL = Math.max(...L), minC = Math.min(...C), maxC = Math.max(...C);
+        document.querySelectorAll('#routes .route').forEach(b => {
+          const k = +b.dataset.r, r = rs[k]; if (!r || b.querySelector('.pros')) return;
+          const plus = [];
+          if (n > 1 && L[k] === minL && maxL - minL >= 2) plus.push('<b>меньше левых поворотов</b>');
+          if (n > 1 && C[k] === minC && maxC > minC && C[k]) plus.push('<b>меньше камер</b>');
+          const info = [`↰ ${L[k]} ${L[k] === 1 ? 'левый поворот' : L[k] >= 2 && L[k] <= 4 ? 'левых поворота' : 'левых поворотов'}`, C[k] ? `📷 ${C[k]} ${C[k] === 1 ? 'камера' : C[k] < 5 ? 'камеры' : 'камер'}` : '📷 без камер'];
+          b.insertAdjacentHTML('beforeend', `<span class="pros">${[...plus, ...info].join(' · ')}</span>`);
+        });
+      }
+      const to = state.to, r = rs[state.active];
+      if (to?.hours && r && !document.querySelector('#routes .closewarn')){
+        const arr = new Date(departDate().getTime() + r.duration * (r._f || 1) * 1000);
+        const a = openNow(to.hours, arr), soon = openNow(to.hours, new Date(arr.getTime() + 30 * 60e3));
+        const hm = arr.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+        const msg = a === false ? `🔒 К вашему приезду (${hm}) «${esc(to.name)}» будет закрыто. Часы: ${esc(to.hours)}`
+          : a === true && soon === false ? `⏳ «${esc(to.name)}» закроется вскоре после вашего приезда (${hm}). Часы: ${esc(to.hours)}` : '';
+        if (msg) $('#routes').insertAdjacentHTML('afterbegin', `<p class="hint r-sum closewarn">${msg}</p>`);
+      }
+    }catch(e){ console.warn(e); }
+    return out;
+  };
+
+  // ---- E3: дом и работа со временем в пути ----
+  const etaCache = {};
+  async function quickEta(k){
+    const here = myPos(), p = places[k]; if (!here || !p) return null;
+    const c = etaCache[k]; if (c && Date.now() - c.t < 180e3 && dist([c.lng, c.lat], [here.lng, here.lat]) < 300) return c.s;
+    if (dist([here.lng, here.lat], [p.lng, p.lat]) < 150) return null;
+    const r = await carEta(here, p); if (!r) return null;
+    const s = fmtTime(r.duration * peakFactor(new Date()));
+    etaCache[k] = { t:Date.now(), lng:here.lng, lat:here.lat, s }; return s;
+  }
+  const renderQuick20 = renderQuick;
+  renderQuick = function(){
+    const out = renderQuick20.apply(this, arguments);
+    ['home', 'work'].forEach(k => quickEta(k).then(s => {
+      const b = document.querySelector(`#results [data-pl="${k}"], .results [data-pl="${k}"]`) || document.querySelector(`[data-pl="${k}"]`);
+      if (s && b) b.textContent = `${k === 'home' ? '🏠 Дом' : '💼 Работа'} · 🚗 ${s}`;
+    }).catch(() => {}));
+    return out;
+  };
+
+  // ---- E4: «линзы» — режим карты одной кнопкой ----
+  const LENS = [
+    { id:'base', e:'🗺', n:'Обычная' },
+    { id:'auto', e:'🚗', n:'Авто', on:['cams','events','traffic','paidpark','lanes'], off:['bus','bike','trails','wheel','fog','lrt'] },
+    { id:'foot', e:'🚶', n:'Пешком', on:['bus','lrt','bike'], off:['cams','traffic','paidpark','lanes','trails'] },
+    { id:'tour', e:'🏛', n:'Турист', on:['lrt','trails'], off:['cams','traffic','paidpark','lanes','events'] },
+    { id:'family', e:'👨‍👩‍👧', n:'Семья', on:['wheel','bus'], off:['cams','traffic','lanes','trails'] },
+  ];
+  let lens = store.get('lens', 'base');
+  function setLens(id){
+    const L = LENS.find(x => x.id === id) || LENS[0]; lens = L.id; store.set('lens', lens);
+    OVL.forEach(o => {
+      if (o.kind === 'gis') { if (ovlIsOn(o)) setOvl(o.id, false); return; }
+      const want = L.id === 'base' ? !!o.def : L.on?.includes(o.id) ? true : L.off?.includes(o.id) ? false : ovlIsOn(o);
+      if (want !== ovlIsOn(o)) setOvl(o.id, want);
+    });
+    renderLens(); renderLayers();
+    toast(`${L.e} Режим карты: ${L.n}` + (L.id === 'tour' ? '. Спросите Барыса «что интересного рядом»' : L.id === 'family' ? '. Детские площадки — в «Найти рядом» 🛝' : ''));
+  }
+  function renderLens(){
+    const box = $('#lensBox'); if (!box) return;
+    box.innerHTML = LENS.map(l => `<button data-lens="${l.id}" class="${l.id === lens ? 'on' : ''}"><span class="ic">${l.e}</span>${l.n}</button>`).join('');
+    box.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => setLens(b.dataset.lens));
+  }
+  document.querySelector('#layersSheet .sheet-head')?.insertAdjacentHTML('afterend', '<div class="set-row"><label>Режим карты</label><div class="lens" id="lensBox"></div></div>');
+  renderLens();
+
+  // ---- F7: журнал «Где я был» (только в этом телефоне) ----
+  let visits = store.get('visits', []);
+  const showArrival20 = showArrival;
+  showArrival = function(){
+    try{
+      const t = state.to;
+      if (t && t.name && !t.me && !(visits[0] && visits[0].name === t.name && Date.now() - visits[0].t < 3600e3)){
+        visits = [{ name:t.name, lng:t.lng, lat:t.lat, t:Date.now() }, ...visits].slice(0, 50); store.set('visits', visits);
+      }
+    }catch{}
+    return showArrival20.apply(this, arguments);
+  };
+  $('#myPlaces')?.closest('.set-row')?.insertAdjacentHTML('afterend', '<div class="set-row"><label>📍 Где я был</label><div class="visits" id="visitList"></div></div>');
+  function renderVisits(){
+    const box = $('#visitList'); if (!box) return;
+    box.innerHTML = visits.length ? visits.slice(0, 15).map((v, i) => `<button data-vi="${i}">${esc(v.name)}<br><small>${new Date(v.t).toLocaleString('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' })}</small></button>`).join('') + '<button data-viclear><small>🗑 Очистить журнал</small></button>'
+      : '<p class="hint">Здесь появятся места, куда вы доехали с навигатором. Хранится только в вашем телефоне.</p>';
+    box.querySelectorAll('[data-vi]').forEach(b => b.onclick = () => { const v = visits[+b.dataset.vi]; $('#settings').hidden = true; map.flyTo({ center:[v.lng, v.lat], zoom:17 }); showPopup(v); });
+    box.querySelector('[data-viclear]')?.addEventListener('click', () => { visits = []; store.set('visits', visits); renderVisits(); });
+  }
+
+  // ---- E5: поиск по настройкам ----
+  document.querySelector('#settings .sheet-head')?.insertAdjacentHTML('afterend', '<input id="setFind" type="search" placeholder="🔍 Найти настройку: голос, парковка, тема…" autocomplete="off">');
+  $('#setFind')?.addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('#settings .sheet-card > *').forEach(el => {
+      if (el.id === 'setFind' || el.classList.contains('sheet-head')) return;
+      el.style.display = !q || el.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+  const openSettings20 = openSettings;
+  openSettings = function(){ const r = openSettings20.apply(this, arguments); renderVisits(); const f = $('#setFind'); if (f && f.value){ f.value = ''; f.dispatchEvent(new Event('input')); } return r; };
+
+  // ---- F4: привычный маршрут дом ↔ работа — утром и вечером предупреждаем о событиях на нём ----
+  async function commuteCheck(){
+    try{
+      if (driving || !places.home || !places.work || !tipsOn) return;
+      const d = new Date(), h = d.getHours(), wd = d.getDay() >= 1 && d.getDay() <= 5, here = myPos(); if (!wd || !here) return;
+      const atHome = dist([here.lng, here.lat], [places.home.lng, places.home.lat]) < 1500, atWork = dist([here.lng, here.lat], [places.work.lng, places.work.lat]) < 1500;
+      const dir = atHome && h >= 6 && h < 11 ? 'work' : atWork && h >= 16 && h < 21 ? 'home' : null; if (!dir) return;
+      const told = store.get('commuteDay', ''), key = d.toDateString() + dir; if (told === key) return;
+      const a = dir === 'work' ? places.home : places.work, b = places[dir];
+      const j = await (await fetch(`https://routing.openstreetmap.de/routed-car/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`)).json();
+      const r = j.routes?.[0]; if (!r) return;
+      store.set('commuteDay', key);
+      const c = r.geometry.coordinates, ev = (events || []).filter(x => lineDist([x.lng, x.lat], c).d < 45).map(x => EV[x.type]).filter(Boolean);
+      const t = fmtTime(r.duration * peakFactor(d));
+      const msg = `${dir === 'work' ? '💼 На работу' : '🏠 Домой'}: ~${t}` + (ev.length ? ` · на пути ${[...new Set(ev.map(x => x.e + ' ' + x.n.toLowerCase()))].join(', ')}` : ' · на привычном пути спокойно');
+      mascot(ev.length ? 'sad' : 'happy', msg, 9000);
+      if (ev.length) speak({ ru:msg.replace(/[^\p{L}\p{N}\s,.:~·-]/gu, ''), kk:msg });
+    }catch{}
+  }
+  setTimeout(commuteCheck, 9000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(commuteCheck, 3000); });
 
   // ---------- Настройки ----------
   function openSettings(){
