@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.9.3</p>
+    <p class="set-ver">Версия 1.9.4</p>
   </div>
 </div>
 
@@ -1191,7 +1191,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     speak(say('start', { dist:nav.total, dur:nav.dur, s:first?.s }));
     if (demo) runDemo();
     else watchId = navigator.geolocation.watchPosition(p => onFix({ lng:p.coords.longitude, lat:p.coords.latitude,
-        speed:p.coords.speed, heading:p.coords.heading }), () => toast('Сигнал GPS потерян'), { enableHighAccuracy:true, maximumAge:1000, timeout:15000 });
+        speed:p.coords.speed, heading:p.coords.heading }), () => {}, { enableHighAccuracy:true, maximumAge:1000, timeout:15000 });   // о пропаже GPS сообщает режим «по шагам», без всплывающих повторов
   }
 
   function stopDrive(){
@@ -4823,6 +4823,52 @@ body.night .nav .btn{background:#1d2731;border:0}
     }
     return r;
   };
+
+  // ---------- 1.9.4: время прибытия по реальному темпу поездки ----------
+  // Маршрутизатор не знает про светофоры и пробки Астаны, поэтому учитываем, как вы едете на самом деле:
+  // чем больше проехали, тем больше вес фактической скорости (с остановками на светофорах).
+  const pace = { t0:0, dist:0, last:null, fix:0 };
+  function realLeftSec(left){
+    const plan = nav.total && nav.dur ? nav.total / nav.dur : 8;          // м/с по плану
+    const el = (Date.now() - pace.t0) / 1000;
+    if (!pace.t0 || pace.dist < 300 || el < 60) return left / plan;
+    const obs = Math.max(1.5, pace.dist / el), w = Math.min(0.75, pace.dist / 2500);
+    return left * ((1 - w) / plan + w / obs);
+  }
+  function etaPaint(){
+    if (!driving || demo || nav.left == null) return;
+    const t = realLeftSec(nav.left); nav.tLeft = t;
+    $('#navTurn').textContent = fmtTime(t);
+    $('#navLeft').textContent = `${fmtDist(nav.left)} · прибытие ${arrival(t)}`;
+  }
+  const onFixPace0 = onFix;
+  onFix = function(f){
+    let before = nav.left;
+    const r = onFixPace0.apply(this, arguments);
+    if (driving && !demo && !f.manual){
+      if (!pace.t0) pace.t0 = Date.now();
+      const d = before != null && nav.left != null ? before - nav.left : 0;
+      if (d > 0 && d < 600) pace.dist += d;                                // пересчёт маршрута не считаем
+      pace.fix = Date.now(); etaPaint();
+    }
+    return r;
+  };
+  const startNavPace0 = startNav;
+  startNav = async function(){ pace.t0 = 0; pace.dist = 0; pace.fix = 0; return startNavPace0.apply(this, arguments); };
+  // время прибытия идёт дальше, даже если GPS молчит (иначе «прибытие 12:16» застывает)
+  setInterval(etaPaint, 10000);
+
+  // ---------- 1.9.4: возврат в приложение во время поездки ----------
+  // Android останавливает GPS и голос у сайта в фоне (когда открыт другой экран). Вернулись — сразу ловим точку.
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden){ hiddenAt = Date.now(); return; }
+    if (!driving || demo) return;
+    try{ speechSynthesis?.cancel(); }catch{}                                   // убираем накопившиеся старые подсказки
+    navigator.geolocation?.getCurrentPosition(p => onFix({ lng:p.coords.longitude, lat:p.coords.latitude, speed:p.coords.speed, heading:p.coords.heading }),
+      () => {}, { enableHighAccuracy:true, maximumAge:5000, timeout:10000 });
+    if (hiddenAt && Date.now() - hiddenAt > 15000) toast('Пока карта была свёрнута, телефон не давал GPS. Держите карту на экране — тогда подсказки и время точные');
+  });
 
   // ---------- Настройки ----------
   function openSettings(){
