@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.0.0</p>
+    <p class="set-ver">Версия 2.1.0</p>
   </div>
 </div>
 
@@ -5164,6 +5164,194 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   setTimeout(commuteCheck, 9000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(commuteCheck, 3000); });
+
+  // =====================================================================
+  // ---------- 2.1: сервисы города в одном месте, экскурсия, облёт маршрута, радар осадков ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+  .svc h3{margin:14px 0 8px;font-size:15px}
+  .svc .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .svc .grid button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:16px;padding:12px 4px;font:600 13px/1.2 var(--font);display:grid;gap:4px;justify-items:center;min-height:76px}
+  .svc .grid button .ic{font-size:26px}
+  .svc .note{font-size:13px;color:var(--muted);margin:6px 0 0}
+  .svc .howto{background:color-mix(in srgb,#ffd200 14%,transparent);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.45;margin-top:8px}
+  .tourbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));z-index:60;background:#1e2126;color:#eef3f6;border-radius:18px;padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-family:var(--font);display:flex;gap:12px;align-items:center;width:min(520px,calc(100vw - 24px));box-sizing:border-box}
+  .tourbar .tt{font:700 16px/1.25 var(--font)}
+  .tourbar .ts{font-size:13px;opacity:.75}
+  .tourbar button{background:#ffcc00;color:#111;border:0;border-radius:12px;padding:10px 14px;font:700 14px var(--font);white-space:nowrap}
+  body.touring #panel,body.touring .zoom,body.touring .tools,body.touring .mascot,body.touring .search{visibility:hidden}
+  </style>`);
+
+  // ---- Сервисы: такси, доставка, билеты, оплата парковки ----
+  // Оплатить прямо внутри карты нельзя без договора с Kaspi (нужно ТОО/ИП), поэтому открываем приложения партнёров.
+  const SVC = {
+    taxi:[{ e:'🚕', n:'Yandex Go', a:'taxi' }, { e:'🚗', n:'inDrive', a:'taxi' }],
+    food:[{ e:'🛵', n:'Wolt', u:'https://wolt.com/ru/kaz/nur-sultan' }, { e:'🟡', n:'Glovo', u:'https://glovoapp.com/kz/ru/astana/' }, { e:'🍱', n:'Яндекс Еда', u:'https://eda.yandex.kz/' }],
+    tickets:[{ e:'🎟', n:'Ticketon', u:'https://ticketon.kz/astana' }, { e:'🔴', n:'Kaspi', u:'https://kaspi.kz/' }],
+    park:[{ e:'🔴', n:'Kaspi', u:'https://kaspi.kz/' }, { e:'🟢', n:'Halyk', u:'https://halykbank.kz/' }],
+  };
+  let svcP = null;
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="svcSheet" hidden><div class="sheet-card svc" role="dialog" aria-label="Сервисы Астаны">
+    <div class="sheet-head"><h2>🧩 Сервисы Астаны</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="note" id="svcFor"></p>
+    <h3>🚕 Такси</h3><div class="grid" data-g="taxi"></div>
+    <h3>🍔 Доставка еды и продуктов</h3><div class="grid" data-g="food"></div>
+    <h3>🎟 Билеты: кино, концерты, театр</h3><div class="grid" data-g="tickets"></div>
+    <h3>🅿️ Оплатить парковку</h3><div class="grid" data-g="park"></div>
+    <div class="howto">В Kaspi: <b>Платежи → Транспорт → Парковки → Парковочное пространство Астаны</b>. Введите госномер — Kaspi сам найдёт парковку рядом. Первые 5 минут бесплатно, дальше оплата с первой минуты.</div>
+    <h3>🎬 Посмотреть город</h3><div class="grid"><button data-tour><span class="ic">🏙</span>Экскурсия по Астане</button><button data-fly><span class="ic">🎥</span>Облёт маршрута</button><button data-radar><span class="ic">🌨</span>Осадки на карте</button></div>
+    <p class="note">Название места копируется — вставьте его в поиск открывшегося приложения. Оплата прямо внутри карты появится после договора с банком.</p>
+  </div></div>`);
+  const svcSheet = $('#svcSheet');
+  svcSheet.addEventListener('click', e => { if (e.target === svcSheet || e.target.closest('[data-close]')) svcSheet.hidden = true; });
+  function openServices(sec, p){
+    svcP = p || state.to || null;
+    $('#svcFor').textContent = svcP?.name && !/Определяю|Моё местоположение/.test(svcP.name) ? `Для места: «${svcP.name}»` : 'Всё, что нужно в городе, — в одном месте.';
+    svcSheet.querySelectorAll('[data-g]').forEach(g => {
+      g.innerHTML = SVC[g.dataset.g].map((s, i) => `<button data-s="${g.dataset.g}:${i}"><span class="ic">${s.e}</span>${s.n}</button>`).join('');
+    });
+    svcSheet.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+      const [g, i] = b.dataset.s.split(':'), s = SVC[g][+i];
+      if (s.a === 'taxi'){ svcSheet.hidden = true; const here = myPos(); return taxiTo(svcP || (here ? { ...here, name:'Моё местоположение' } : state.from) || { lng:71.4304, lat:51.1282, name:'Байтерек' }); }
+      if (svcP?.name) try{ navigator.clipboard?.writeText(svcP.name); toast(`📋 «${svcP.name}» скопировано — вставьте в поиск ${s.n}`); }catch{}
+      window.open(s.u, '_blank', 'noopener');
+    });
+    svcSheet.hidden = false;
+    if (sec) setTimeout(() => svcSheet.querySelector(`[data-g="${sec}"]`)?.previousElementSibling?.scrollIntoView({ block:'start', behavior:'smooth' }), 60);
+  }
+  svcSheet.querySelector('[data-tour]').onclick = () => { svcSheet.hidden = true; startTour(); };
+  svcSheet.querySelector('[data-fly]').onclick = () => { svcSheet.hidden = true; flyRoute(); };
+  svcSheet.querySelector('[data-radar]').onclick = () => { svcSheet.hidden = true; setOvl('radar', !ovlIsOn(OVL.find(o => o.id === 'radar'))); };
+  // кнопка в карточке места и в быстром меню поиска
+  const showPopup21 = showPopup;
+  showPopup = function(p){
+    const r = showPopup21.apply(this, arguments);
+    try{
+      const row = popup?.getElement()?.querySelector('.pop-save');
+      if (row && !row.querySelector('[data-s="svc"]')){
+        row.insertAdjacentHTML('afterbegin', '<button class="chip" data-s="svc" title="Такси, доставка, билеты">🧩 Заказать</button>');
+        row.querySelector('[data-s="svc"]').onclick = ev => { ev.stopPropagation(); popup?.remove(); openServices(null, p); };
+      }
+    }catch{}
+    return r;
+  };
+  const renderQuick21 = renderQuick;
+  renderQuick = function(){
+    const r = renderQuick21.apply(this, arguments);
+    const chips = document.querySelector('#results .quick .chips');
+    if (chips && !chips.querySelector('[data-svc]')){
+      chips.insertAdjacentHTML('beforeend', '<button class="chip" data-svc>🧩 Сервисы</button><button class="chip" data-tourq>🏙 Экскурсия</button>');
+      chips.querySelector('[data-svc]').onclick = () => { $('#results').hidden = true; openServices(); };
+      chips.querySelector('[data-tourq]').onclick = () => { $('#results').hidden = true; startTour(); };
+    }
+    return r;
+  };
+
+  // ---- Экскурсия по Астане: камера облетает символы города, Барыс рассказывает ----
+  const TOUR_LL = { baiterek:[71.4304, 51.1283], khanshatyr:[71.4035, 51.1323], akorda:[71.4467, 51.1257], pyramid:[71.4636, 51.1229], hazret:[71.4722, 51.1255], museum:[71.4588, 51.1218], nuralem:[71.4159, 51.0894] };
+  let tour = null;
+  function tourStop(){
+    if (!tour) return;
+    tour.stop = true; clearTimeout(tour.t); document.querySelector('.tourbar')?.remove(); document.body.classList.remove('touring');
+    try{ speechSynthesis?.cancel(); }catch{}
+    map.easeTo({ pitch:state.d3 ? 60 : 0, bearing:0, zoom:13, duration:1200 });
+    tour = null;
+  }
+  function startTour(){
+    if (driving) return toast('Экскурсия — когда не за рулём 🙂');
+    tourStop();
+    const stops = LANDMARKS.map(l => ({ ...l, c:lmPos[l.id] ? [lmPos[l.id].lng ?? lmPos[l.id][0], lmPos[l.id].lat ?? lmPos[l.id][1]] : TOUR_LL[l.id] })).filter(s => s.c && isFinite(s.c[0]));
+    if (!stops.length) return toast('Не нашёл достопримечательности');
+    tour = { i:-1, stop:false };
+    document.body.classList.add('touring');
+    try{ map.setMaxPitch(80); }catch{}
+    const bar = document.createElement('div'); bar.className = 'tourbar';
+    bar.innerHTML = '<div style="flex:1"><div class="tt" id="tourT">🏙 Экскурсия по Астане</div><div class="ts" id="tourS">Барыс покажет главные места</div></div><button id="tourNext">Дальше ›</button><button id="tourX" style="background:#3a3f47;color:#fff">✕</button>';
+    document.body.appendChild(bar);
+    $('#tourX').onclick = tourStop;
+    const next = () => {
+      if (!tour || tour.stop) return;
+      clearTimeout(tour.t);
+      tour.i++;
+      if (tour.i >= stops.length){ speak({ ru:'Вот и вся экскурсия. Добро пожаловать в Астану!', kk:'Экскурсия аяқталды. Астанаға қош келдіңіз!' }); tour.t = setTimeout(tourStop, 3500); return; }
+      const s = stops[tour.i], kk = kkMode?.();
+      $('#tourT').textContent = `${tour.i + 1}/${stops.length} · ${s.n}`; $('#tourS').textContent = (kk ? s.kk : s.ru).slice(0, 90) + '…';
+      const brg = (tour.i * 70) % 360;
+      map.flyTo({ center:s.c, zoom:16.6, pitch:68, bearing:brg, duration:4200, essential:true });
+      map.once('moveend', () => { if (tour && !tour.stop) map.easeTo({ bearing:brg + 50, duration:7000, easing:t => t }); });
+      speak({ ru:s.ru, kk:s.kk });
+      tour.t = setTimeout(next, 12500);
+    };
+    $('#tourNext').onclick = next;
+    next();
+  }
+  map.on('mousedown', () => { if (tour) clearTimeout(tour.t); });
+  map.on('touchstart', () => { if (tour) clearTimeout(tour.t); });
+
+  // ---- Облёт маршрута: камера пролетает весь путь, как предпросмотр в Google ----
+  let flying = false;
+  function flyRoute(){
+    const r = state.routes[state.active];
+    if (!r) return toast('Сначала постройте маршрут — потом покажу его с высоты 🎥');
+    if (driving || flying) return;
+    const pts = r.geometry.coordinates, cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + dist(pts[i - 1], pts[i]));
+    const total = cum[cum.length - 1]; if (total < 50) return;
+    flying = true; document.body.classList.add('touring');
+    try{ map.setMaxPitch(80); }catch{}
+    const bar = document.createElement('div'); bar.className = 'tourbar';
+    bar.innerHTML = `<div style="flex:1"><div class="tt">🎥 Облёт маршрута</div><div class="ts">${fmtDist(total)} · ${fmtTime(r.duration * (r._f || 1))}</div></div><button id="flyX">✕ Стоп</button>`;
+    document.body.appendChild(bar);
+    const dur = Math.min(22000, Math.max(9000, total / 1.2)), t0 = performance.now();
+    let brgS = brng(pts[0], along(pts, cum, Math.min(total, 150))), raf;
+    const end = () => { cancelAnimationFrame(raf); flying = false; bar.remove(); document.body.classList.remove('touring'); fitRoute(r); };
+    $('#flyX').onclick = end;
+    const zoom = total > 15000 ? 14.2 : total > 5000 ? 15 : 16;
+    map.jumpTo({ center:pts[0], zoom, pitch:65, bearing:brgS });
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const d = e * total, p = along(pts, cum, d), ahead = along(pts, cum, Math.min(total, d + 250));
+      const b = brng(p, ahead); let db = ((b - brgS + 540) % 360) - 180; brgS = (brgS + db * 0.06 + 360) % 360;
+      map.jumpTo({ center:p, bearing:brgS, zoom, pitch:65 });
+      if (k < 1) raf = requestAnimationFrame(step); else setTimeout(end, 700);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  // кнопка «🎥» рядом с «Поехали»
+  $('#play')?.insertAdjacentHTML('afterend', '<button class="btn" id="flyBtn" title="Облёт маршрута">🎥 Облёт</button>');
+  $('#flyBtn') && ($('#flyBtn').onclick = flyRoute);
+
+  // ---- Радар осадков (RainViewer, бесплатно): снег и дождь в реальном времени ----
+  OVL.push({ id:'radar', e:'🌨', n:'Осадки — радар (снег и дождь, бета)', kind:'radar' });
+  async function radarOn(){
+    try{
+      const j = await (await fetch('https://api.rainviewer.com/public/weather-maps.json')).json();
+      const fr = j.radar?.past?.[j.radar.past.length - 1]; if (!fr) throw 0;
+      const url = `${j.host}${fr.path}/256/{z}/{x}/{y}/2/1_1.png`;
+      if (map.getLayer('o-radar')) map.removeLayer('o-radar'); if (map.getSource('o-radar')) map.removeSource('o-radar');
+      map.addSource('o-radar', { type:'raster', tiles:[url], tileSize:256, maxzoom:7, attribution:'Радар © RainViewer' });
+      map.addLayer({ id:'o-radar', type:'raster', source:'o-radar', paint:{ 'raster-opacity':0.6 } }, map.getLayer('alts') ? 'alts' : undefined);
+      toast(`🌨 Осадки на ${new Date(fr.time * 1000).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })}. Синие пятна — снег или дождь`);
+    }catch{ toast('Радар осадков сейчас недоступен'); }
+  }
+  const ovlOn21 = ovlOn, ovlOff21 = ovlOff;
+  ovlOn = function(o){ if (o?.kind === 'radar') return radarOn(); return ovlOn21.apply(this, arguments); };
+  ovlOff = function(o){ if (o?.kind === 'radar'){ try{ map.removeLayer('o-radar'); map.removeSource('o-radar'); }catch{} return; } return ovlOff21.apply(this, arguments); };
+  map.on('style.load', () => { const o = OVL.find(x => x.id === 'radar'); if (o && ovlIsOn(o)) setTimeout(radarOn, 800); });
+  if (ovlIsOn(OVL.find(x => x.id === 'radar'))) map.once('idle', radarOn);
+
+  // ---- Барыс понимает новые команды ----
+  const localCmd21 = localCmd;
+  localCmd = raw => {
+    const t = cleanCmd(raw);
+    if (/(экскурси|покажи (город|астану)|тур по)/.test(t)) return () => { startTour(); return 'Полетели! Покажу главные места Астаны 🏙'; };
+    if (/(обл[её]т|покажи маршрут сверху|пролети)/.test(t)) return () => { flyRoute(); return state.routes.length ? 'Показываю маршрут с высоты 🎥' : 'Сначала скажите, куда едем.'; };
+    if (/(закажи еду|доставк|wolt|вольт|glovo|глово|яндекс ед)/.test(t)) return () => { openServices('food'); return 'Открыл доставку: Wolt, Glovo, Яндекс Еда.'; };
+    if (/(билет|афиш|концерт|кино)/.test(t)) return () => { openServices('tickets'); return 'Открыл билеты: Ticketon и Kaspi.'; };
+    if (/(оплат\S* парковк|заплати\S* за парковк)/.test(t)) return () => { openServices('park'); return 'В Kaspi: Платежи → Транспорт → Парковки → Парковочное пространство Астаны. Первые 5 минут бесплатно.'; };
+    if (/(радар|осадк|где снег|где дождь)/.test(t)) return () => { setOvl('radar', true); return 'Включил радар осадков 🌨'; };
+    if (/(сервис|что умеешь заказать)/.test(t)) return () => { openServices(); return 'Такси, доставка, билеты и парковка — всё здесь.'; };
+    return localCmd21(raw);
+  };
 
   // ---------- Настройки ----------
   function openSettings(){
