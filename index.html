@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 1.9.2</p>
+    <p class="set-ver">Версия 1.9.3</p>
   </div>
 </div>
 
@@ -4790,6 +4790,38 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (btns.length < 2 || innerWidth > 700) return;
     const w = document.createElement('div'); w.className = 'rcar'; btns[0].before(w); btns.forEach(b => w.appendChild(b));
     w.children[i]?.scrollIntoView({ inline:'center', block:'nearest' });
+  };
+
+  // ---------- 1.9.3: проеханная часть маршрута исчезает за машиной ----------
+  let trimAt = -1;
+  function trimRoute(along){
+    if (!nav.pts?.length || !map.getSource('route')) return;
+    const a = Math.max(0, along - 12);          // чуть позади машины, чтобы линия не «отрывалась» от неё
+    if (trimAt >= 0 && Math.abs(a - trimAt) < 6) return;
+    trimAt = a;
+    let i = 1; while (i < nav.cum.length - 1 && nav.cum[i] < a) i++;
+    const coords = [along_(a), ...nav.pts.slice(i)];
+    if (coords.length < 2) return;
+    map.getSource('route').setData({ type:'FeatureCollection', features:[{ type:'Feature', geometry:{ type:'LineString', coordinates:coords }, properties:{} }] });
+  }
+  function along_(d){ return along(nav.pts, nav.cum, d); }
+  const onFixTrim0 = onFix;
+  onFix = function(f){
+    const r = onFixTrim0.apply(this, arguments);
+    try{ if (driving){ const pr = project([f.lng, f.lat], nav.idx); trimRoute(pr.along); } }catch{}
+    return r;
+  };
+  const loadRouteTrim0 = loadRoute;
+  loadRoute = function(){ trimAt = -1; return loadRouteTrim0.apply(this, arguments); };
+  // кнопки «Стоп» привязаны к исходной stopDrive, поэтому полный маршрут возвращаем там, где поездка выключает стиль навигатора
+  const routeNavStyleTrim0 = routeNavStyle;
+  routeNavStyle = function(on){
+    const r = routeNavStyleTrim0.apply(this, arguments);
+    if (!on && trimAt >= 0){
+      trimAt = -1;
+      try{ const m = state.routes[state.active]; if (m) map.getSource('route')?.setData({ type:'FeatureCollection', features:[{ type:'Feature', geometry:m.geometry, properties:{} }] }); }catch{}
+    }
+    return r;
   };
 
   // ---------- Настройки ----------
