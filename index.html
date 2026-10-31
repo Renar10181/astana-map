@@ -597,7 +597,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.2.0</p>
+    <p class="set-ver">Версия 2.3.0</p>
   </div>
 </div>
 
@@ -5033,9 +5033,29 @@ body.night .nav .btn{background:#1d2731;border:0}
     return ['turn', 'end of road', 'fork', 'on ramp', 'off ramp'].includes(t) && /left|uturn/.test(m) && !/slight/.test(m);
   }).length;
   const camsOn = r => { try{ const c = r.geometry.coordinates; return cams.filter(x => lineDist([x.lng, x.lat], c).d < 25).length; }catch{ return 0; } };
+  // светофоры и школы на каждом варианте — один запрос к OpenStreetMap на все варианты
+  let sigFor = null;
+  async function routeSignals(){
+    const rs = state.routes; if (state.mode !== 'car' || !rs.length || sigFor === rs) return;
+    sigFor = rs;
+    const [s, w, n, e] = bboxOf(rs.flatMap(r => r.geometry.coordinates), 0.001);
+    if ((n - s) * (e - w) > 0.5) return;
+    try{
+      const j = await overpass(`[out:json][timeout:20];(node["highway"="traffic_signals"](${s},${w},${n},${e});nwr["amenity"~"^(school|kindergarten)$"](${s},${w},${n},${e}););out center 800;`);
+      if (sigFor !== rs) return;
+      const els = (j.elements || []).map(el => ({ p:[el.lon ?? el.center?.lon, el.lat ?? el.center?.lat], sig:el.tags?.highway === 'traffic_signals' })).filter(x => x.p[0] != null);
+      rs.forEach(r => {
+        const c = r.geometry.coordinates;
+        r._sig = els.filter(x => x.sig && lineDist(x.p, c).d < 18).length;
+        r._sch = els.filter(x => !x.sig && lineDist(x.p, c).d < 90).length;
+      });
+      if (state.routes === rs && !driving) selectRoute(state.active);
+    }catch{}
+  }
   const selectRoute20 = selectRoute;
   selectRoute = function(i){
     const out = selectRoute20.apply(this, arguments);
+    routeSignals();
     try{
       const rs = state.routes, n = rs.length;
       if (state.mode === 'car' && n){
@@ -5047,6 +5067,11 @@ body.night .nav .btn{background:#1d2731;border:0}
           if (n > 1 && L[k] === minL && maxL - minL >= 2) plus.push('<b>меньше левых поворотов</b>');
           if (n > 1 && C[k] === minC && maxC > minC && C[k]) plus.push('<b>меньше камер</b>');
           const info = [`↰ ${L[k]} ${L[k] === 1 ? 'левый поворот' : L[k] >= 2 && L[k] <= 4 ? 'левых поворота' : 'левых поворотов'}`, C[k] ? `📷 ${C[k]} ${C[k] === 1 ? 'камера' : C[k] < 5 ? 'камеры' : 'камер'}` : '📷 без камер'];
+          if (r._sig != null){
+            const S = rs.map(x => x._sig ?? 0), minS = Math.min(...S), maxS = Math.max(...S);
+            if (n > 1 && r._sig === minS && maxS - minS >= 3) plus.push('<b>меньше светофоров</b>');
+            info.push(r._sig ? `🚦 ${r._sig} ${r._sig === 1 ? 'светофор' : r._sig < 5 ? 'светофора' : 'светофоров'}` : '🚦 без светофоров'); if (r._sch) info.push(`🏫 ${r._sch} ${r._sch === 1 ? 'школа' : r._sch < 5 ? 'школы' : 'школ'} рядом`);
+          }
           b.insertAdjacentHTML('beforeend', `<span class="pros">${[...plus, ...info].join(' · ')}</span>`);
         });
       }
@@ -5356,7 +5381,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   // =====================================================================
   // ---------- 2.2: объёмные символы Астаны, «живой город», праздничный салют, отсчёт до закрытия ----------
   // Свои 3D-модели (three.js, как наша машина): Байтерек, Хан Шатыр, Дворец мира и согласия, Нур Алем.
-  const LM3D_LL = { baiterek:[71.4304, 51.1283], khanshatyr:[71.4035, 51.1323], pyramid:[71.4636, 51.1229], nuralem:[71.4159, 51.0894] };
+  const LM3D_LL = { baiterek:[71.4304, 51.1283], khanshatyr:[71.4035, 51.1323], pyramid:[71.4636, 51.1229], nuralem:[71.4159, 51.0894], akorda:[71.4467, 51.1257], hazret:[71.4722, 51.1255], museum:[71.4588, 51.1218] };
   const lm3dLL = id => { const p = lmPos[id]; return p && isFinite(p.lng) ? [p.lng, p.lat] : LM3D_LL[id]; };
   function holidayNow(d = new Date()){
     const m = d.getMonth() + 1, day = d.getDate();
@@ -5414,6 +5439,36 @@ body.night .nav .btn{background:#1d2731;border:0}
         const l = new T.LineLoop(new T.BufferGeometry().setFromPoints(c.map(p => new T.Vector3(p.x, 50 + y, p.y))), bands); g.add(l); }
       glow.push([glass, 0.9]);
       out.nuralem = g; }
+    // Ак Орда: белое здание, голубой купол и золотой шпиль
+    { const g = new T.Group(), white = std(0xf2f0ea, { r:0.5, e:0xfff3d6 }), blue = std(0x2f7fd0, { r:0.25, m:0.5, e:0x3d8cff }), gold = std(0xffc21a, { r:0.3, m:0.45, e:0xffb300 });
+      const body = new T.Mesh(new T.BoxGeometry(96, 28, 46), white); body.position.y = 14; g.add(body);
+      const drum = new T.Mesh(new T.CylinderGeometry(15, 15, 12, 40), white); drum.position.y = 34; g.add(drum);
+      const dome = new T.Mesh(new T.SphereGeometry(15, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), blue); dome.position.y = 40; g.add(dome);
+      g.add(rod([0, 54, 0], [0, 80, 0], 1.2, gold));
+      const sun = new T.Mesh(new T.SphereGeometry(2.6, 20, 14), gold); sun.position.y = 80; g.add(sun);
+      glow.push([blue, 0.8], [gold, 1.1], [white, 0.1]);
+      out.akorda = g; }
+    // Хазрет Султан: белая мечеть, большой купол и 4 минарета
+    { const g = new T.Group(), white = std(0xfbfbf8, { r:0.4, e:0xfff8e6 }), gold = std(0xffc21a, { r:0.3, m:0.45, e:0xffb300 });
+      const base = new T.Mesh(new T.BoxGeometry(110, 22, 110), white); base.position.y = 11; g.add(base);
+      const drum = new T.Mesh(new T.CylinderGeometry(24, 26, 10, 48), white); drum.position.y = 27; g.add(drum);
+      const dome = new T.Mesh(new T.SphereGeometry(25, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), white); dome.position.y = 32; dome.scale.y = 1.25; g.add(dome);
+      g.add(rod([0, 62, 0], [0, 70, 0], 0.7, gold));
+      for (const [x, z] of [[-62, -62], [62, -62], [-62, 62], [62, 62]]){
+        g.add(rod([x, 0, z], [x, 70, z], 3, white));
+        const cap = new T.Mesh(new T.ConeGeometry(3.4, 8, 16), gold); cap.position.set(x, 74, z); g.add(cap);
+      }
+      glow.push([white, 0.12], [gold, 1.1]);
+      out.hazret = g; }
+    // Национальный музей: ступенчатые голубые стеклянные блоки
+    { const g = new T.Group(), glass = std(0x49b6d6, { t:0.9, r:0.15, m:0.35, e:0x2fb3ff }), frame = std(0xe7ecef, { r:0.5 });
+      [[0, 40, 26], [36, 30, 26], [-36, 34, 26], [70, 22, 24], [-70, 26, 24]].forEach(([x, h, w]) => {
+        const b = new T.Mesh(new T.BoxGeometry(w, h, 40), glass); b.position.set(x, h / 2, 0); g.add(b);
+        const top = new T.Mesh(new T.BoxGeometry(w + 1, 1.2, 41), frame); top.position.set(x, h, 0); g.add(top);
+      });
+      const pod = new T.Mesh(new T.BoxGeometry(190, 4, 60), frame); pod.position.y = 2; g.add(pod);
+      glow.push([glass, 0.7]);
+      out.museum = g; }
     return { models:out, glow };
   }
   let lm3d = null, lmOn = store.get('lm3d', true);
@@ -5458,7 +5513,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   map.on('style.load', () => setTimeout(maybeLandmarks, 600));
   map.once('idle', maybeLandmarks);
   // включить / выключить в «Слоях»
-  OVL.push({ id:'lm3d', e:'🏛', n:'3D-символы Астаны: Байтерек, Хан Шатыр, Пирамида, Нур Алем', kind:'lm3d', def:true });
+  OVL.push({ id:'lm3d', e:'🏛', n:'3D-символы Астаны: Байтерек, Хан Шатыр, Ак Орда, Пирамида, Хазрет Султан, Нур Алем, Нацмузей', kind:'lm3d', def:true });
   const ovlOn22 = ovlOn, ovlOff22 = ovlOff;
   ovlOn = function(o){ if (o?.kind === 'lm3d'){ lmOn = true; store.set('lm3d', true); return addLandmarks3D(); } return ovlOn22.apply(this, arguments); };
   ovlOff = function(o){ if (o?.kind === 'lm3d'){ lmOn = false; store.set('lm3d', false); try{ map.removeLayer('lm3d'); }catch{} return; } return ovlOff22.apply(this, arguments); };
