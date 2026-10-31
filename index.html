@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.4.0</p>
+    <p class="set-ver">Версия 2.5.0</p>
   </div>
 </div>
 
@@ -5410,81 +5410,117 @@ body.night .nav .btn{background:#1d2731;border:0}
     return null;
   }
   function buildLandmarks(T){
-    const std = (c, o = {}) => new T.MeshStandardMaterial({ color:c, roughness:o.r ?? 0.45, metalness:o.m ?? 0.1, transparent:o.t != null, opacity:o.t ?? 1, emissive:o.e ?? 0x000000, emissiveIntensity:0, side:o.side ?? T.FrontSide });
-    const glow = [];   // материалы, которые светятся ночью
-    const rod = (a, b, r, mat) => {   // цилиндр между двумя точками
-      const va = new T.Vector3(...a), vb = new T.Vector3(...b), len = va.distanceTo(vb);
-      const m = new T.Mesh(new T.CylinderGeometry(r, r, len, 10), mat);
-      m.position.copy(va.clone().add(vb).multiplyScalar(0.5));
-      m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
-      return m;
-    };
+    // Модели по реальным размерам (метры): форма, пропорции и материалы как у настоящих зданий
+    const std = (c, o = {}) => new T.MeshStandardMaterial({ color:c, roughness:o.r ?? 0.45, metalness:o.m ?? 0.1, transparent:o.t != null, opacity:o.t ?? 1, emissive:o.e ?? 0x000000, emissiveIntensity:0, side:o.side ?? T.FrontSide, envMapIntensity:o.env ?? 0.8 });
+    const glow = [];
+    const V = (x, y, z) => new T.Vector3(x, y, z);
+    const tube = (pts, r, mat, seg = 48) => new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(pts), seg, r, 8, false), mat);
+    const rod = (a, b, r, mat) => tube([V(...a), V(...b)], r, mat, 2);
+    const lines = (pts, mat) => new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), mat);
     const out = {};
-    // Байтерек: белый «ствол» из стальных лучей, расходящихся кверху, и золотой шар на 97 м
-    { const g = new T.Group(), white = std(0xf4f6f8, { r:0.35, m:0.3, e:0xffffff });
-      g.add(new T.Mesh(new T.CylinderGeometry(9, 11, 6, 32), std(0xd9dde2)));
-      g.add(rod([0, 0, 0], [0, 86, 0], 2.6, white));
-      for (let i = 0; i < 12; i++){
-        const a = i / 12 * Math.PI * 2, a2 = a + 0.35;
-        g.add(rod([Math.cos(a) * 3.2, 4, Math.sin(a) * 3.2], [Math.cos(a2) * 15, 90, Math.sin(a2) * 15], 0.7, white));
+
+    // ---- Бәйтерек: 105 м. Пучок белых стальных «стволов» сужается к середине, раскрывается кроной и держит золотой шар Ø22 м на высоте 97 м ----
+    { const g = new T.Group(), white = std(0xf7f8fa, { r:0.3, m:0.35, e:0xffffff }), gold = std(0xffc533, { r:0.12, m:0.95, e:0xffaa00, env:1.4 });
+      const plinth = new T.Mesh(new T.CylinderGeometry(30, 32, 3, 64), std(0xdcd7cc, { r:0.7 })); plinth.position.y = 1.5; g.add(plinth);
+      const hall = new T.Mesh(new T.CylinderGeometry(15, 15, 6, 48), std(0xe9ecef, { r:0.35, m:0.2 })); hall.position.y = 6; g.add(hall);
+      const N = 30;
+      for (let i = 0; i < N; i++){
+        const a = i / N * Math.PI * 2, tw = 0.55, c = (r, k) => [Math.cos(a + tw * k) * r, Math.sin(a + tw * k) * r];
+        const p0 = c(13, 0), p1 = c(6.5, 0.6), p2 = c(3.4, 1), p3 = c(6, 1.4), p4 = c(12.5, 1.8), p5 = c(13.5, 2.15), p6 = c(9, 2.5);
+        g.add(tube([V(p0[0], 6, p0[1]), V(p1[0], 25, p1[1]), V(p2[0], 50, p2[1]), V(p3[0], 72, p3[1]), V(p4[0], 87, p4[1]), V(p5[0], 96, p5[1]), V(p6[0], 106, p6[1])], 0.42, white, 40));
       }
-      const ring = new T.Mesh(new T.TorusGeometry(15, 0.9, 8, 48), white); ring.rotation.x = Math.PI / 2; ring.position.y = 90; g.add(ring);
-      const gold = std(0xffc21a, { r:0.28, m:0.45, e:0xffb300 });
-      const ball = new T.Mesh(new T.SphereGeometry(11, 40, 28), gold); ball.position.y = 99; g.add(ball);
-      glow.push([gold, 1.1], [white, 0.25]);
+      for (const [y, r] of [[50, 3.6], [72, 6.2], [87, 12.7]]){ const ring = new T.Mesh(new T.TorusGeometry(r, 0.35, 6, 64), white); ring.rotation.x = Math.PI / 2; ring.position.y = y; g.add(ring); }
+      const ball = new T.Mesh(new T.SphereGeometry(11, 64, 48), gold); ball.position.y = 97; g.add(ball);
+      const deck = new T.Mesh(new T.CylinderGeometry(10.6, 10.6, 0.6, 64), std(0x3a2a10, { t:0.6 })); deck.position.y = 97; g.add(deck);
+      glow.push([gold, 1.15], [white, 0.22]);
       out.baiterek = g; }
-    // Хан Шатыр: шатёр-конус 150 м с прозрачной оболочкой и рёбрами
-    { const g = new T.Group(), skin = std(0xcfe8f3, { t:0.5, r:0.2, m:0.2, e:0x9fdcff, side:T.DoubleSide });
-      const cone = new T.Mesh(new T.ConeGeometry(98, 150, 64, 1, true), skin); cone.position.y = 75; cone.scale.z = 0.82; g.add(cone);
-      const rib = new T.LineBasicMaterial({ color:0xeef6fa, transparent:true, opacity:0.85 }), pts = [];
-      for (let i = 0; i < 28; i++){ const a = i / 28 * Math.PI * 2; pts.push(new T.Vector3(Math.cos(a) * 98, 0, Math.sin(a) * 98 * 0.82), new T.Vector3(0, 150, 0)); }
-      g.add(new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), rib));
-      const tip = std(0xdfe6ea, { m:0.5 }); g.add(rod([0, 140, 0], [3, 160, 2], 1.6, tip));
-      glow.push([skin, 0.55]);
-      out.khanshatyr = g; }
-    // Дворец мира и согласия: пирамида 62 м, стекло на вершине
-    { const g = new T.Group(), stone = std(0xe9e2d3, { r:0.6 }), glass = std(0xffd36b, { t:0.85, r:0.15, m:0.6, e:0xffc040 });
-      const base = new T.Mesh(new T.ConeGeometry(44, 62, 4, 1), stone); base.rotation.y = Math.PI / 4; base.position.y = 31; g.add(base);
-      const top = new T.Mesh(new T.ConeGeometry(12.5, 17.6, 4, 1), glass); top.rotation.y = Math.PI / 4; top.position.y = 62 - 8.6; g.add(top);
-      glow.push([glass, 1.2], [stone, 0.12]);
-      out.pyramid = g; }
-    // Нур Алем: стеклянный шар 80 м
-    { const g = new T.Group(), glass = std(0x6fb6ff, { t:0.82, r:0.12, m:0.4, e:0x38a0ff });
-      const ball = new T.Mesh(new T.SphereGeometry(40, 48, 32), glass); ball.position.y = 50; g.add(ball);
-      g.add(new T.Mesh(new T.CylinderGeometry(22, 26, 12, 32), std(0xcfd6dd)));
-      const bands = new T.LineBasicMaterial({ color:0xe8f4ff, transparent:true, opacity:0.6 });
-      for (let k = -3; k <= 3; k++){ const y = k * 10, r = Math.sqrt(40 * 40 - y * y), c = new T.EllipseCurve(0, 0, r, r).getPoints(64);
-        const l = new T.LineLoop(new T.BufferGeometry().setFromPoints(c.map(p => new T.Vector3(p.x, 50 + y, p.y))), bands); g.add(l); }
-      glow.push([glass, 0.9]);
-      out.nuralem = g; }
-    // Ак Орда: белое здание, голубой купол и золотой шпиль
-    { const g = new T.Group(), white = std(0xf2f0ea, { r:0.5, e:0xfff3d6 }), blue = std(0x2f7fd0, { r:0.25, m:0.5, e:0x3d8cff }), gold = std(0xffc21a, { r:0.3, m:0.45, e:0xffb300 });
-      const body = new T.Mesh(new T.BoxGeometry(96, 28, 46), white); body.position.y = 14; g.add(body);
-      const drum = new T.Mesh(new T.CylinderGeometry(15, 15, 12, 40), white); drum.position.y = 34; g.add(drum);
-      const dome = new T.Mesh(new T.SphereGeometry(15, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), blue); dome.position.y = 40; g.add(dome);
-      g.add(rod([0, 54, 0], [0, 80, 0], 1.2, gold));
-      const sun = new T.Mesh(new T.SphereGeometry(2.6, 20, 14), gold); sun.position.y = 80; g.add(sun);
-      glow.push([blue, 0.8], [gold, 1.1], [white, 0.1]);
-      out.akorda = g; }
-    // Хазрет Султан: белая мечеть, большой купол и 4 минарета
-    { const g = new T.Group(), white = std(0xfbfbf8, { r:0.4, e:0xfff8e6 }), gold = std(0xffc21a, { r:0.3, m:0.45, e:0xffb300 });
-      const base = new T.Mesh(new T.BoxGeometry(110, 22, 110), white); base.position.y = 11; g.add(base);
-      const drum = new T.Mesh(new T.CylinderGeometry(24, 26, 10, 48), white); drum.position.y = 27; g.add(drum);
-      const dome = new T.Mesh(new T.SphereGeometry(25, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), white); dome.position.y = 32; dome.scale.y = 1.25; g.add(dome);
-      g.add(rod([0, 62, 0], [0, 70, 0], 0.7, gold));
-      for (const [x, z] of [[-62, -62], [62, -62], [-62, 62], [62, 62]]){
-        g.add(rod([x, 0, z], [x, 70, z], 3, white));
-        const cap = new T.Mesh(new T.ConeGeometry(3.4, 8, 16), gold); cap.position.set(x, 74, z); g.add(cap);
+
+    // ---- Хан Шатыр: асимметричный шатёр 150 м, эллипс в основании ~195×160 м, наклонённая мачта, сетка тросов с подушками ETFE ----
+    { const g = new T.Group(), skin = std(0xf4ead2, { t:0.62, r:0.25, m:0.05, e:0xffd9a0, side:T.DoubleSide }), cable = new T.LineBasicMaterial({ color:0xffffff, transparent:true, opacity:0.75 });
+      const apex = V(-14, 150, 10), A = 98, B = 80, ring = 72, rows = 26;
+      const P = (u, v) => {   // u — по кругу 0..1, v — от земли 0 до вершины 1; образующая выпуклая, как у настоящего шатра
+        const a = u * Math.PI * 2, k = Math.pow(1 - v, 0.82);
+        const base = V(Math.cos(a) * A, 0, Math.sin(a) * B);
+        return V(apex.x + (base.x - apex.x) * k, apex.y * (1 - Math.pow(1 - v, 1.08)), apex.z + (base.z - apex.z) * k);
+      };
+      const geo = new T.BufferGeometry(), pos = [], idx = [];
+      for (let j = 0; j <= rows; j++) for (let i = 0; i <= ring; i++){ const p = P(i / ring, j / rows); pos.push(p.x, p.y, p.z); }
+      for (let j = 0; j < rows; j++) for (let i = 0; i < ring; i++){ const a = j * (ring + 1) + i, b = a + ring + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+      geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+      g.add(new T.Mesh(geo, skin));
+      const net = [];
+      for (let s = 0; s < 36; s++) for (let j = 0; j < rows; j++){   // спиральная сетка тросов в обе стороны
+        const u0 = s / 36, du = 0.6 / rows;
+        net.push(P(u0 + j * du, j / rows), P(u0 + (j + 1) * du, (j + 1) / rows));
+        net.push(P(u0 - j * du, j / rows), P(u0 - (j + 1) * du, (j + 1) / rows));
       }
-      glow.push([white, 0.12], [gold, 1.1]);
+      g.add(lines(net, cable));
+      g.add(rod([apex.x, 138, apex.z], [apex.x - 3, 168, apex.z + 2], 1.8, std(0xd8dde2, { m:0.7, r:0.3 })));
+      glow.push([skin, 0.6]);
+      out.khanshatyr = g; }
+
+    // ---- Дворец мира и согласия: пирамида 62×62×62 м, гранитные грани, стеклянная вершина с витражом ----
+    { const g = new T.Group(), stone = std(0xe6dfcf, { r:0.75 }), glass = std(0xffd36b, { t:0.8, r:0.08, m:0.6, e:0xffc040, env:1.3 }), mull = new T.LineBasicMaterial({ color:0x7a6a4a, transparent:true, opacity:0.7 });
+      const pyr = (h, w, mat) => { const m = new T.Mesh(new T.ConeGeometry(w / Math.SQRT2, h, 4, 1), mat); m.rotation.y = Math.PI / 4; return m; };
+      const base = pyr(62, 62, stone); base.position.y = 31; g.add(base);
+      const top = pyr(16, 16.2, glass); top.position.y = 62 - 8 + 0.2; g.add(top);
+      const L = [], half = 31;   // горизонтальные линии каменной облицовки
+      for (let y = 4; y < 46; y += 4){ const w = half * (1 - y / 62); [[1, 1], [1, -1], [-1, -1], [-1, 1]].forEach((c, i, arr) => { const n = arr[(i + 1) % 4]; L.push(V(c[0] * w, y, c[1] * w), V(n[0] * w, y, n[1] * w)); }); }
+      g.add(lines(L, mull));
+      glow.push([glass, 1.25], [stone, 0.1]);
+      out.pyramid = g; }
+
+    // ---- Нұр Әлем: стеклянный шар Ø80 м, сетка рам, основание-подиум ----
+    { const g = new T.Group(), glass = std(0x7ec4ff, { t:0.78, r:0.05, m:0.55, e:0x3aa0ff, env:1.5 }), frame = new T.LineBasicMaterial({ color:0xf1f6fb, transparent:true, opacity:0.65 });
+      const ball = new T.Mesh(new T.SphereGeometry(40, 64, 48), glass); ball.position.y = 48; g.add(ball);
+      const F = [];
+      for (let k = -7; k <= 7; k++){ const y = k * 5.3, r = Math.sqrt(Math.max(0, 1600 - y * y)); for (let i = 0; i < 64; i++){ const a = i / 64 * Math.PI * 2, b = (i + 1) / 64 * Math.PI * 2; F.push(V(Math.cos(a) * r, 48 + y, Math.sin(a) * r), V(Math.cos(b) * r, 48 + y, Math.sin(b) * r)); } }
+      for (let m = 0; m < 24; m++){ const a = m / 24 * Math.PI * 2; for (let i = 0; i < 32; i++){ const t0 = -Math.PI / 2 + i / 32 * Math.PI, t1 = -Math.PI / 2 + (i + 1) / 32 * Math.PI;
+        F.push(V(Math.cos(a) * Math.cos(t0) * 40, 48 + Math.sin(t0) * 40, Math.sin(a) * Math.cos(t0) * 40), V(Math.cos(a) * Math.cos(t1) * 40, 48 + Math.sin(t1) * 40, Math.sin(a) * Math.cos(t1) * 40)); } }
+      g.add(lines(F, frame));
+      const pod = new T.Mesh(new T.CylinderGeometry(30, 36, 9, 64), std(0xd6dde3, { r:0.4, m:0.3 })); pod.position.y = 4.5; g.add(pod);
+      glow.push([glass, 0.95]);
+      out.nuralem = g; }
+
+    // ---- Ақорда: белый дворец с колоннадой, голубой купол и золотой шпиль (≈80 м) ----
+    { const g = new T.Group(), white = std(0xf3f1ea, { r:0.55, e:0xfff3d6 }), blue = std(0x2e86de, { r:0.18, m:0.7, e:0x3d8cff, env:1.3 }), gold = std(0xffc533, { r:0.15, m:0.9, e:0xffb300, env:1.4 });
+      const box = (w, h, d, x, y, z, m = white) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y + h / 2, z); g.add(b); };
+      box(110, 22, 50, 0, 0, 0); box(40, 8, 40, 0, 22, 0); box(26, 5, 60, 0, 0, 0);
+      for (let i = -5; i <= 5; i++) g.add(rod([i * 4, 0, 27], [i * 4, 20, 27], 0.9, white));   // колоннада фасада
+      box(48, 2.5, 6, 0, 20, 27);
+      const drum = new T.Mesh(new T.CylinderGeometry(14, 14, 10, 48), white); drum.position.y = 35; g.add(drum);
+      for (let i = 0; i < 16; i++){ const a = i / 16 * Math.PI * 2; g.add(rod([Math.cos(a) * 14.4, 30, Math.sin(a) * 14.4], [Math.cos(a) * 14.4, 40, Math.sin(a) * 14.4], 0.6, white)); }
+      const dome = new T.Mesh(new T.SphereGeometry(14.5, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), blue); dome.position.y = 40; dome.scale.y = 1.15; g.add(dome);
+      g.add(rod([0, 56, 0], [0, 78, 0], 0.9, gold));
+      const sun = new T.Mesh(new T.SphereGeometry(2.2, 24, 16), gold); sun.position.y = 79; g.add(sun);
+      glow.push([blue, 0.85], [gold, 1.15], [white, 0.08]);
+      out.akorda = g; }
+
+    // ---- Хазрет Султан: белая мечеть, главный купол ≈51 м, 8 малых куполов, 4 минарета по 77 м ----
+    { const g = new T.Group(), white = std(0xfbfaf6, { r:0.45, e:0xfff8e6 }), gold = std(0xffc533, { r:0.15, m:0.9, e:0xffb300, env:1.4 });
+      const box = (w, h, d, x, y, z) => { const b = new T.Mesh(new T.BoxGeometry(w, h, d), white); b.position.set(x, y + h / 2, z); g.add(b); };
+      box(118, 18, 118, 0, 0, 0); box(70, 8, 70, 0, 18, 0);
+      const drum = new T.Mesh(new T.CylinderGeometry(24, 25, 8, 64), white); drum.position.y = 30; g.add(drum);
+      const dome = new T.Mesh(new T.SphereGeometry(24.5, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2), white); dome.position.y = 34; dome.scale.y = 0.72; g.add(dome);
+      const fin = new T.Mesh(new T.ConeGeometry(1.2, 6, 12), gold); fin.position.y = 55; g.add(fin);
+      for (let i = 0; i < 8; i++){ const a = i / 8 * Math.PI * 2, x = Math.cos(a) * 42, z = Math.sin(a) * 42;
+        const d = new T.Mesh(new T.SphereGeometry(7, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), white); d.position.set(x, 18, z); g.add(d); }
+      for (const [x, z] of [[-64, -64], [64, -64], [-64, 64], [64, 64]]){
+        const m = new T.Mesh(new T.CylinderGeometry(2.6, 3.2, 70, 16), white); m.position.set(x, 35, z); g.add(m);
+        for (const y of [40, 60]){ const b = new T.Mesh(new T.CylinderGeometry(4, 4, 1.4, 16), white); b.position.set(x, y, z); g.add(b); }
+        const cap = new T.Mesh(new T.ConeGeometry(3, 7, 16), gold); cap.position.set(x, 73.5, z); g.add(cap);
+      }
+      glow.push([white, 0.1], [gold, 1.15]);
       out.hazret = g; }
-    // Национальный музей: ступенчатые голубые стеклянные блоки
-    { const g = new T.Group(), glass = std(0x49b6d6, { t:0.9, r:0.15, m:0.35, e:0x2fb3ff }), frame = std(0xe7ecef, { r:0.5 });
-      [[0, 40, 26], [36, 30, 26], [-36, 34, 26], [70, 22, 24], [-70, 26, 24]].forEach(([x, h, w]) => {
-        const b = new T.Mesh(new T.BoxGeometry(w, h, 40), glass); b.position.set(x, h / 2, 0); g.add(b);
-        const top = new T.Mesh(new T.BoxGeometry(w + 1, 1.2, 41), frame); top.position.set(x, h, 0); g.add(top);
+
+    // ---- Национальный музей: ступенчатые блоки с бирюзовым стеклом и белыми рамами ----
+    { const g = new T.Group(), glass = std(0x3fb5d3, { t:0.88, r:0.08, m:0.45, e:0x2fb3ff, env:1.3 }), frame = std(0xeef2f4, { r:0.45 });
+      [[0, 40, 28], [34, 32, 26], [-34, 34, 26], [66, 24, 24], [-66, 28, 24], [96, 18, 22]].forEach(([x, h, w]) => {
+        const b = new T.Mesh(new T.BoxGeometry(w, h, 44), glass); b.position.set(x, h / 2 + 4, 0); g.add(b);
+        const top = new T.Mesh(new T.BoxGeometry(w + 1, 1.2, 45), frame); top.position.set(x, h + 4, 0); g.add(top);
+        for (let k = -2; k <= 2; k++) g.add(rod([x + k * w / 5, 4, 22.3], [x + k * w / 5, h + 4, 22.3], 0.25, frame));
       });
-      const pod = new T.Mesh(new T.BoxGeometry(190, 4, 60), frame); pod.position.y = 2; g.add(pod);
+      const pod = new T.Mesh(new T.BoxGeometry(230, 4, 64), frame); pod.position.y = 2; g.add(pod);
       glow.push([glass, 0.7]);
       out.museum = g; }
     return { models:out, glow };
@@ -5499,16 +5535,20 @@ body.night .nav .btn{background:#1d2731;border:0}
       id:'lm3d', type:'custom', renderingMode:'3d',
       onAdd(m, gl){
         this.camera = new T.Camera(); this.scene = new T.Scene();
-        this.scene.add(new T.HemisphereLight(0xffffff, 0x556677, 1.0));
-        const d = new T.DirectionalLight(0xffffff, 0.9); d.position.set(-0.4, 1, 0.5); this.scene.add(d);
+        this.hemi = new T.HemisphereLight(0xffffff, 0x556677, 1.0); this.scene.add(this.hemi);
+        const d = new T.DirectionalLight(0xffffff, 0.9); d.position.set(-0.4, 1, 0.5); this.scene.add(d); this.sun = d;
         const b = buildLandmarks(T); this.models = b.models; this.glow = b.glow;
         Object.values(this.models).forEach(g => { g.visible = false; this.scene.add(g); });
         this.renderer = new T.WebGLRenderer({ canvas:m.getCanvas(), context:gl, antialias:true });
         this.renderer.autoClear = false;
+        // отражения неба на стекле и золоте — как на настоящих зданиях
+        try{ if (T.RoomEnvironment){ const pm = new T.PMREMGenerator(this.renderer); this.scene.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture; pm.dispose(); this.renderer.resetState(); } }catch{}
       },
       render(gl, matrix){
         if (map.getZoom() < 12) return;
         const hol = holidayNow(), t = performance.now() / 1000, lit = night || !!hol;
+        if (this.hemi){ this.hemi.intensity = lit ? 0.42 : 0.75; this.sun.intensity = lit ? 0.28 : 0.85; }
+        if (this.litPrev !== lit){ this.litPrev = lit; this.scene.traverse(o => { const m = o.material; if (m && 'envMapIntensity' in m){ m.userData.env ??= m.envMapIntensity; m.envMapIntensity = m.userData.env * (lit ? 0.18 : 0.42); } }); }
         this.glow.forEach(([mat, k]) => { mat.emissiveIntensity = lit ? k * (hol ? 0.75 + 0.25 * Math.sin(t * 2) : 1) : k > 1 ? 0.35 : 0; });
         const bounds = map.getBounds();
         for (const [id, g] of Object.entries(this.models)){
