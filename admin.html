@@ -36,6 +36,10 @@ main{max-width:760px;margin:0 auto}
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   let items = [];
+  const FMT = { objav:{ n:'📝 Объявление' }, premium:{ n:'💎 Премиум-логотип' }, navlogo:{ n:'📍 В навигаторе' }, stopbanner:{ n:'🚦 Баннер на светофоре', img:true },
+    routebb:{ n:'🗺 Билборд при маршруте', img:true }, billboard:{ n:'🪧 Билборд', img:true }, stories:{ n:'⭕ Сторис', img:true } };
+  const WANT = { priority:'выше в поиске 9 900 ₸', logo:'логотип 14 900 ₸', objav:'объявление 14 900 ₸', premium:'премиум-логотип 19 900 ₸', navlogo:'логотип в навигаторе 1 990 ₸',
+    stopbanner:'баннер на светофоре 35 900 ₸', routebb:'билборд при маршруте 39 900 ₸', billboard:'билборд 49 900 ₸', stories:'сторис 149 900 ₸', lite:'пакет Лайт 19 900 ₸', start:'пакет Старт 29 900 ₸', media:'пакет Медиа 49 900 ₸' };
   try{ $('#key').value = sessionStorage.getItem('ak') || ''; }catch{}
   const api = (m, q, body) => fetch(`/api/business?admin=${encodeURIComponent($('#key').value)}${q || ''}`, { method:m, headers:{ 'Content-Type':'application/json' }, body:body && JSON.stringify(body) }).then(r => r.json());
   async function load(){
@@ -50,19 +54,38 @@ main{max-width:760px;margin:0 auto}
   function render(){
     const list = $('#onlyWant').checked ? items.filter(x => x.want) : items;
     $('#list').innerHTML = list.map(x => `<div class="card">
-      <div><b>${esc(x.name)}</b> ${x.want ? `<span class="want">хочет: ${x.want === 'logo' ? 'логотип 14 900 ₸' : 'приоритет 9 900 ₸'}</span>` : ''} ${x.promo && x.promo !== 'none' ? `<span class="on">включено: ${x.promo}${x.until ? ' до ' + new Date(x.until).toLocaleDateString('ru-RU') : ''}</span>` : ''} ${x.hidden ? '<span class="want">скрыта</span>' : ''}</div>
+      <div><b>${esc(x.name)}</b> ${x.want ? `<span class="want">хочет: ${WANT[x.want] || x.want}</span>` : ''} ${x.promo && x.promo !== 'none' ? `<span class="on">включено: ${x.promo}${x.until ? ' до ' + new Date(x.until).toLocaleDateString('ru-RU') : ''}</span>` : ''} ${x.hidden ? '<span class="want">скрыта</span>' : ''}</div>
       <div class="muted">${esc(x.addr)} · ${esc(x.phone)} · ${esc(x.web)} · ${esc(x.hours)}</div>
       ${x.contact ? `<div>📞 Связаться: <a href="tel:${esc(x.contact.replace(/[^\d+]/g, ''))}">${esc(x.contact)}</a> · <a target="_blank" rel="noopener" href="https://wa.me/${esc(x.contact.replace(/\D/g, ''))}">WhatsApp</a></div>` : ''}
       <div class="muted">${esc(x.desc)} · добавлено ${new Date(x.ts).toLocaleString('ru-RU')}</div>
+      ${x.adText || x.adImg ? `<div class="muted">Текст рекламы: «${esc(x.adText)}» ${x.adImg ? '· <a target="_blank" rel="noopener" href="' + esc(x.adImg) + '">картинка</a>' : ''}</div>` : ''}
+      <div class="muted">Форматы: ${Object.entries(x.ads || {}).map(([f, a]) => `<span class="on">${FMT[f]?.n || f}${a.until ? ' до ' + new Date(a.until).toLocaleDateString('ru-RU') : ''}</span>`).join(' ') || 'нет'}</div>
       <div class="row">
-        <button data-a="priority" data-id="${esc(x.id)}">Приоритет на 30 дней</button>
-        <button data-a="logo" data-id="${esc(x.id)}">Логотип на 30 дней</button>
-        <button data-a="none" data-id="${esc(x.id)}">Снять рекламу</button>
+        <button data-a="priority" data-id="${esc(x.id)}">⬆ Выше в поиске</button>
+        <button data-a="logo" data-id="${esc(x.id)}">⭐ Логотип</button>
+        ${Object.entries(FMT).map(([f, v]) => `<button data-f="${f}" data-id="${esc(x.id)}">${(x.ads || {})[f] ? '✓ ' : ''}${v.n}</button>`).join('')}
+      </div>
+      <div class="row">
+        <button data-p="lite" data-id="${esc(x.id)}">📦 Лайт</button><button data-p="start" data-id="${esc(x.id)}">📦 Старт</button><button data-p="media" data-id="${esc(x.id)}">📦 Медиа</button>
+        <button data-a="none" data-id="${esc(x.id)}">Снять всю рекламу</button>
         <button data-a="hide" data-id="${esc(x.id)}">${x.hidden ? 'Показать' : 'Скрыть'}</button>
         <button data-a="del" data-id="${esc(x.id)}">Удалить</button>
       </div></div>`).join('') || '<p class="muted">Пока пусто.</p>';
+    document.querySelectorAll('[data-f]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.id, f = b.dataset.f, x = items.find(y => y.id === id), on = (x.ads || {})[f];
+      if (on){ await api('PATCH', '', { id, ad:f, off:true }); return load(); }
+      const text = prompt(`Текст для «${FMT[f].n}» (до 70 знаков):`, x.adText || x.desc || ''); if (text === null) return;
+      const img = FMT[f].img ? prompt('Ссылка на картинку (https://…), можно пусто:', x.adImg || '') || '' : '';
+      const radius = f === 'billboard' ? +(prompt('Радиус показа билборда вокруг адреса, метров:', '2000') || 2000) : 0;
+      await api('PATCH', '', { id, ad:f, text, img, radius, until:Date.now() + 30 * 864e5 }); load();
+    });
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
+      const x = items.find(y => y.id === b.dataset.id), text = prompt('Текст объявления (до 70 знаков):', x.adText || x.desc || ''); if (text === null) return;
+      await api('PATCH', '', { id:x.id, pack:b.dataset.p, text, until:Date.now() + 30 * 864e5 }); load();
+    });
     document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
       const id = b.dataset.id, a = b.dataset.a, x = items.find(y => y.id === id);
+      if (a === 'none'){ await api('PATCH', '', { id, promo:'none', until:0, clearAds:true }); return load(); }
       if (a === 'del'){ if (!confirm('Удалить карточку «' + x.name + '»?')) return; await api('DELETE', '&id=' + encodeURIComponent(id)); }
       else if (a === 'hide') await api('PATCH', '', { id, hidden:!x.hidden });
       else await api('PATCH', '', { id, promo:a, until:a === 'none' ? 0 : Date.now() + 30 * 864e5 });

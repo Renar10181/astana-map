@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.5.1</p>
+    <p class="set-ver">Версия 2.6.0</p>
   </div>
 </div>
 
@@ -747,8 +747,22 @@ body.night .nav .btn{background:#1d2731;border:0}
     <div class="set-row"><label for="bizDesc">Коротко о вас</label><textarea id="bizDesc" class="inp" rows="2" maxlength="300" placeholder="Что вы предлагаете, чем отличаетесь"></textarea></div>
     <div class="set-row"><label>Продвижение</label>
       <label class="set-check"><input type="radio" name="bizWant" value="" checked> Бесплатная карточка</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="lite"> 📦 Пакет «Лайт»: выше в поиске + объявление — 19 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="start"> 📦 Пакет «Старт»: Лайт + логотип на карте и в навигаторе — 29 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="media"> 📦 Пакет «Медиа»: Старт + премиум-логотип + баннер на светофоре — 49 900 ₸ в месяц</label>
+      <details class="set-help"><summary>Отдельные форматы</summary>
       <label class="set-check"><input type="radio" name="bizWant" value="priority"> ⬆ Выше в поиске — 9 900 ₸ в месяц</label>
-      <label class="set-check"><input type="radio" name="bizWant" value="logo"> ⭐ Логотип на карте (и выше в поиске) — 14 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="objav"> 📝 Объявление вверху поиска — 14 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="logo"> ⭐ Логотип на карте — 14 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="premium"> 💎 Премиум-логотип с акцией — 19 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="navlogo"> 📍 Логотип у дороги в навигаторе — 1 990 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="stopbanner"> 🚦 Баннер водителю на светофоре — 35 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="routebb"> 🗺 Билборд при построении маршрута — 39 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="billboard"> 🪧 Билборд в навигаторе — 49 900 ₸ в месяц</label>
+      <label class="set-check"><input type="radio" name="bizWant" value="stories"> ⭕ Сторис на главном экране — 149 900 ₸ в месяц</label>
+      </details>
+      <input id="bizAdText" class="inp" maxlength="70" placeholder="Текст рекламы, до 70 знаков: «Капучино −20% до 12:00»" hidden aria-label="Текст рекламы">
+      <input id="bizAdImg" class="inp" maxlength="300" placeholder="Ссылка на картинку для баннера или сторис (https://…), можно позже" hidden aria-label="Картинка">
       <input id="bizContact" class="inp" maxlength="60" placeholder="Телефон или WhatsApp — менеджер свяжется" hidden aria-label="Контакт для связи">
       <p class="hint">🎁 Первым 20 компаниям — первый месяц бесплатно. Платное размещение помечается словом «Реклама». Оплата — после звонка менеджера.</p></div>
     <button class="btn primary" id="bizSend">Сохранить карточку</button>
@@ -4579,10 +4593,10 @@ body.night .nav .btn{background:#1d2731;border:0}
     $('#bizAddr').value = it?.addr || ''; $('#bizPhone').value = it?.phone || ''; $('#bizWeb').value = it?.web || ''; $('#bizDesc').value = it?.desc || '';
     if (it?.cat && BIZ_CATS.includes(it.cat)) $('#bizCat').value = it.cat;
     if (!$('#bizAddr').value) reverse(bizAt).then(a => { if (!$('#bizAddr').value && !/^\d/.test(a)) $('#bizAddr').value = a; });
-    document.querySelector('input[name="bizWant"][value=""]').checked = true; $('#bizContact').hidden = true;
+    document.querySelector('input[name="bizWant"][value=""]').checked = true; $('#bizContact').hidden = true; $('#bizAdText').hidden = true; $('#bizAdImg').hidden = true;
     $('#bizSheet').hidden = false;
   }
-  document.querySelectorAll('input[name="bizWant"]').forEach(r => r.onchange = () => { $('#bizContact').hidden = !document.querySelector('input[name="bizWant"]:checked').value; });
+  document.querySelectorAll('input[name="bizWant"]').forEach(r => r.onchange = () => { const w = document.querySelector('input[name="bizWant"]:checked').value; $('#bizContact').hidden = $('#bizAdText').hidden = !w; $('#bizAdImg').hidden = !['stopbanner', 'routebb', 'billboard', 'stories'].includes(w); });
   $('#bizOpen').onclick = () => { $('#settings').hidden = true; openBiz(null, null); toast('Точка организации — центр карты. Точнее: зажмите место на карте → 🏢'); };
   $('#bizSend').onclick = async () => {
     const name = $('#bizName').value.trim(); if (name.length < 2) return toast('Напишите название');
@@ -4590,7 +4604,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (want && contact.length < 6) return toast('Оставьте телефон или WhatsApp — менеджер свяжется по продвижению');
     const days = $('#bizDays').value, hours = days === '24/7' ? '24/7' : days ? `${days} ${$('#bizFrom').value}-${$('#bizTo').value}` : '';
     const body = { id:bizEditId, token:bizToken, name, cat:$('#bizCat').value, addr:$('#bizAddr').value, phone:$('#bizPhone').value, web:$('#bizWeb').value,
-      hours, desc:$('#bizDesc').value, want, contact, lng:bizAt.lng, lat:bizAt.lat };
+      hours, desc:$('#bizDesc').value, want, contact, adText:$('#bizAdText').value, adImg:$('#bizAdImg').value, lng:bizAt.lng, lat:bizAt.lat };
     const b = $('#bizSend'); b.disabled = true;
     try{
       const r = await fetch('/api/business', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
@@ -5789,6 +5803,210 @@ body.night .nav .btn{background:#1d2731;border:0}
   if (enMode()) ['Take me to Khan Shatyr', 'Find a pharmacy', 'Where am I?', 'City tour', 'Tell me about Baiterek', 'Order food']
     .forEach(t => $('#asstEx')?.insertAdjacentHTML('afterbegin', `<button class="chip" data-exen="${esc(t)}">${esc(t)}</button>`));
   document.querySelectorAll('[data-exen]').forEach(b => b.onclick = () => handleCmd(b.dataset.exen));
+
+  // =====================================================================
+  // ---------- 2.6: рекламные форматы — объявление в поиске, премиум-логотип, логотип в навигаторе,
+  //            баннер на светофоре, билборд при маршруте, билборд в навигаторе, сторис ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+  .adblk{display:block;width:100%;box-sizing:border-box;text-align:left;border:1.5px solid #ffcc00;background:color-mix(in srgb,#ffcc00 10%,var(--surface));border-radius:14px;padding:10px 12px;margin:6px 0 8px;font-family:var(--font);color:var(--fg)}
+  .adblk b{font-size:15.5px}.adblk .tx{font-size:14px;margin:3px 0 8px}.adblk .row{display:flex;gap:8px}.adblk .row>*{flex:1;text-align:center;border:0;border-radius:10px;padding:9px 6px;font:600 14px var(--font);text-decoration:none;background:var(--surface);color:var(--fg);box-shadow:0 0 0 1px var(--line) inset}
+  .adblk .row>.go{background:#ffcc00;color:#111;box-shadow:none}
+  .prem-pin{background:#1e2126;color:#fff;border:2px solid #ffcc00;border-radius:14px;padding:5px 10px;font:700 13px/1.2 var(--font);box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:170px;cursor:pointer}
+  .prem-pin small{display:block;font-weight:500;color:#ffd84d;font-size:11.5px;margin-top:2px}.prem-pin i{font-style:normal;font-size:9.5px;opacity:.6;font-weight:600}
+  .nav-logo{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #ffcc00;display:grid;place-items:center;font:800 14px var(--font);color:#111;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer}
+  .bb-pin{background:#ffcc00;color:#111;border-radius:8px;padding:5px 8px;font:800 12px/1.15 var(--font);box-shadow:0 6px 16px rgba(0,0,0,.4);position:relative;max-width:150px;cursor:pointer}
+  .bb-pin:after{content:"";position:absolute;left:50%;bottom:-10px;width:3px;height:10px;background:#555;transform:translateX(-50%)}
+  .adcard{position:fixed;left:10px;right:10px;bottom:calc(var(--navh,190px) + 12px);z-index:46;background:#1e2126;color:#eef3f6;border-radius:18px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4);font-family:var(--font);max-width:460px;margin:0 auto}
+  .adcard .lbl{font-size:11px;font-weight:700;color:#ffd84d}.adcard b{display:block;font-size:16px;margin:2px 0}.adcard .tx{font-size:14px;opacity:.9}
+  .adcard img{width:100%;max-height:150px;object-fit:cover;border-radius:12px;margin:6px 0}
+  .adcard .row{display:flex;gap:8px;margin-top:9px}.adcard .row>*{flex:1;border:0;border-radius:12px;padding:10px;font:700 14px var(--font);text-align:center;text-decoration:none;background:#3a3f47;color:#fff}.adcard .row>.go{background:#ffcc00;color:#111}
+  .adcard .x{position:absolute;right:8px;top:4px;background:none;border:0;color:#aab;font-size:22px}
+  .rbb{margin-top:8px}
+  .stories{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}.stories::-webkit-scrollbar{display:none}
+  .stories button{border:0;background:none;display:grid;justify-items:center;gap:4px;font:600 11.5px var(--font);color:var(--fg);flex:0 0 66px}
+  .stories .ring{width:60px;height:60px;border-radius:50%;padding:3px;background:conic-gradient(#ffcc00,#ff4d6d,#7c4dff,#ffcc00)}
+  .stories .ring span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--surface) center/cover;border:2px solid var(--surface);font-size:22px;font-weight:800}
+  .story{position:fixed;inset:0;z-index:80;background:#000 center/cover;color:#fff;font-family:var(--font);display:flex;flex-direction:column;justify-content:flex-end}
+  .story .bars{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:4px}.story .bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35);overflow:hidden}.story .bars i b{display:block;height:100%;width:0;background:#fff}
+  .story .top{position:absolute;top:22px;left:14px;right:14px;display:flex;align-items:center;gap:10px;font-weight:700}.story .top small{font-weight:600;opacity:.75}.story .top button{margin-left:auto;background:none;border:0;color:#fff;font-size:28px}
+  .story .body{padding:24px 18px calc(24px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.85))}
+  .story .body b{font-size:24px;display:block}.story .body p{font-size:17px;margin:8px 0 16px}
+  .story .row{display:flex;gap:10px}.story .row>*{flex:1;border:0;border-radius:14px;padding:13px;font:700 15px var(--font);text-align:center;text-decoration:none;background:rgba(255,255,255,.18);color:#fff}.story .row>.go{background:#ffcc00;color:#111}
+  </style>`);
+  let ADS = [];
+  const adsOf = f => ADS.filter(a => a.f === f);
+  const adP = a => ({ lng:a.lng, lat:a.lat, name:a.name, phone:a.phone, addr:a.addr });
+  const adInitial = n => (String(n || '?').replace(/[«»"'\s]/g, '')[0] || '?').toUpperCase();
+  const adTel = a => a.phone ? `<a href="tel:${esc(String(a.phone).replace(/[^\d+]/g, ''))}">📞 Позвонить</a>` : '';
+  async function loadAds(){
+    try{ const j = await (await fetch('/api/business')).json(); ADS = Array.isArray(j.ads) ? j.ads : []; }catch{}
+    drawPremium();
+  }
+  setTimeout(loadAds, 2500); setInterval(loadAds, 10 * 60e3);
+  function adGo(a){ document.querySelector('.adcard')?.remove(); if (driving) addStop(adP(a), true); else { popup?.remove(); $('#results').hidden = true; setPoint('to', adP(a)); $('#panel').classList.remove('collapsed'); if (!state.from) locateMe(false); } }
+
+  // ---- 📝 Объявление в выдаче: вверху поиска и списка «Найти рядом», с пометкой «Реклама» ----
+  const ADCAT = { fuel:['gas_station'], ev:['gas_station'], food:['restaurant', 'fast_food_restaurant', 'cafe', 'bakery'], cafe:['cafe', 'coffee_shop', 'bakery'], pharm:['pharmacy', 'medical_center'],
+    shop:['supermarket', 'convenience_store'], atm:['bank'], park:[], wash:['car_wash'], tyre:['tire_shop', 'automotive_repair', 'auto_parts_store'], wc:[], hosp:['medical_center', 'dentist'], kids:['kindergarten', 'education'] };
+  function objavFor(query, catId){
+    const list = adsOf('objav'); if (!list.length) return null;
+    let m = [];
+    if (catId) m = list.filter(a => (ADCAT[catId] || []).includes(a.cat));
+    else {
+      const words = String(query || '').toLowerCase().split(/[^a-zа-яёәғқңөұүһі0-9]+/i).filter(w => w.length >= 3).map(w => w.slice(0, Math.max(3, w.length - 2)));
+      m = list.filter(a => { const kw = [catRu(a.cat), a.cat, a.name, a.text].join(' ').toLowerCase(); return words.some(w => kw.includes(w)); });
+    }
+    if (!m.length) return null;
+    const here = myPos();
+    if (here) m.sort((x, y) => dist([x.lng, x.lat], [here.lng, here.lat]) - dist([y.lng, y.lat], [here.lng, here.lat]));
+    return m[0];
+  }
+  function objavHtml(a){
+    return `<div class="adblk" data-adid="${esc(a.id)}"><span class="ad">Реклама</span> <b>${esc(a.name)}</b><div class="tx">${esc(a.text || catRu(a.cat) || '')}</div><div class="row"><button class="go" data-adgo>🚗 Маршрут</button>${adTel(a)}</div></div>`;
+  }
+  const search26 = search;
+  search = async function(){
+    const r = await search26.apply(this, arguments);
+    try{
+      const a = objavFor(q.value), box = $('#results');
+      if (a && !box.hidden && !box.querySelector('.adblk')){ box.insertAdjacentHTML('afterbegin', objavHtml(a)); box.querySelector('[data-adgo]').onclick = () => adGo(a); }
+    }catch{}
+    return r;
+  };
+  const findCat26 = findCat;
+  findCat = async function(id){
+    const r = await findCat26.apply(this, arguments);
+    try{
+      const a = objavFor('', id), box = $('#catList');
+      if (a && !box.querySelector('.adblk')){ box.insertAdjacentHTML('afterbegin', objavHtml(a)); box.querySelector('[data-adgo]').onclick = () => { $('#catSheet').hidden = true; adGo(a); }; }
+    }catch{}
+    return r;
+  };
+
+  // ---- 💎 Премиум-логотип: крупная метка с акцией, видна с масштаба 13 ----
+  let premMk = [];
+  function drawPremium(){
+    premMk.forEach(m => m.remove()); premMk = [];
+    adsOf('premium').slice(0, 40).forEach(a => {
+      const el = document.createElement('div'); el.className = 'prem-pin';
+      el.innerHTML = `${esc(a.name)}${a.text ? `<small>${esc(a.text)}</small>` : ''}<i>Реклама</i>`;
+      el.onclick = ev => { ev.stopPropagation(); map.flyTo({ center:[a.lng, a.lat], zoom:Math.max(map.getZoom(), 16) }); showPopup({ ...adP(a), hours:'' }); };
+      premMk.push(new maplibregl.Marker({ element:el, anchor:'bottom' }).setLngLat([a.lng, a.lat]).addTo(map));
+    });
+    premUpd();
+  }
+  function premUpd(){ const z = map.getZoom(); premMk.forEach(m => { m.getElement().style.display = z >= 13 && !driving ? '' : 'none'; }); }
+  map.on('zoomend', premUpd);
+
+  // ---- общая карточка рекламы во время поездки ----
+  function adCard(a, kind){
+    document.querySelector('.adcard')?.remove();
+    const el = document.createElement('div'); el.className = 'adcard';
+    el.innerHTML = `<button class="x" aria-label="Закрыть">✕</button><div class="lbl">Реклама · ${kind}</div><b>${esc(a.name)}</b>${a.img ? `<img src="${esc(a.img)}" alt="">` : ''}<div class="tx">${esc(a.text || '')}</div>
+      <div class="row"><button class="go">＋ Заехать</button>${adTel(a)}</div>`;
+    document.body.appendChild(el);
+    el.querySelector('.x').onclick = () => el.remove();
+    el.querySelector('.go').onclick = () => adGo(a);
+    setTimeout(() => el.remove(), 20000);
+    return el;
+  }
+
+  // ---- 📍 Логотип в навигаторе и 🪧 билборд: метки у дороги по пути ----
+  let navAdMk = [], navAdT = 0;
+  function navAdsUpd(force){
+    if (!driving || !nav.pts?.length){ navAdMk.forEach(m => m.remove()); navAdMk = []; return; }
+    if (!force && Date.now() - navAdT < 8000) return; navAdT = Date.now();
+    navAdMk.forEach(m => m.remove()); navAdMk = [];
+    const ahead = nav.pts.slice(nav.idx || 0, (nav.idx || 0) + 400); if (ahead.length < 2) return;
+    adsOf('navlogo').forEach(a => {
+      const ld = lineDist([a.lng, a.lat], ahead); if (ld.d > 250) return;
+      const el = document.createElement('div'); el.className = 'nav-logo'; el.textContent = adInitial(a.name); el.title = a.name;
+      el.onclick = ev => { ev.stopPropagation(); adCard(a, 'по пути'); };
+      navAdMk.push(new maplibregl.Marker({ element:el }).setLngLat([a.lng, a.lat]).addTo(map));
+    });
+    adsOf('billboard').forEach(a => {
+      const R = a.radius || 2000; let best = null;
+      for (let i = 0; i < ahead.length; i += 3){ const d = dist(ahead[i], [a.lng, a.lat]); if (d < R && (!best || d < best.d)) best = { d, p:ahead[i] }; }
+      if (!best) return;
+      const el = document.createElement('div'); el.className = 'bb-pin'; el.textContent = a.name.length > 22 ? a.name.slice(0, 21) + '…' : a.name;
+      el.onclick = ev => { ev.stopPropagation(); adCard(a, 'билборд'); };
+      navAdMk.push(new maplibregl.Marker({ element:el, anchor:'bottom', offset:[0, -6] }).setLngLat(best.p).addTo(map));
+    });
+  }
+
+  // ---- 🚦 Баннер при остановке: машина стоит 7 секунд и больше ----
+  let stopSince = 0, stopShownAt = 0, stopIdx = 0;
+  const onFix26 = onFix;
+  onFix = function(f){
+    const r = onFix26.apply(this, arguments);
+    try{
+      if (driving && !f.manual){
+        navAdsUpd(false);
+        const v = f.speed != null && !isNaN(f.speed) ? f.speed : 99;
+        if (!demo && v < 0.7){ if (!stopSince) stopSince = Date.now(); }
+        else { stopSince = 0; if (v > 2.5) document.querySelector('.adcard.stopad')?.remove(); }
+        const list = adsOf('stopbanner');
+        if (stopSince && Date.now() - stopSince > 7000 && list.length && Date.now() - stopShownAt > 180e3 && nav._dNext > 120){
+          stopShownAt = Date.now(); const a = list[stopIdx++ % list.length]; adCard(a, 'пока стоим').classList.add('stopad');
+        }
+      }
+    }catch{}
+    return r;
+  };
+  const startNav26 = startNav;
+  startNav = async function(){ const r = await startNav26.apply(this, arguments); premUpd(); navAdsUpd(true); return r; };
+  const stopDrive26 = stopDrive;
+  stopDrive = function(){ const r = stopDrive26.apply(this, arguments); navAdMk.forEach(m => m.remove()); navAdMk = []; document.querySelector('.adcard')?.remove(); stopSince = 0; premUpd(); return r; };
+
+  // ---- 🗺 Билборд при построении маршрута: одна карточка под вариантами ----
+  const selectRoute26 = selectRoute;
+  selectRoute = function(){
+    const r = selectRoute26.apply(this, arguments);
+    try{
+      const list = adsOf('routebb'), box = $('#routes');
+      if (list.length && !driving && box && !box.querySelector('.rbb')){
+        const c = state.routes[state.active]?.geometry?.coordinates || [];
+        const near = list.filter(a => c.length && lineDist([a.lng, a.lat], c).d < 3000);
+        const a = (near.length ? near : list)[Math.floor(Math.random() * (near.length || list.length))];
+        box.insertAdjacentHTML('beforeend', `<div class="adblk rbb"><span class="ad">Реклама</span> <b>${esc(a.name)}</b>${a.img ? `<img src="${esc(a.img)}" alt="" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;margin-top:6px">` : ''}<div class="tx">${esc(a.text || '')}</div><div class="row"><button class="go" data-rbb>＋ Заехать по пути</button>${adTel(a)}</div></div>`);
+        box.querySelector('[data-rbb]').onclick = () => { addStop(adP(a), false); toast(`Добавил остановку: ${a.name}`); };
+      }
+    }catch{}
+    return r;
+  };
+
+  // ---- ⭕ Сторис на главном экране ----
+  const renderQuick26 = renderQuick;
+  renderQuick = function(){
+    const r = renderQuick26.apply(this, arguments);
+    try{
+      const list = adsOf('stories'), quick = document.querySelector('#results .quick');
+      if (list.length && quick && !quick.querySelector('.stories')){
+        quick.insertAdjacentHTML('afterbegin', `<div class="stories">${list.slice(0, 12).map((a, i) => `<button data-st="${i}"><span class="ring"><span${a.img ? ` style="background-image:url('${esc(a.img)}')"` : ''}>${a.img ? '' : esc(adInitial(a.name))}</span></span>${esc(a.name.length > 10 ? a.name.slice(0, 9) + '…' : a.name)}</button>`).join('')}</div>`);
+        quick.querySelectorAll('[data-st]').forEach(b => b.onclick = () => openStory(list, +b.dataset.st));
+      }
+    }catch{}
+    return r;
+  };
+  function openStory(list, i){
+    document.querySelector('.story')?.remove();
+    const a = list[i]; if (!a) return;
+    const el = document.createElement('div'); el.className = 'story';
+    el.style.backgroundImage = a.img ? `url('${a.img.replace(/'/g, '%27')}')` : 'linear-gradient(160deg,#1e2126,#3a2a10 60%,#ffcc00)';
+    el.innerHTML = `<div class="bars">${list.map((_, k) => `<i><b style="width:${k < i ? 100 : 0}%"></b></i>`).join('')}</div>
+      <div class="top"><span>${esc(a.name)}<br><small>Реклама</small></span><button aria-label="Закрыть">✕</button></div>
+      <div class="body"><b>${esc(a.name)}</b><p>${esc(a.text || '')}</p><div class="row"><button class="go">🚗 Маршрут</button>${adTel(a)}</div></div>`;
+    document.body.appendChild(el);
+    const bar = el.querySelectorAll('.bars b')[i]; let t0 = performance.now(), raf;
+    const step = now => { const k = Math.min(1, (now - t0) / 6000); bar.style.width = k * 100 + '%'; if (k < 1) raf = requestAnimationFrame(step); else next(); };
+    const close = () => { cancelAnimationFrame(raf); el.remove(); };
+    const next = () => { close(); if (i + 1 < list.length) openStory(list, i + 1); };
+    el.querySelector('.top button').onclick = close;
+    el.querySelector('.go').onclick = () => { close(); $('#results').hidden = true; adGo(a); };
+    el.addEventListener('click', e => { if (e.target === el || e.target.classList.contains('body')) next(); });
+    raf = requestAnimationFrame(step);
+  }
+  window.__ads = { set:v => { ADS = v; drawPremium(); }, get:() => ADS };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
