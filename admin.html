@@ -50,7 +50,7 @@ main{max-width:760px;margin:0 auto}
   function render(){
     const list = $('#onlyWant').checked ? items.filter(x => x.want) : items;
     $('#list').innerHTML = list.map(x => `<div class="card">
-      <div><b>${esc(x.name)}</b> ${x.want ? `<span class="want">хочет: ${x.want === 'logo' ? 'логотип 30 000 ₸' : 'приоритет 15 000 ₸'}</span>` : ''} ${x.promo && x.promo !== 'none' ? `<span class="on">включено: ${x.promo}${x.until ? ' до ' + new Date(x.until).toLocaleDateString('ru-RU') : ''}</span>` : ''} ${x.hidden ? '<span class="want">скрыта</span>' : ''}</div>
+      <div><b>${esc(x.name)}</b> ${x.want ? `<span class="want">хочет: ${x.want === 'logo' ? 'логотип 14 900 ₸' : 'приоритет 9 900 ₸'}</span>` : ''} ${x.promo && x.promo !== 'none' ? `<span class="on">включено: ${x.promo}${x.until ? ' до ' + new Date(x.until).toLocaleDateString('ru-RU') : ''}</span>` : ''} ${x.hidden ? '<span class="want">скрыта</span>' : ''}</div>
       <div class="muted">${esc(x.addr)} · ${esc(x.phone)} · ${esc(x.web)} · ${esc(x.hours)}</div>
       ${x.contact ? `<div>📞 Связаться: <a href="tel:${esc(x.contact.replace(/[^\d+]/g, ''))}">${esc(x.contact)}</a> · <a target="_blank" rel="noopener" href="https://wa.me/${esc(x.contact.replace(/\D/g, ''))}">WhatsApp</a></div>` : ''}
       <div class="muted">${esc(x.desc)} · добавлено ${new Date(x.ts).toLocaleString('ru-RU')}</div>
