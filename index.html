@@ -481,6 +481,9 @@ body.lowroom:not(.navmode) .zoom{display:none}
 .rcar::-webkit-scrollbar{display:none}
 .rcar .route{flex:0 0 78%;scroll-snap-align:center}
 body.night .nav .btn{background:#1d2731;border:0}
+.set-help.qclub summary{font-weight:700;font-size:15px}
+.qsteps{display:grid;gap:8px;margin:10px 0}.qsteps div{background:color-mix(in srgb,#ffcc00 12%,var(--surface));border-radius:12px;padding:9px 12px;display:grid;gap:2px}.qsteps span{font-size:13.5px;color:var(--muted)}
+.qclub h4{margin:12px 0 6px;font-size:14px}.qlv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.qlv span{border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center;font-size:12.5px;font-weight:600;display:grid;gap:2px}.qlv small{font-weight:500;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -577,7 +580,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p class="hint" id="offInfo">Карта будет открываться без интернета. Маршруты и поиск без интернета не работают.</p>
       <button class="btn" id="installBtn" type="button" hidden>📲 Установить как приложение</button>
       <p class="hint" id="iosHint" hidden>На iPhone: «Поделиться» → «На экран Домой».</p></div>
-    <div class="set-row"><label for="setLang">Язык интерфейса · Тіл</label><select id="setLang"><option value="ru">Русский</option><option value="kk">Қазақша</option></select></div>
+    <div class="set-row"><label for="setLang">Язык интерфейса · Тіл</label><select id="setLang"><option value="ru">Русский</option><option value="kk">Қазақша</option><option value="en">English</option></select></div>
     <label class="set-check"><input type="checkbox" id="setEco"> 🔋 Экономия батареи: без 3D, анимаций и снега</label>
     <label class="set-check"><input type="checkbox" id="setProbe"> 🚦 Помогать считать пробки (анонимно)</label>
     <button class="btn" id="bizOpen" type="button">🏢 Добавить свою организацию — бесплатно</button>
@@ -597,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.3.0</p>
+    <p class="set-ver">Версия 2.4.0</p>
   </div>
 </div>
 
@@ -695,12 +698,23 @@ body.night .nav .btn{background:#1d2731;border:0}
 <div class="sheet" id="questSheet" hidden>
   <div class="sheet-card" role="dialog" aria-label="Квесты Барыса">
     <div class="sheet-head"><h2>🎯 Квесты Барыса</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <details class="set-help qclub" id="qClub"><summary>🏆 Клуб Барыса — как это работает и что вы получаете</summary>
+      <div class="qsteps">
+        <div><b>1. 📍 Подойдите к месту</b><span>Задания появляются у кафе, остановок, аптек — не дальше 150 м от вас.</span></div>
+        <div><b>2. 👆 Ответьте в одно касание</b><span>«До скольких работает?», «Есть ли пандус?», «Где вход?» — 5 секунд.</span></div>
+        <div><b>3. ✅ Факт проверяется</b><span>Когда трое разных людей ответили одинаково, ответ попадает в карточку места для всего города.</span></div>
+      </div>
+      <h4>Уровни</h4>
+      <div class="qlv"><span>🐾 Барсёнок<small>старт</small></span><span>🐆 Жас Барс<small>200 очков</small></span><span>🦁 Барс<small>600 очков</small></span><span>👑 Ақ Барс<small>1 500 очков</small></span></div>
+      <p>С каждым уровнем открываются новые цвета вашей машины в навигаторе, а ваше имя растёт в рейтинге района.</p>
+      <h4>Честная игра</h4>
+      <p>Ответ засчитывается только рядом с местом, до 30 ответов в день, а факт подтверждают трое разных людей. Накрутить нельзя — поэтому картой можно доверять.</p>
+      <h4>🎁 Скоро</h4>
+      <p>Рейтинг месяца и призы от партнёров, а после запуска коммерческой версии — денежные награды за проверенные задания (фото с места, проверка ИИ и модератором). Условия объявим отдельно — копите очки уже сейчас, они сохранятся.</p>
+      <p class="hint">За рулём задания скрыты — отвечайте пешком или на стоянке.</p>
+    </details>
     <p class="hint" id="questInfo">Ищу задания рядом…</p>
     <div class="poi-list" id="questList"></div>
-    <details class="set-help"><summary>Как это работает</summary>
-      <p>Барыс задаёт короткие вопросы о местах рядом: до скольких работает, где вход, есть ли пандус, что на остановке. Ответить можно, когда вы не дальше 150 м от места.</p>
-      <p>За ответ — очки и уровень. Когда трое разных людей ответили одинаково, факт считается проверенным, и его увидят все в карточке места. До 30 ответов в день.</p>
-      <p>За рулём квесты скрыты — отвечайте пешком или на стоянке.</p></details>
   </div>
 </div>
 <div class="sheet" id="taxiSheet" hidden>
@@ -1463,6 +1477,8 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'az:ru-RU-SvetlanaNeural', name:'Светлана · русский, жен.', lang:'ru' },
     { id:'az:ru-RU-DariyaNeural',   name:'Дарья · русский, жен.',    lang:'ru' },
     { id:'az:ru-RU-DmitryNeural',   name:'Дмитрий · русский, муж.',  lang:'ru' },
+    { id:'az:en-US-GuyNeural',      name:'Guy · English, male',      lang:'en' },
+    { id:'az:en-US-JennyNeural',    name:'Jenny · English, female',  lang:'en' },
   ];
   let azureOk = true, voiceId = '', devVoice = null;
   try{ voiceId = localStorage.getItem('voiceId') || ''; }catch{}
@@ -1479,7 +1495,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   renderVoices();
   $('#voiceSel').onchange = e => { voiceId = e.target.value; try{ localStorage.setItem('voiceId', voiceId); }catch{} renderVoices(); };
   $('#voiceTest').onclick = () => { unlockSpeech(); const was = muted; muted = false; speak(say('test')); muted = was; };
-  const voiceLang = () => voiceId.startsWith('az:kk') ? 'kk' : 'ru';
+  const voiceLang = () => voiceId.startsWith('az:kk') ? 'kk' : voiceId.startsWith('az:en') ? 'en' : 'ru';
 
   // Фразы навигатора на двух языках
   const DIR_KK = { left:'солға', right:'оңға', 'slight left':'сәл солға', 'slight right':'сәл оңға', 'sharp left':'күрт солға', 'sharp right':'күрт оңға', straight:'тура' };
@@ -1560,9 +1576,9 @@ body.night .nav .btn{background:#1d2731;border:0}
   async function next(){
     const p = queue.shift(); if (!p){ speaking = false; mascotIdle(); return; }
     speaking = true;
-    mascot('talk', voiceId.startsWith('az:kk') ? p.kk : p.ru);
+    mascot('talk', voiceId.startsWith('az:kk') ? p.kk : voiceId.startsWith('az:en') ? (p.en || p.ru) : p.ru);
     if (voiceId.startsWith('az:') && azureOk){
-      const v = voiceId.slice(3), text = v.startsWith('kk') ? p.kk : p.ru;
+      const v = voiceId.slice(3), text = v.startsWith('kk') ? p.kk : v.startsWith('en') ? (p.en || p.ru) : p.ru;
       try{
         const r = await fetch(`/api/tts?v=${encodeURIComponent(v)}&t=${encodeURIComponent(text)}`);
         if (!r.ok) throw 0;
@@ -1573,8 +1589,8 @@ body.night .nav .btn{background:#1d2731;border:0}
       }catch{ /* нет связи — говорим голосом телефона */ }
     }
     if (!('speechSynthesis' in window)){ speaking = false; mascotIdle(); return; }
-    const u = new SpeechSynthesisUtterance(p.ru);
-    u.lang = 'ru-RU'; if (devVoice) u.voice = devVoice; u.rate = 1.02;
+    const enV = voiceId.startsWith('az:en'), u = new SpeechSynthesisUtterance(enV ? (p.en || p.ru) : p.ru);
+    u.lang = enV ? 'en-US' : 'ru-RU'; if (devVoice) u.voice = devVoice; u.rate = 1.02;
     u.onend = u.onerror = () => next();
     speechSynthesis.speak(u);
   }
@@ -3915,6 +3931,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   function openQuests(focus){
     if (fastNow()) return toast('Квесты — на стоянке или пешком 🙂');
     $('#questSheet').hidden = false;
+    if ((score?.pts || 0) < 30 && $('#qClub')) $('#qClub').open = true;
     if (qList.length && !focus) renderQuests(); else if (focus) renderQuests(focus);
     else $('#questInfo').textContent = 'Ищу задания рядом…';
     if (!qList.length || !qAt) refreshQuests(true);
@@ -3951,7 +3968,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (!SR){ openAsst(); return toast('Этот браузер не понимает голос — напишите команду. В Chrome голос работает.'); }
     if (listening){ try{ recog.stop(); }catch{} return; }
     unlockSpeech();
-    recog = new SR(); recog.lang = kkMode() ? 'kk-KZ' : 'ru-RU'; recog.interimResults = true; recog.maxAlternatives = 1;
+    recog = new SR(); recog.lang = enMode() ? 'en-US' : kkMode() ? 'kk-KZ' : 'ru-RU'; recog.interimResults = true; recog.maxAlternatives = 1;
     let heard = '';
     recog.onresult = e => { heard = Array.from(e.results).map(r => r[0].transcript).join(' '); $('#asstHeard').textContent = heard; };
     recog.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Разрешите микрофон для сайта в настройках браузера'); else if (e.error === 'no-speech') mascot('sad', 'Ничего не услышал. Нажмите 🎤 и говорите 🐾', 3500); };
@@ -4099,12 +4116,12 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   async function handleCmd(text){
     $('#asstHeard').textContent = '«' + text + '»';
-    const loc = localCmd(text);
+    const loc = enMode() && !/[а-яёәғқңөұүһі]/i.test(text) ? enLocal(text) : localCmd(text);
     if (loc){ try{ reply(await loc()); }catch{ reply('Что-то пошло не так. Попробуйте ещё раз.'); } return; }
     reply('Думаю…', true);
     try{
       const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null };
-      const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:kkMode() ? 'kk' : 'ru', ctx }) });
+      const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:enMode() ? 'en' : kkMode() ? 'kk' : 'ru', ctx }) });
       if (r.status === 503 || r.status === 404) return reply(await placeFallback(text));
       if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
       const j = await r.json(); if (!j.ok) throw 0;
@@ -4727,7 +4744,8 @@ body.night .nav .btn{background:#1d2731;border:0}
   $('#setLang').value = uiLang;
   $('#setLang').onchange = e => { store.set('uiLang', e.target.value);
     if (e.target.value === 'kk' && !voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:kk-KZ-DauletNeural'); }catch{} }
-    if (e.target.value === 'ru' && voiceId.startsWith('az:kk')){ try{ localStorage.setItem('voiceId', 'az:ru-RU-DmitryNeural'); }catch{} } toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
+    if (e.target.value === 'en' && !voiceId.startsWith('az:en')){ try{ localStorage.setItem('voiceId', 'az:en-US-GuyNeural'); }catch{} }
+    if (e.target.value === 'ru' && (voiceId.startsWith('az:kk') || voiceId.startsWith('az:en'))){ try{ localStorage.setItem('voiceId', 'az:ru-RU-DmitryNeural'); }catch{} } toast(e.target.value === 'kk' ? 'Тіл ауыстырылды' : e.target.value === 'en' ? 'Language changed' : 'Язык переключён'); setTimeout(() => location.reload(), 600); };
   const KK_ATTR = ['placeholder', 'aria-label', 'title', 'data-l'];
   function trNode(n){ const t = n.nodeValue, k = t && t.trim(); if (k && KK[k] && KK[k] !== k) n.nodeValue = t.replace(k, KK[k]); }
   function trTree(root){
@@ -4746,7 +4764,7 @@ body.night .nav .btn{background:#1d2731;border:0}
 
 
   // ---------- 1.8.1: Барыс говорит по-казахски, когда выбран қазақша ----------
-  function kkMode(){ return uiLang === 'kk' || voiceLang() === 'kk'; }
+  function kkMode(){ return uiLang !== 'en' && (uiLang === 'kk' || voiceLang() === 'kk'); }
   if (voiceId === 'az:kk-KZ-AigulNeural' && !store.get('voiceMig', false)){ voiceId = 'az:kk-KZ-DauletNeural'; store.set('voiceMig', true); try{ localStorage.setItem('voiceId', voiceId); }catch{} }   // по умолчанию мужской голос
   if (uiLang === 'kk' && !voiceId.startsWith('az:kk')){ voiceId = 'az:kk-KZ-DauletNeural'; try{ localStorage.setItem('voiceId', voiceId); }catch{} }
   const kkCache = new Map(), isKk = t => /[әғқңөұүһі]/i.test(t) || !/[а-яё]/i.test(t);
@@ -5562,6 +5580,175 @@ body.night .nav .btn{background:#1d2731;border:0}
     return r;
   };
   window.__fw = fireworks;   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.4: English — интерфейс, Барыс и голос для иностранных гостей Астаны ----------
+  function enMode(){ return uiLang === 'en'; }
+  const EN = {
+    'Адрес, улица или место':'Address, street or place', 'Маршрут':'Route', '· Откуда':'· From', '· Куда':'· To', 'Определяю…':'Locating…',
+    'Адрес или точка на карте':'Address or point on the map', 'Моё местоположение':'My location', '＋ Остановка':'＋ Stop', '🔍 По пути':'🔍 Along the way',
+    '🕒 Выезд':'🕒 Departure', 'Сейчас':'Now', 'Через 15 мин':'In 15 min', 'Через 30 мин':'In 30 min', 'Через 1 час':'In 1 hour', 'Через 2 часа':'In 2 hours',
+    'Утром в 8:30':'Morning 8:30', 'Днём в 13:00':'Afternoon 13:00', 'Вечером в 18:30':'Evening 18:30', 'Ночью в 23:30':'Night 23:30',
+    '🚗 Авто':'🚗 Car', '🚶 Пешком':'🚶 Walk', '🚲 Вело':'🚲 Bike', '🛴 Самокат':'🛴 Scooter', '🚗 Поехали':'🚗 Go', '▶ Демо':'▶ Demo', '▶ Демо-проезд':'▶ Demo drive',
+    'Поделиться':'Share', 'Сбросить':'Reset', 'Как ехать':'Directions', 'Строю маршрут…':'Building route…', '■ Завершить':'■ Finish', '■ Остановить':'■ Stop',
+    'Настройки':'Settings', 'Голос подсказок':'Voice', 'Вид в поездке':'Driving view', 'За машиной':'Behind the car', 'Классика':'Classic', 'Сверху':'Top-down',
+    'Тёмная карта':'Dark map', 'Цвет машины':'Car color', 'Снег на карте':'Snow on the map', 'Стоимость поездки':'Trip cost', 'Маршрут для авто':'Car route',
+    'Без платных дорог':'Avoid tolls', 'Без автомагистралей':'Avoid highways', 'Мои места':'My places', 'Мои поездки':'My trips', 'Без интернета':'Offline',
+    '⬇ Скачать карту Астаны':'⬇ Download Astana map', '📲 Установить как приложение':'📲 Install as app', 'Очистить историю поиска':'Clear search history',
+    '🔄 Проверить обновления':'🔄 Check for updates', 'Как пользоваться':'How to use', 'Предупреждения в поездке':'Driving alerts',
+    '🐆 Барсёнок Барыс — помощник на карте':'🐆 Barys the snow leopard — your map helper', '🏢 Добавить свою организацию — бесплатно':'🏢 Add your business — free',
+    '🔋 Экономия батареи: без 3D, анимаций и снега':'🔋 Battery saver: no 3D, animations or snow', '🚦 Помогать считать пробки (анонимно)':'🚦 Help measure traffic (anonymous)',
+    'Звук':'Sound', 'Кратко':'Brief', 'Тихо':'Mute', 'Событие':'Report', 'Барыс':'Barys', 'Ещё':'More', 'Стоп':'Stop', 'Вид':'View', 'Ночь':'Night', 'На стекло':'HUD', 'По пути':'On route', 'Ссылка':'Link',
+    'км/ч':'km/h', 'Вы на месте':'You have arrived', 'Готово':'Done', '⭐ В избранное':'⭐ Save', 'Что на дороге?':'What is on the road?', 'Найти по пути':'Find along the route',
+    'Найти рядом':'Find nearby', 'Недавние':'Recent', 'Очистить':'Clear', 'Слои карты':'Map layers', 'Основа':'Base map', 'Поверх карты':'Overlays', 'Инструменты':'Tools',
+    '🗺 Схема':'🗺 Map', '🛰 Спутник':'🛰 Satellite', 'Спут':'Sat', '📏 Линейка и площадь':'📏 Measure', '🚚 Диспетчер':'🚚 Dispatcher', '⏺ Записать поездку':'⏺ Record trip',
+    '📂 Открыть GPX / KML':'📂 Open GPX / KML', '🛡 Провожалка':'🛡 Walk me home', '🎯 Квесты Барыса':'🎯 Barys quests', '🐆 Эй, Барыс':'🐆 Hey, Barys',
+    'Или напишите команду…':'Or type a command…', '🚕 Такси сюда':'🚕 Taxi here', 'Здесь не так?':'Something wrong here?', 'Отправить (+5 очков)':'Send (+5 points)',
+    '🏠 Дом':'🏠 Home', '🏠 Дом +':'🏠 Home +', '💼 Работа':'💼 Work', '💼 Работа +':'💼 Work +', 'Отсюда':'From here', 'Сюда':'To here', '＋ Заехать':'＋ Add stop',
+    '⛽ АЗС':'⛽ Gas', '🔌 Зарядка':'🔌 EV charging', '🍔 Еда':'🍔 Food', '☕ Кофе':'☕ Coffee', '💊 Аптека':'💊 Pharmacy', '🛒 Продукты':'🛒 Groceries', '🏧 Банкомат':'🏧 ATM',
+    '🅿️ Парковка':'🅿️ Parking', '🚿 Автомойка':'🚿 Car wash', '🛞 Шиномонтаж':'🛞 Tyre service', '🚻 Туалет':'🚻 Toilet', '💧 Вода':'💧 Water', '🐕 Для собак':'🐕 Dog park',
+    '🛝 Детская площадка':'🛝 Playground', '🏥 Больница':'🏥 Hospital', '🟢 Открыто сейчас':'🟢 Open now', '⭐ Отзывы':'⭐ Reviews', '🏢 Это моё дело':'🏢 This is my business',
+    'Сохранить карточку':'Save listing', '🏢 Ваша организация на карте':'🏢 Your business on the map', 'Название *':'Name *', 'Чем занимаетесь':'What you do',
+    'Адрес':'Address', 'Часы работы':'Opening hours', 'Коротко о вас':'About you', 'Продвижение':'Promotion', 'Бесплатная карточка':'Free listing',
+    'Язык интерфейса · Тіл':'Language · Тіл · Язык', 'Нет интернета · карта из памяти':'Offline · map from memory', 'Дальше ▶':'Next ▶', '✓ Я дошёл':'✓ I made it',
+    'АЗС':'Gas', 'Зарядка':'EV charging', 'Еда':'Food', 'Кофе':'Coffee', 'Аптека':'Pharmacy', 'Продукты':'Groceries', 'Банкомат':'ATM', 'Парковка':'Parking', 'Автомойка':'Car wash', 'Шиномонтаж':'Tyres', 'Туалет':'Toilet',
+    'Вода':'Water', 'Для собак':'Dog park', 'Детская площадка':'Playground', 'Больница':'Hospital', 'Поиск по Астане':'Search Astana', 'Меню и настройки':'Menu & settings',
+    'Показать, где я':'Show my location', 'Куда едем?':'Where to?', 'А':'A', 'Б':'B', '🧩 Заказать':'🧩 Order', '🧩 Сервисы':'🧩 Services', '🏙 Экскурсия':'🏙 City tour', '🎥 Облёт':'🎥 Fly-through',
+    '🧩 Сервисы Астаны':'🧩 Astana services', '🚕 Такси':'🚕 Taxi', '🍔 Доставка еды и продуктов':'🍔 Food & grocery delivery', '🎟 Билеты: кино, концерты, театр':'🎟 Tickets: cinema, concerts, theatre',
+    '🅿️ Оплатить парковку':'🅿️ Pay for parking', '🎬 Посмотреть город':'🎬 See the city', 'Экскурсия по Астане':'Astana city tour', 'Облёт маршрута':'Route fly-through', 'Осадки на карте':'Rain & snow radar',
+    'Режим карты':'Map mode', 'Обычная':'Standard', 'Авто':'Drive', 'Пешком':'Walk', 'Турист':'Tourist', 'Семья':'Family', 'Дальше ›':'Next ›', '✕ Стоп':'✕ Stop',
+    '📍 Где я был':'📍 Places I visited', 'Где я был':'Places I visited', 'Мои места и поездки':'My places & trips',
+  };
+  const enCache = store.get('enCache', {}), enPend = new Set(), enQueue = new Set(), enDone = new Set(Object.values(EN));
+  Object.values(enCache).forEach(v => enDone.add(v));
+  const hasCyr = t => /[а-яёәғқңөұүһі]/i.test(t);
+  const enOf = k => EN[k] || enCache[k];
+  let enCalls = 0, enTimer = null;
+  function enFlush(){
+    enTimer = null;
+    const items = [...enQueue].filter(k => !enOf(k) && !enPend.has(k)).slice(0, 30); enQueue.clear();
+    if (!items.length || enCalls > 60) return;
+    enCalls++; items.forEach(k => enPend.add(k));
+    fetch('/api/translate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ items, to:'en' }) })
+      .then(r => r.json()).then(j => {
+        if (j.ok) { items.forEach((k, i) => { if (j.items[i]){ enCache[k] = j.items[i]; enDone.add(j.items[i]); } }); store.set('enCache', enCache); enTree(document.body); }
+      }).catch(() => {}).finally(() => items.forEach(k => enPend.delete(k)));
+  }
+  const enWant = k => { enQueue.add(k); if (!enTimer) enTimer = setTimeout(enFlush, 350); };
+  const EN_ATTR = ['placeholder', 'aria-label', 'title', 'data-l'];
+  function enNode(n){
+    const t = n.nodeValue, k = t && t.trim(); if (!k || !hasCyr(k) || k.length > 300 || enDone.has(k) || [...enDone].some(d => d.length > 8 && k.includes(d))) return;
+    const v = enOf(k); if (v) n.nodeValue = t.replace(k, v); else enWant(k);
+  }
+  function enTree(root){
+    if (root.nodeType === 3) return enNode(root);
+    if (root.nodeType !== 1 || root.closest?.('#map .maplibregl-canvas-container, script, style, #asstHeard')) return;
+    EN_ATTR.forEach(a => { const v = root.getAttribute(a)?.trim(); if (v && hasCyr(v)){ const e = enOf(v); if (e) root.setAttribute(a, e); else enWant(v); } });
+    if (root.tagName !== 'INPUT' && root.tagName !== 'TEXTAREA') root.childNodes.forEach(enTree);
+  }
+  if (enMode()){
+    document.documentElement.lang = 'en';
+    enTree(document.body);
+    new MutationObserver(ms => ms.forEach(m => { if (m.type === 'characterData') enNode(m.target); else if (m.type === 'attributes') enTree(m.target); else m.addedNodes.forEach(enTree); }))
+      .observe(document.body, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:EN_ATTR });
+    if (!voiceId.startsWith('az:en')){ voiceId = 'az:en-US-GuyNeural'; try{ localStorage.setItem('voiceId', voiceId); }catch{} }
+  }
+  // перевод одной фразы (ответы Барыса, подсказки) с кэшем
+  const enTx = new Map();
+  async function toEn(text){
+    if (!text || !hasCyr(text)) return text;
+    if (enTx.has(text)) return enTx.get(text);
+    if (enCache[text]) return enCache[text];
+    try{
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 7000);
+      const j = await (await fetch('/api/translate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, to:'en' }), signal:ctl.signal })).json();
+      if (!j.ok) return null; enTx.set(text, j.text); enDone.add(j.text); if (enTx.size > 300) enTx.delete(enTx.keys().next().value); return j.text;
+    }catch{ return null; }
+  }
+  // голосовые подсказки навигатора по-английски — сразу, без перевода
+  const DIR_EN = { left:'left', right:'right', 'slight left':'slightly left', 'slight right':'slightly right', 'sharp left':'sharp left', 'sharp right':'sharp right', uturn:'around', straight:'straight' };
+  function stepEn(s){
+    const m = s.maneuver || {}, d = DIR_EN[m.modifier] || '', on = s.name ? ` onto ${s.name}` : '';
+    switch (m.type){
+      case 'depart': return `Head out${s.name ? ' on ' + s.name : ''}`;
+      case 'arrive': return s._via ? 'Your stop' : 'You have arrived';
+      case 'roundabout': case 'rotary': case 'roundabout turn': return `At the roundabout take the ${m.exit ? ordEn(m.exit) + ' ' : ''}exit${on}`;
+      case 'exit roundabout': case 'exit rotary': return `Exit the roundabout${on}`;
+      case 'fork': return `At the fork keep ${m.modifier?.includes('left') ? 'left' : 'right'}${on}`;
+      case 'merge': return `Merge${on}`;
+      case 'on ramp': return `Take the ramp${on}`;
+      case 'off ramp': return `Take the exit${on}`;
+      case 'end of road': return `At the end of the road turn ${d}${on}`;
+      case 'continue': case 'new name': return m.modifier === 'uturn' ? 'Make a U-turn' : `Continue${s.name ? ' on ' + s.name : ' straight'}`;
+      default: return m.modifier === 'uturn' ? 'Make a U-turn' : m.modifier === 'straight' ? `Go straight${on}` : `Turn ${d}${on}`;
+    }
+  }
+  const ordEn = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+  const distEn = m => m == null ? '' : m < 1000 ? `${Math.max(50, Math.round(m / 50) * 50)} meters` : `${(m / 1000).toFixed(1).replace('.0', '')} kilometers`;
+  const say24 = say;
+  say = function(kind, o = {}){
+    const p = say24.apply(this, arguments);
+    try{
+      const en = {
+        start: () => `Let's go. ${distEn(o.dist)}, about ${Math.max(1, Math.round((o.dur || 0) / 60))} minutes. ${o.s ? stepEn(o.s) : ''}`,
+        ahead: () => `In ${distEn(o.d)}, ${stepEn(o.s).replace(/^./, c => c.toLowerCase())}`,
+        now: () => `Now ${stepEn(o.s).replace(/^./, c => c.toLowerCase())}`,
+        off: () => 'You left the route. Rerouting.',
+        limit: () => `Speed limit ${o.v}`,
+        camera: () => `Speed camera in ${distEn(o.d)}${o.v ? ', limit ' + o.v : ''}`,
+        arrive: () => 'You have arrived. Have a great day!',
+        via: () => 'You reached your stop. Continuing the route.',
+        bump: () => `Speed bump in ${distEn(o.d)}`,
+        event: () => `Caution, road incident in ${distEn(o.d)}`,
+        test: () => 'In 300 meters, turn right onto Abay Avenue.',
+      }[kind];
+      if (p && en) p.en = en();
+    }catch{}
+    return p;
+  };
+  // всё остальное, что говорит Барыс, переводим на лету
+  const speak24 = speak;
+  speak = function(p){
+    if (!enMode() || !p) return speak24.apply(this, arguments);
+    const ph = typeof p === 'string' ? { ru:p, kk:p } : p;
+    if (ph.en || !hasCyr(ph.ru || '')) return speak24.call(this, ph);
+    toEn(ph.ru).then(en => speak24.call(this, { ...ph, en:en || ph.ru }));
+  };
+  const reply24 = reply;
+  reply = async function(text, quiet){
+    if (!enMode() || !text || !hasCyr(text)) return reply24(text, quiet);
+    reply24(text, true); if (quiet) return;
+    const en = await toEn(text); reply24(en || text, false);
+  };
+  const mascot24 = mascot;
+  mascot = function(st, text, ms){
+    mascot24(st, text, ms);
+    if (enMode() && text && st !== 'talk' && hasCyr(text)) toEn(text).then(en => { if (en && mBubble.textContent === text) mBubble.textContent = en; });
+  };
+  const toast24 = toast;
+  toast = function(t){
+    const r = toast24.apply(this, arguments);
+    if (enMode() && t && hasCyr(t)) toEn(t).then(en => { const el = $('#toast'); if (en && el.textContent === t) el.textContent = en; });
+    return r;
+  };
+  // английские команды: частые — сразу, остальное понимает ИИ
+  function enLocal(raw){
+    const t = raw.toLowerCase().replace(/^(hey |hi |ok )?(barys|boris|bars)[,!]?\s*/, '').replace(/[.!?]+$/, '').trim();
+    const map = [
+      [/^(take me |go |navigate |drive )?(back )?home$/, 'домой'], [/^(take me |go |navigate )?(to )?work$/, 'на работу'],
+      [/(gas|petrol|fuel) station|refuel/, 'найди заправку'], [/pharmacy|drugstore|chemist/, 'найди аптеку'], [/\batm\b|cash machine|bank/, 'найди банкомат'],
+      [/coffee|cafe/, 'найди кофе'], [/(food|eat|restaurant|hungry)/, 'найди еду'], [/parking|park the car/, 'найди парковку'], [/toilet|restroom|wc/, 'найди туалет'],
+      [/where am i/, 'где я'], [/how long|eta|when (will|do) we arrive|time left/, 'сколько ехать'], [/weather|temperature|cold/, 'какая погода'],
+      [/taxi|cab|uber/, 'вызови такси'], [/(city )?tour|show me the city|sightseeing/, 'экскурсия'], [/fly ?(over|through)|preview the route/, 'облёт'],
+      [/where('s| is) my car/, 'где моя машина'], [/stop (navigation|the route)|end (trip|route)/, 'стоп'], [/order food|delivery|wolt|glovo/, 'закажи еду'],
+      [/tickets?|concert|cinema|movie/, 'билеты'], [/pay (for )?parking/, 'оплатить парковку'], [/mute|be quiet|silence/, 'выключи звук'], [/unmute|sound on/, 'включи звук'],
+    ];
+    for (const [re, ru] of map) if (re.test(t)) return localCmd(ru);
+    return null;   // свободную фразу («take me to Khan Shatyr») разберёт ИИ
+  }
+  if (enMode()) ['Take me to Khan Shatyr', 'Find a pharmacy', 'Where am I?', 'City tour', 'Tell me about Baiterek', 'Order food']
+    .forEach(t => $('#asstEx')?.insertAdjacentHTML('afterbegin', `<button class="chip" data-exen="${esc(t)}">${esc(t)}</button>`));
+  document.querySelectorAll('[data-exen]').forEach(b => b.onclick = () => handleCmd(b.dataset.exen));
 
   // ---------- Настройки ----------
   function openSettings(){

@@ -3,6 +3,7 @@
 const VOICES = {
   'kk-KZ-AigulNeural': 'kk-KZ', 'kk-KZ-DauletNeural': 'kk-KZ',
   'ru-RU-SvetlanaNeural': 'ru-RU', 'ru-RU-DariyaNeural': 'ru-RU', 'ru-RU-DmitryNeural': 'ru-RU',
+  'en-US-GuyNeural': 'en-US', 'en-US-JennyNeural': 'en-US',
 };
 
 export async function onRequestGet({ request, env, waitUntil }) {

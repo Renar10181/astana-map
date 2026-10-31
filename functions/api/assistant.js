@@ -20,10 +20,10 @@ function limited(ip) {
 function prompt(lang, ctx) {
   return `Ты — Барыс, весёлый барсёнок-помощник в навигаторе «Карта Астаны» (город Астана, Казахстан).
 Пользователь говорит голосом${ctx.driving ? ' и сейчас ЗА РУЛЁМ — отвечай очень коротко' : ''}.
-Отвечай на языке пользователя (${lang === 'kk' ? 'казахский' : 'русский'}), не длиннее 20 слов.
+Отвечай на языке пользователя (${lang === 'kk' ? 'казахский' : lang === 'en' ? 'английский (English); это иностранный гость Астаны — названия мест пиши латиницей' : 'русский'}), не длиннее 20 слов. Понимай русский, казахский и английский, даже вперемешку.
 Верни ТОЛЬКО JSON без пояснений: {"say":"фраза для озвучки","action":"<действие>","args":{...}}
 Действия:
-- route_to {"query":"куда ехать, как сказал пользователь"} — построить маршрут к месту или адресу
+- route_to {"query":"куда ехать — название места ПО-РУССКИ или как на карте Астаны (Khan Shatyr → Хан Шатыр, airport → аэропорт, railway station → вокзал Нұрлы жол)"} — построить маршрут к месту или адресу
 - find_category {"cat":"${CATS.join('|')}"} — найти рядом или по пути (fuel=АЗС, ev=зарядка, food=еда, cafe=кофе, pharm=аптека, shop=продукты, atm=банкомат, park=парковка, wash=мойка, tyre=шиномонтаж, wc=туалет)
 - report {"type":"${EVENTS.join('|')}"} — сообщить о событии на дороге
 - eta {} — сколько ехать / когда приедем
@@ -67,7 +67,7 @@ export async function onRequestPost({ request, env }) {
   let body; try { body = await request.json(); } catch { return Response.json({ ok: false }, { status: 400 }); }
   const text = String(body.text || '').slice(0, 300).trim();
   if (!text) return Response.json({ ok: false }, { status: 400 });
-  const lang = body.lang === 'kk' ? 'kk' : 'ru';
+  const lang = ['kk', 'en'].includes(body.lang) ? body.lang : 'ru';
   const ctx = typeof body.ctx === 'object' && body.ctx ? body.ctx : {};
   const messages = [{ role: 'system', content: prompt(lang, ctx) }, { role: 'user', content: text + (MODELS[0].includes('qwen3') ? ' /no_think' : '') }];
 
