@@ -39,7 +39,7 @@ main{max-width:760px;margin:0 auto}
   const FMT = { objav:{ n:'📝 Объявление' }, premium:{ n:'💎 Премиум-логотип' }, navlogo:{ n:'📍 В навигаторе' }, stopbanner:{ n:'🚦 Баннер на светофоре', img:true },
     routebb:{ n:'🗺 Билборд при маршруте', img:true }, billboard:{ n:'🪧 Билборд', img:true }, stories:{ n:'⭕ Сторис', img:true } };
   const WANT = { priority:'выше в поиске 9 900 ₸', logo:'логотип 14 900 ₸', objav:'объявление 14 900 ₸', premium:'премиум-логотип 19 900 ₸', navlogo:'логотип в навигаторе 1 990 ₸',
-    stopbanner:'баннер на светофоре 35 900 ₸', routebb:'билборд при маршруте 39 900 ₸', billboard:'билборд 49 900 ₸', stories:'сторис 149 900 ₸', lite:'пакет Лайт 19 900 ₸', start:'пакет Старт 29 900 ₸', media:'пакет Медиа 49 900 ₸' };
+    stopbanner:'баннер на светофоре 35 900 ₸', routebb:'билборд при маршруте 39 900 ₸', billboard:'билборд 49 900 ₸', stories:'сторис 149 900 ₸', lite:'пакет Лайт 19 900 ₸', start:'пакет Старт 34 900 ₸', media:'пакет Медиа 49 900 ₸' };
   try{ $('#key').value = sessionStorage.getItem('ak') || ''; }catch{}
   const api = (m, q, body) => fetch(`/api/business?admin=${encodeURIComponent($('#key').value)}${q || ''}`, { method:m, headers:{ 'Content-Type':'application/json' }, body:body && JSON.stringify(body) }).then(r => r.json());
   async function load(){
