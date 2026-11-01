@@ -1,11 +1,11 @@
 [
  {
-  "confidence": 0.41455188393592834,
-  "websites": [
-   "https://www.instagram.com/alfaberry.01/"
-  ],
+  "confidence": 0.6965324282646179,
   "socials": [
-   "https://www.facebook.com/137814279423535"
+   "https://www.facebook.com/278265819477751"
+  ],
+  "phones": [
+   "+77172496352"
   ],
   "brand": {
    "wikidata": null,
@@ -17,15 +17,15 @@
   },
   "addresses": [
    {
-    "freeform": "Ахмет Байтұрсынов көшесі 1",
-    "locality": "Целиноград ауданы",
-    "postcode": null,
+    "freeform": "Карагандинская трасса",
+    "locality": null,
+    "postcode": "",
     "region": null,
     "country": "KZ"
    }
   ],
   "names": {
-   "primary": "Alfaberry Strowberry\\n",
+   "primary": "Причал",
    "common": null,
    "rules": null
   },
@@ -34,115 +34,129 @@
     "property": "",
     "dataset": "meta",
     "license": "CDLA-Permissive-2.0",
-    "record_id": "137814279423535",
-    "update_time": "2026-09-14T00:00:00.000Z",
-    "confidence": 0.41455188393592834,
+    "record_id": "278265819477751",
+    "update_time": "2026-10-12T00:00:00.000Z",
+    "confidence": 0.6965324282646179,
     "between": null,
     "provider": "meta",
     "resource": "meta",
-    "version": "2026-09-14"
+    "version": "2026-10-12"
    },
    {
     "property": "/properties/confidence",
     "dataset": "Overture",
     "license": "CDLA-Permissive-2.0",
     "record_id": null,
-    "update_time": "2026-09-17T22:52:12Z",
+    "update_time": "2026-10-15T18:00:21Z",
     "confidence": null,
     "between": null,
     "provider": "overture",
     "resource": "confidence_calculation",
-    "version": "2026-09-17"
+    "version": "2026-10-15"
    }
   ],
-  "basic_category": "restaurant",
+  "basic_category": "campground",
   "taxonomy": {
-   "primary": "restaurant",
+   "primary": "campground",
    "hierarchy": [
-    "food_and_drink",
-    "restaurant"
+    "lodging",
+    "campground"
    ],
    "alternates": null
   },
-  "version": 7
+  "version": 10
  },
  {
-  "confidence": 0.3400171101093292,
-  "websites": [
-   "https://www.instagram.com/master_mebeli.kz/"
-  ],
-  "emails": [
-   "meir.kab1889@gmail.com"
-  ],
-  "socials": [
-   "https://www.facebook.com/450178481522203"
-  ],
-  "phones": [
-   "+77010000698"
-  ],
+  "confidence": 0.8,
   "brand": {
-   "wikidata": null,
+   "wikidata": "Q24933714",
    "names": {
-    "primary": null,
+    "primary": "Wildberries",
     "common": null,
-    "rules": null
+    "rules": [
+     {
+      "variant": "language",
+      "language": "en",
+      "perspectives": null,
+      "value": "Wildberries",
+      "between": null,
+      "side": null
+     }
+    ]
    }
   },
   "addresses": [
    {
-    "freeform": "Ахмет Байтұрсынов көшесі 1",
-    "locality": "Целиноград ауданы",
+    "freeform": "село Жибек Жолы, Улица А. Ермековой 10а",
+    "locality": null,
     "postcode": null,
-    "region": null,
+    "region": "Astana Qalasy",
     "country": "KZ"
    }
   ],
   "names": {
-   "primary": "Golden Residence",
+   "primary": "Wildberries",
    "common": null,
-   "rules": null
+   "rules": [
+    {
+     "variant": "language",
+     "language": "en",
+     "perspectives": null,
+     "value": "Wildberries",
+     "between": null,
+     "side": null
+    }
+   ]
   },
   "sources": [
    {
     "property": "",
-    "dataset": "meta",
-    "license": "CDLA-Permissive-2.0",
-    "record_id": "450178481522203",
-    "update_time": "2026-09-14T00:00:00.000Z",
-    "confidence": 0.3400171101093292,
+    "dataset": "AllThePlaces",
+    "license": "CC0-1.0",
+    "record_id": "8EKx0uxbxlYWtP64ndUulSyyHx8=",
+    "update_time": "2026-10-10T08:17:35.000Z",
+    "confidence": 0.8,
     "between": null,
-    "provider": "meta",
-    "resource": "meta",
-    "version": "2026-09-14"
+    "provider": "alltheplaces",
+    "resource": "alltheplaces",
+    "version": "2026-10-10"
    },
    {
     "property": "/properties/confidence",
     "dataset": "Overture",
     "license": "CDLA-Permissive-2.0",
     "record_id": null,
-    "update_time": "2026-09-17T22:52:12Z",
+    "update_time": "2026-10-15T18:00:21Z",
     "confidence": null,
     "between": null,
     "provider": "overture",
     "resource": "confidence_calculation",
-    "version": "2026-09-17"
+    "version": "2026-10-15"
    }
   ],
-  "basic_category": "real_estate_service",
+  "basic_category": "shopping",
   "taxonomy": {
-   "primary": "real_estate_service",
+   "primary": "shopping",
    "hierarchy": [
-    "services_and_business",
-    "real_estate_service"
+    "shopping"
    ],
    "alternates": null
   },
   "version": 4
  },
  {
-  "confidence": 0.2136377990245819,
+  "confidence": 0.874173104763031,
+  "websites": [
+   "https://astanaresort.kz/"
+  ],
+  "emails": [
+   "astanaresort@gmail.com"
+  ],
   "socials": [
-   "https://www.facebook.com/179963931874732"
+   "https://www.facebook.com/789914594547132"
+  ],
+  "phones": [
+   "+77777770969"
   ],
   "brand": {
    "wikidata": null,
@@ -154,15 +168,15 @@
   },
   "addresses": [
    {
-    "freeform": "Ахмет Байтұрсынов көшесі 1",
-    "locality": "Целиноград ауданы",
-    "postcode": null,
+    "freeform": "Қыз Жібек көшесі 63/3",
+    "locality": "Астана",
+    "postcode": "010000",
     "region": null,
     "country": "KZ"
    }
   ],
   "names": {
-   "primary": "Senim group",
+   "primary": "Зона отдыха \"Astana Resort\"",
    "common": null,
    "rules": null
   },
@@ -171,33 +185,33 @@
     "property": "",
     "dataset": "meta",
     "license": "CDLA-Permissive-2.0",
-    "record_id": "179963931874732",
-    "update_time": "2026-09-14T00:00:00.000Z",
-    "confidence": 0.2136377990245819,
+    "record_id": "789914594547132",
+    "update_time": "2026-10-12T00:00:00.000Z",
+    "confidence": 0.874173104763031,
     "between": null,
     "provider": "meta",
     "resource": "meta",
-    "version": "2026-09-14"
+    "version": "2026-10-12"
    },
    {
     "property": "/properties/confidence",
     "dataset": "Overture",
     "license": "CDLA-Permissive-2.0",
     "record_id": null,
-    "update_time": "2026-09-17T22:52:12Z",
+    "update_time": "2026-10-15T18:00:21Z",
     "confidence": null,
     "between": null,
     "provider": "overture",
     "resource": "confidence_calculation",
-    "version": "2026-09-17"
+    "version": "2026-10-15"
    }
   ],
-  "basic_category": "home_service",
+  "basic_category": "hotel",
   "taxonomy": {
-   "primary": "home_service",
+   "primary": "hotel",
    "hierarchy": [
-    "services_and_business",
-    "home_service"
+    "lodging",
+    "hotel"
    ],
    "alternates": null
   },
