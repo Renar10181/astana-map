@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.6.1</p>
+    <p class="set-ver">Версия 2.7.0</p>
   </div>
 </div>
 
@@ -6007,6 +6007,61 @@ body.night .nav .btn{background:#1d2731;border:0}
     raf = requestAnimationFrame(step);
   }
   window.__ads = { set:v => { ADS = v; drawPremium(); }, get:() => ADS };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.7: «градусник» маршрута (как в новом навигаторе 2ГИС), обзор маршрута одним касанием,
+  //            кнопки карточки места всегда внизу (как в Google Maps) ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+  #routeBar{position:fixed;left:12px;top:calc(var(--navtoph,118px) + 70px);height:min(38vh,320px);width:16px;z-index:30;border-radius:10px;background:rgba(20,24,30,.55);box-shadow:0 2px 10px rgba(0,0,0,.35);cursor:pointer}
+  #routeBar .fill{position:absolute;left:3px;right:3px;bottom:3px;border-radius:7px;background:linear-gradient(#7c4dff,#00e5ff 60%,#00ffa3);opacity:.9}
+  #routeBar .done{position:absolute;left:3px;right:3px;bottom:3px;border-radius:7px;background:rgba(255,255,255,.25)}
+  #routeBar .car{position:absolute;left:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:#ffcc00;border:2px solid #1e2126;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+  #routeBar .tk{position:absolute;left:100%;margin:0 0 -8px 3px;font-size:13px;line-height:16px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+  #routeBar .sg{position:absolute;left:5px;width:6px;height:2px;margin-bottom:-1px;background:#ffd84d;border-radius:1px}
+  #routeBar .fin{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:16px}
+  @media (max-width:700px){
+    .sheetpop .row:not(.pop-save){position:sticky;bottom:-14px;background:var(--surface);padding:8px 0 10px;margin-bottom:-10px;z-index:2;box-shadow:0 -8px 12px -8px rgba(0,0,0,.12)}
+  }
+  </style>`);
+  const rbar = document.createElement('div'); rbar.id = 'routeBar'; rbar.hidden = true; rbar.title = 'Обзор маршрута';
+  rbar.setAttribute('aria-label', 'Обзор маршрута'); document.body.appendChild(rbar);
+  let rbarKey = '';
+  function rbarDraw(){
+    if (!driving || !nav.total){ rbar.hidden = true; return; }
+    rbar.hidden = false;
+    const along = nav.total - (nav.left ?? nav.total), k = Math.max(0, Math.min(1, along / nav.total));
+    const key = [nav.total, (nav.cams || []).length, (nav.evs || []).length, (nav.sigs || []).length].join('|');
+    if (key !== rbarKey){
+      rbarKey = key;
+      const pos = at => `bottom:calc(3px + (100% - 6px) * ${(at / nav.total).toFixed(4)})`;
+      rbar.innerHTML = `<div class="done"></div><div class="fill"></div>` +
+        (nav.sigs || []).map(s => `<i class="sg" style="${pos(s.at)}"></i>`).join('') +
+        (nav.cams || []).map(c => `<span class="tk" style="${pos(c.at)}">📷</span>`).join('') +
+        (nav.evs || []).map(e => `<span class="tk" style="${pos(e.at)}">${e.t?.e || '⚠'}</span>`).join('') +
+        `<span class="fin">🏁</span><div class="car"></div>`;
+    }
+    rbar.querySelector('.done').style.height = `calc((100% - 6px) * ${k.toFixed(4)})`;
+    rbar.querySelector('.fill').style.cssText = `bottom:calc(3px + (100% - 6px) * ${k.toFixed(4)});top:3px`;
+    rbar.querySelector('.car').style.top = `calc(3px + (100% - 6px) * ${(1 - k).toFixed(4)})`;
+  }
+  // касание «градусника» — весь оставшийся маршрут на экране на 7 секунд, потом карта снова за машиной
+  let ovT = null;
+  rbar.onclick = () => {
+    if (!driving || !nav.pts?.length) return;
+    const rest = nav.pts.slice(nav.idx || 0); if (rest.length < 2) return;
+    follow = false; clearTimeout(ovT);
+    const bb = new maplibregl.LngLatBounds(rest[0], rest[0]); rest.forEach(p => bb.extend(p));
+    map.fitBounds(bb, { padding:{ top:150, bottom:230, left:60, right:60 }, pitch:0, bearing:0, duration:900, maxZoom:16 });
+    toast('🗺 Обзор маршрута');
+    ovT = setTimeout(() => { follow = true; if (nav.shown) camTo(nav.shown, nav.heading, 900); }, 7000);
+  };
+  const onFix27 = onFix;
+  onFix = function(){ const r = onFix27.apply(this, arguments); try{ rbarDraw(); }catch{} return r; };
+  const stopDrive27 = stopDrive;
+  stopDrive = function(){ const r = stopDrive27.apply(this, arguments); rbar.hidden = true; rbarKey = ''; clearTimeout(ovT); return r; };
+  const startNav27 = startNav;
+  startNav = async function(){ const r = await startNav27.apply(this, arguments); rbarKey = ''; setTimeout(rbarDraw, 300); setTimeout(() => { rbarKey = ''; rbarDraw(); }, 6000); return r; };
+  setInterval(() => { if (driving) { rbarKey = ''; rbarDraw(); } }, 15000);   // светофоры и события подгружаются позже
 
   // ---------- Настройки ----------
   function openSettings(){
