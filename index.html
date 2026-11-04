@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.9.0</p>
+    <p class="set-ver">Версия 2.9.1</p>
   </div>
 </div>
 
@@ -6403,16 +6403,31 @@ body.night .nav .btn{background:#1d2731;border:0}
         ${f.lng != null && !f.hidden ? `<button class="chip" data-frshow="${f.id}">📍</button><button class="chip" data-frgo="${f.id}">🚗</button>` : ''}<button class="linkbtn" data-frrm="${f.id}" title="Убрать из списка">✕</button></div>`).join('');
     }).join('') : '<p class="hint">Пока никого. Пригласите семью или друзей кнопками ниже — им придёт ссылка.</p>';
     box.innerHTML = `${frInvite ? '<p class="note fr-inv" id="frInvTxt">Проверяю приглашение…</p>' : ''}
-      <p class="note">Вы: ${esc(me.e || '🙂')} <b>${esc(me.name || '')}</b> · ${fr.share === false ? '⏸ не делитесь' : hid ? `🙈 скрыты до ${new Date(me.hide).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}` : '🟢 вас видят свои'}</p>
+      <p class="note">Вы: ${esc(me.e || '🙂')} <b>${esc(me.name || '')}</b> <button class="linkbtn" id="frRen">✏ имя</button> · ${fr.share === false ? '⏸ не делитесь' : hid ? `🙈 скрыты до ${new Date(me.hide).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}` : '🟢 вас видят свои'}</p>
       ${rows}
       <div class="fr-acts"><button class="btn primary" data-frinv="family">＋ В семью</button><button class="btn" data-frinv="friends">＋ Друга</button></div>
       <div id="frQr"></div>
+      <div class="my-own"><input id="frCode" placeholder="Есть код или ссылка приглашения? Вставьте сюда"><button class="btn" id="frCodeGo">Принять</button></div>
       <h3>Я</h3>
       <div class="fr-acts">${hid || fr.share === false ? '<button class="btn" data-frhide="0">👁 Показать меня</button>' : '<button class="btn" data-frhide="1">🙈 Скрыться на 1 час</button><button class="btn" data-frhide="night">🌙 До утра</button>'}
         <button class="btn sos" id="frSos">🆘 SOS</button></div>
       <p class="hint">SOS — ваше место и заряд сразу уходят всем своим, у них звучит сигнал. Пока карта открыта на телефоне, место обновляется каждые 20 секунд; когда закрыта — свои видят, где вы были последний раз.</p>
       <p class="hint">Голосом: «Барыс, где мама?», «где Алихан?».</p>
       <button class="linkbtn" id="frWipe">Выключить и удалить все мои данные</button>`;
+    $('#frCodeGo').onclick = () => {
+      const v = $('#frCode').value.trim().toLowerCase(), m = v.match(/fr=([a-z0-9]{6,12})/) || v.match(/^([a-z0-9]{6,12})$/);
+      if (!m) return toast('Вставьте ссылку приглашения целиком или код из 8 знаков');
+      frInvite = m[1]; frRender(); box.scrollTop = 0;
+    };
+    $('#frRen').onclick = async () => {
+      const p = $('#frRen').parentElement;
+      p.innerHTML = `<span class="my-own"><select id="frRenE">${['🙂', '👨', '👩', '👦', '👧', '👴', '👵', '🧔', '👱', '🐆'].map(e => `<option${e === me.e ? ' selected' : ''}>${e}</option>`).join('')}</select><input id="frRenN" maxlength="24" value="${esc(me.name || '')}"><button class="btn primary" id="frRenOk">Сохранить</button></span>`;
+      $('#frRenOk').onclick = async () => {
+        const name = $('#frRenN').value.trim(); if (name.length < 2) return toast('Имя слишком короткое');
+        const j = await frApi('profile', { name, e:$('#frRenE').value }); if (!j.ok) return toast('Не получилось сохранить');
+        fr.me = { ...me, name, e:$('#frRenE').value }; toast('Имя сохранено'); frRender();
+      };
+    };
     box.querySelectorAll('[data-frshow]').forEach(b => b.onclick = () => frShow(b.dataset.frshow));
     box.querySelectorAll('[data-frgo]').forEach(b => b.onclick = () => { const f = frList.find(x => x.id === b.dataset.frgo); if (!f) return; $('#frSheet').hidden = true; goTo({ lng:f.lng, lat:f.lat, name:`${f.e} ${f.name}` }); });
     box.querySelectorAll('[data-frrm]').forEach(b => b.onclick = async () => {
