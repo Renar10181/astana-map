@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.7.0</p>
+    <p class="set-ver">Версия 2.8.0</p>
   </div>
 </div>
 
@@ -2263,7 +2263,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     mascot('happy', st.demo ? 'Демо-поездка завершена! Поехали по-настоящему? 🐾' : `Приехали! ${fmtDist(st.dist)} позади. Молодец! 🐾`, 6000);
     if (!st.demo && st.dist > 300) addPts(Math.round(st.dist / 1000), 'за километры');
     if (!st.demo && st.dist > 200){
-      trips = [{ at:Date.now(), to:st.to, km, min, avg, max:Math.round(st.max) }, ...trips].slice(0, 15);
+      trips = [{ at:Date.now(), to:st.to, p:st.toP ? P(st.toP) : null, km, min, avg, max:Math.round(st.max) }, ...trips].slice(0, 15);
       store.set('trips', trips);
     }
   }
@@ -6062,6 +6062,230 @@ body.night .nav .btn{background:#1d2731;border:0}
   const startNav27 = startNav;
   startNav = async function(){ const r = await startNav27.apply(this, arguments); rbarKey = ''; setTimeout(rbarDraw, 300); setTimeout(() => { rbarKey = ''; rbarDraw(); }, 6000); return r; };
   setInterval(() => { if (driving) { rbarKey = ''; rbarDraw(); } }, 15000);   // светофоры и события подгружаются позже
+
+  // =====================================================================
+  // ---------- 2.8.0: «Мои места» (школа, садик, свои), голос «едем в садик», варианты А / Б / В ----------
+  if (!Array.isArray(places.my)) places.my = [];
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    .vlet{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#ffd400;color:#111;font-weight:800;font-size:13px;margin-right:6px;vertical-align:2px}
+    .my-grid{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.my-grid .chip{font-size:15px;padding:10px 14px}
+    .my-own{display:flex;gap:6px;align-items:center}.my-own input{flex:1;min-width:0;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);font:inherit;background:var(--bg,#fff);color:inherit}
+    .my-own select{padding:9px 4px;border-radius:10px;font-size:18px}
+  </style>`);
+  const LET = ['А', 'Б', 'В'];
+  // встроенные места: ключ, значок, название, как говорят
+  const MYK = [
+    ['home', '🏠', 'Дом', /(^|\s)(домой|до дома|к дому|үйге)(\s|$)/],
+    ['work', '💼', 'Работа', /(на работу|в офис|до работы|до офиса|жұмысқа)/],
+    ['school', '🏫', 'Школа', /(в школу|до школы|к школе|мектепке)/],
+    ['kinder', '🧸', 'Садик', /(садик|детсад|детский сад|в сад(\s|$)|балабақша)/]];
+  const myStem = s => { const w = low(s).trim(); return w.length > 5 ? w.slice(0, -2) : w.length >= 4 ? w.slice(0, -1) : w; };
+  // какие сохранённые места названы во фразе — по порядку
+  function savedIn(t){
+    const out = [];
+    MYK.forEach(([k, e, n, re]) => { const m = t.match(re); if (m) out.push({ i:m.index, k, e, label:n, p:places[k] || null }); });
+    places.my.forEach((x, j) => {
+      const st = myStem(x.label); if (st.length < 3) return;
+      const m = t.match(new RegExp('(^|\\s)(в|во|на|к|ко|до|у)?\\s*' + st.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      if (m) out.push({ i:m.index, k:'m' + j, e:x.e || '📌', label:x.label, p:x });
+    });
+    return out.sort((a, b) => a.i - b.i).filter((x, i, a) => a.findIndex(y => y.k === x.k) === i);
+  }
+  async function routeMine(ms){
+    const miss = ms.find(m => !m.p);
+    if (miss) return `${miss.label} пока не ${miss.label === 'Работа' || miss.label === 'Школа' ? 'сохранена' : 'сохранён'}. Нажмите на адрес на карте и выберите 📌 → «${miss.label}».`;
+    const dest = ms.at(-1), via = ms.slice(0, -1);
+    if (driving && !demo && nav.shown) return changeDest({ ...dest.p, name:dest.p.name || dest.label });
+    const prev = state.routes;
+    const h = myPos(); if (h) setPoint('from', { lng:h.lng, lat:h.lat, name:'Моё местоположение', me:true }, true);
+    state.stops = via.map(m => ({ lng:m.p.lng, lat:m.p.lat, name:`${m.e} ${m.label}` })); renderStops();
+    goTo({ ...dest.p, name:dest.p.name || dest.label });
+    const r = await waitRoute(prev);
+    if (!r) return 'Строю маршрут…';
+    try{ await Promise.race([state._v3, new Promise(ok => setTimeout(ok, 4500))]); }catch{}
+    return variantsText(`${dest.e} ${dest.label}${via.length ? ' через ' + via.map(m => m.label.toLowerCase()).join(' и ') : ''}`);
+  }
+  // «А — 12 минут, быстрый. Б — плюс 2 минуты, меньше светофоров…»
+  function variantsText(head){
+    const rs = state.routes, f = r => r.duration * (r._f || 1);
+    if (!rs.length) return 'Маршрут не построен.';
+    if (rs.length === 1) return `${head}: ${fmtTime(f(rs[0]))}, ${fmtDist(rs[0].distance)}. Других путей тут нет. Скажите «поехали».`;
+    const best = Math.min(...rs.map(f));
+    const L = rs.map(r => { try{ return leftTurns(r); }catch{ return 0; } }), C = rs.map(r => { try{ return camsOn(r); }catch{ return 0; } });
+    const parts = rs.slice(0, 3).map((r, k) => {
+      const plus = [];
+      if (f(r) === best) plus.push('самый быстрый');
+      if (r.distance === Math.min(...rs.map(x => x.distance)) && f(r) !== best) plus.push('короче');
+      if (L[k] === Math.min(...L) && Math.max(...L) - L[k] >= 2) plus.push('меньше левых поворотов');
+      if (C[k] === Math.min(...C) && Math.max(...C) > C[k]) plus.push(C[k] ? 'меньше камер' : 'без камер');
+      if (r._sig != null){ const S = rs.map(x => x._sig ?? 0); if (r._sig === Math.min(...S) && Math.max(...S) - r._sig >= 3) plus.push('меньше светофоров'); }
+      const dt = Math.round((f(r) - best) / 60);
+      return `${LET[k]} — ${f(r) === best ? fmtTime(f(r)) : `плюс ${dt || 1} мин`}${plus.length ? ', ' + plus.slice(0, 2).join(', ') : ''}`;
+    });
+    state._askV = Date.now();
+    return `${head}: ${parts.join('. ')}. Какой берём — ${LET.slice(0, Math.min(3, rs.length)).join(', ')}?`;
+  }
+  const V_WORD = { 'а':0, 'a':0, 'первый':0, '1':0, 'б':1, 'бэ':1, 'бе':1, 'b':1, 'второй':1, '2':1, 'в':2, 'вэ':2, 'ве':2, 'v':2, 'третий':2, '3':2 };
+  function pickVariant(t){
+    const m = t.match(/^(?:(?:поехали|едем|давай|берем|беру|выбираю)\s+)?(?:по\s+)?(?:вариант[ау]?|маршрут[ау]?)?\s*(а|a|б|бэ|бе|b|в|вэ|ве|v|первый|второй|третий|1|2|3)(?:\s+(поехали|едем))?$/);
+    if (!m || state.routes.length < 2) return null;
+    if (!/вариант|маршрут/.test(t) && !(state._askV && Date.now() - state._askV < 120e3)) return null;
+    return { i:V_WORD[m[1]], go:/(поехали|едем)/.test(t) };
+  }
+  function chooseVariant(v){
+    const rs = state.routes;
+    if (v.i >= rs.length) return `Такого варианта нет — есть ${LET.slice(0, rs.length).join(' и ')}.`;
+    selectRoute(v.i, true); state._askV = 0;
+    const r = rs[v.i];
+    if (v.go && !driving){ $('#asstSheet').hidden = true; startNav(false); return `Вариант ${LET[v.i]}. Поехали!`; }
+    return `Вариант ${LET[v.i]}: ${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}. Скажите «поехали».`;
+  }
+  // «как обычно» — куда вы чаще всего ездите в это время
+  function usualRoute(){
+    const now = new Date(), wd = now.getDay() % 6 !== 0, hr = now.getHours() + now.getMinutes() / 60;
+    const cnt = {};
+    trips.filter(x => x.p).forEach(x => {
+      const d = new Date(x.at), h = d.getHours() + d.getMinutes() / 60;
+      if ((d.getDay() % 6 !== 0) !== wd || Math.abs(h - hr) > 1.5) return;
+      const key = x.p.lng.toFixed(3) + ',' + x.p.lat.toFixed(3); (cnt[key] = cnt[key] || { n:0, p:x.p }).n++;
+    });
+    const top = Object.values(cnt).sort((a, b) => b.n - a.n)[0];
+    if (top && top.n >= 2) return routeMine([{ k:'usual', e:'🔁', label:top.p.name || 'Как обычно', p:top.p }]);
+    if (wd && hr >= 6 && hr < 11 && places.work) return routeMine([{ k:'work', e:'💼', label:'Работа', p:places.work }]);
+    if (hr >= 16 && places.home) return routeMine([{ k:'home', e:'🏠', label:'Дом', p:places.home }]);
+    return 'Пока не знаю ваш обычный маршрут. Скажите, куда едем, например «в садик», — я запомню поездки.';
+  }
+  const localCmd28 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    const md = MODE_W.find(([re]) => re.test(t));
+    const v = pickVariant(t); if (v) return () => chooseVariant(v);
+    if (/^(как обычно|как всегда|по обычному|обычный маршрут|утренний маршрут|едем как обычно|поехали как обычно)/.test(t)) return () => usualRoute();
+    if (!/^(найди|найти|покажи|где|что|сколько|когда|сохрани)/.test(t)){
+      const ms = savedIn(t);
+      if (ms.length && (ms.length > 1 || /(поехали|поедем|едем|ехать|еду|отвези|вези|маршрут|построй|домой|на работу|апар|барамыз|в |до |к )/.test(t) || t.split(/\s+/).length <= 2))
+        return () => { if (md && !driving) setMode(md[1]); return routeMine(ms); };
+    }
+    return localCmd28.apply(this, arguments);
+  };
+  // третий вариант пути: через точку в стороне от основного, если сервер дал меньше трёх
+  async function addThird(){
+    const rs = state.routes, from = state.from, to = state.to;
+    if (state.mode !== 'car' || state.stops.length || !from || !to || !rs.length || rs.length >= 3) return;
+    const D = dist([from.lng, from.lat], [to.lng, to.lat]); if (D < 1800 || D > 60000) return;
+    const id = routeReq, main = rs[0];
+    const grid = new Set(); rs.forEach(r => r.geometry.coordinates.forEach(c => grid.add(c[0].toFixed(3) + ',' + c[1].toFixed(3))));
+    const kx = Math.cos(from.lat * Math.PI / 180), dx = (to.lng - from.lng) * kx, dy = to.lat - from.lat, len = Math.hypot(dx, dy) || 1;
+    const mid = { lng:(from.lng + to.lng) / 2, lat:(from.lat + to.lat) / 2 };
+    for (const side of [1, -1]){
+      if (state.routes.length >= 3) break;
+      const off = 0.22 * len * side, via = { lng:mid.lng + (-dy / len) * off / kx, lat:mid.lat + (dx / len) * off };
+      try{
+        const j = await osrm([from, via, to], false);
+        if (id !== routeReq || j.code !== 'Ok' || !j.routes?.length) continue;
+        const r = j.routes[0], Lg = r.legs || [];
+        if (r.duration > main.duration * 1.4) continue;
+        const cs = r.geometry.coordinates, same = cs.filter(c => grid.has(c[0].toFixed(3) + ',' + c[1].toFixed(3))).length / cs.length;
+        if (same > 0.8) continue;
+        if (Lg.length === 2){   // склеиваем два участка в один — без «промежуточной точки» в навигаторе
+          const a0 = Lg[0].annotation || {}, a1 = Lg[1].annotation || {}, ann = {};
+          Object.keys(a0).forEach(k => { if (Array.isArray(a0[k])) ann[k] = a0[k].concat(a1[k] || []); });
+          r.legs = [{ ...Lg[0], distance:Lg[0].distance + Lg[1].distance, duration:Lg[0].duration + Lg[1].duration, annotation:ann,
+            steps:[...(Lg[0].steps || []).filter(s => s.maneuver?.type !== 'arrive'), ...(Lg[1].steps || []).filter(s => s.maneuver?.type !== 'depart')] }];
+        }
+        r._walk = main._walk || 0; r._v3 = true;
+        cs.forEach(c => grid.add(c[0].toFixed(3) + ',' + c[1].toFixed(3)));
+        state.routes = [...state.routes, r];
+        selectRoute(state.active, false);
+      }catch{}
+    }
+  }
+  const buildRoute28 = buildRoute;
+  buildRoute = async function(){
+    let done; state._v3 = new Promise(ok => done = ok);
+    try{ await buildRoute28.apply(this, arguments); await addThird(); }finally{ done(); }
+  };
+  // буквы А / Б / В на карточках вариантов
+  const selectRoute28 = selectRoute;
+  selectRoute = function(){
+    const out = selectRoute28.apply(this, arguments);
+    try{
+      if (state.routes.length > 1) document.querySelectorAll('#routes .route').forEach(b => {
+        const k = +b.dataset.r, t = b.querySelector('.time');
+        if (t && k < 3 && !b.querySelector('.vlet')) t.insertAdjacentHTML('afterbegin', `<span class="vlet">${LET[k]}</span>`);
+      });
+    }catch{}
+    return out;
+  };
+  // сохранение: 📌 в карточке места → Школа / Садик / своё название
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="mySheet" hidden><div class="sheet-card" role="dialog" aria-label="Сохранить место">
+    <div class="sheet-head"><h2>📌 Сохранить как…</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="note" id="myFor"></p>
+    <div class="my-grid"><button class="chip" data-mk="home">🏠 Дом</button><button class="chip" data-mk="work">💼 Работа</button><button class="chip" data-mk="school">🏫 Школа</button><button class="chip" data-mk="kinder">🧸 Садик</button></div>
+    <h3>Своё название</h3>
+    <div class="my-own"><select id="myEmoji" aria-label="Значок">${['📌', '👵', '🏋', '🛒', '⚽', '🎵', '🏥', '🕌', '🏡', '🚗'].map(e => `<option>${e}</option>`).join('')}</select>
+      <input id="myName" maxlength="24" placeholder="Например: мама, спортзал, дача"><button class="btn primary" id="mySave">Сохранить</button></div>
+    <p class="hint">Потом просто скажите Барысу: «едем в садик», «к маме», «через садик на работу» или «как обычно» — и выберите вариант А, Б или В.</p>
+  </div></div>`);
+  let myP = null;
+  const mySheet = $('#mySheet');
+  mySheet.querySelector('[data-close]').onclick = () => mySheet.hidden = true;
+  mySheet.onclick = e => { if (e.target === mySheet) mySheet.hidden = true; };
+  function openMySave(p){
+    myP = p; $('#myFor').textContent = p.name || coords(p); $('#myName').value = ''; mySheet.hidden = false;
+  }
+  mySheet.querySelectorAll('[data-mk]').forEach(b => b.onclick = () => {
+    const k = b.dataset.mk; if (!myP) return;
+    if (k === 'home' || k === 'work') savePlace(k, myP);
+    else { places[k] = P(myP); store.set('places', places); toast(k === 'school' ? '🏫 Сохранено как «Школа»' : '🧸 Сохранено как «Садик»'); }
+    mySheet.hidden = true;
+  });
+  $('#mySave').onclick = () => {
+    const n = $('#myName').value.trim().replace(/\s+/g, ' ');
+    if (n.length < 2) return toast('Напишите название, например «мама»');
+    const v = { ...P(myP), label:n[0].toUpperCase() + n.slice(1), e:$('#myEmoji').value };
+    places.my = [v, ...places.my.filter(x => low(x.label) !== low(n) && !near(x, v, 30))].slice(0, 12);
+    store.set('places', places); mySheet.hidden = true; toast(`${v.e} Сохранено: «${v.label}». Скажите Барысу «едем к… ${v.label.toLowerCase()}»`);
+  };
+  const showPopup28 = showPopup;
+  showPopup = function(p){
+    const r = showPopup28.apply(this, arguments);
+    try{
+      const row = popup?.getElement()?.querySelector('.pop-save');
+      if (row && !row.querySelector('[data-s="my"]')){
+        row.querySelector('[data-s="fav"]')?.insertAdjacentHTML('afterend', '<button class="chip" data-s="my" title="Школа, садик, своё место">📌</button>');
+        row.querySelector('[data-s="my"]').onclick = ev => { ev.stopPropagation(); openMySave(p); };
+      }
+    }catch{}
+    return r;
+  };
+  const myList = () => [['school', '🏫', 'Школа', places.school], ['kinder', '🧸', 'Садик', places.kinder], ...places.my.map((x, j) => ['m' + j, x.e || '📌', x.label, x])].filter(x => x[3]);
+  const renderQuick28 = renderQuick;
+  renderQuick = function(){
+    const r = renderQuick28.apply(this, arguments);
+    try{
+      const chips = document.querySelector('#results .quick .chips'), work = chips?.querySelector('[data-pl="work"]');
+      if (work && !chips.querySelector('[data-my]')){
+        work.insertAdjacentHTML('afterend', myList().map(([k, e, n]) => `<button class="chip" data-my="${k}">${e} ${esc(n.length > 14 ? n.slice(0, 13) + '…' : n)}</button>`).join(''));
+        chips.querySelectorAll('[data-my]').forEach(b => b.onclick = () => { const x = myList().find(y => y[0] === b.dataset.my); if (x) goTo({ ...x[3], name:x[3].name || x[2] }); });
+      }
+    }catch{}
+    return r;
+  };
+  const renderMyPlaces28 = renderMyPlaces;
+  renderMyPlaces = function(){
+    const r = renderMyPlaces28.apply(this, arguments);
+    try{
+      const box = $('#myPlaces'), hint = box.querySelector('.hint');
+      hint?.insertAdjacentHTML('beforebegin', myList().map(([k, e, n, p]) => `<div class="my-pl"><span>${e} ${esc(n)}: ${esc(p.name || coords(p))}</span><button class="linkbtn" data-rmmy="${k}">Убрать</button></div>`).join(''));
+      if (hint) hint.textContent = 'Сохранить: нажмите на адрес → 🏠 / 💼 / ⭐ / 📌 (школа, садик, своё). Голосом: «едем в садик», «как обычно».';
+      box.querySelectorAll('[data-rmmy]').forEach(b => b.onclick = () => {
+        const k = b.dataset.rmmy; if (k[0] === 'm') places.my.splice(+k.slice(1), 1); else places[k] = null;
+        store.set('places', places); renderMyPlaces();
+      });
+    }catch{}
+    return r;
+  };
 
   // ---------- Настройки ----------
   function openSettings(){
