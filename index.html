@@ -600,7 +600,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.8.0</p>
+    <p class="set-ver">Версия 2.9.0</p>
   </div>
 </div>
 
@@ -6286,6 +6286,219 @@ body.night .nav .btn{background:#1d2731;border:0}
     }catch{}
     return r;
   };
+
+  // =====================================================================
+  // ---------- 2.9.0: «Свои на карте» — семья и друзья, только по взаимному согласию ----------
+  let fr = store.get('fr', null), frList = [], frMarkers = {}, frPrevAt = {}, frTimer = null, frSosSeen = {};
+  const FR_CIRCLE = { family:'👨‍👩‍👧 Семья', friends:'🤝 Друзья' };
+  async function frApi(act, o = {}){
+    const r = await fetch('/api/friends', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act, ...(fr ? { id:fr.id, tok:fr.tok } : {}), ...o }) });
+    const j = await r.json().catch(() => ({ ok:false }));
+    if (j.error === 'auth'){ fr = null; store.set('fr', null); }
+    if (j.error === 'no_db') toast('«Свои на карте» ещё подключаются — попробуйте чуть позже');
+    return j;
+  }
+  const agoTxt = ts => { if (!ts) return 'нет данных'; const m = Math.round((Date.now() - ts) / 60e3); return m < 1 ? 'только что' : m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : 'давно'; };
+  // где я сейчас — по своим сохранённым местам (в радиусе 150 м)
+  function myAt(p){
+    const L = [['🏠 Дом', places.home], ['💼 Работа', places.work], ['🏫 Школа', places.school], ['🧸 Садик', places.kinder], ...(places.my || []).map(x => [`${x.e || '📌'} ${x.label}`, x])];
+    const hit = L.find(([, q]) => q && dist([p.lng, p.lat], [q.lng, q.lat]) < 150);
+    return hit ? hit[0] : '';
+  }
+  let frBat = null;
+  try{ navigator.getBattery?.().then(b => { const u = () => frBat = Math.round(b.level * 100); u(); b.addEventListener('levelchange', u); }); }catch{}
+  function frFix(){
+    return new Promise(ok => {
+      const h = myPos(); if (h) return ok({ lng:h.lng, lat:h.lat });
+      if (!navigator.geolocation) return ok(null);
+      navigator.geolocation.getCurrentPosition(p => ok({ lng:p.coords.longitude, lat:p.coords.latitude, spd:(p.coords.speed || 0) * 3.6 }), () => ok(null), { enableHighAccuracy:false, timeout:12000, maximumAge:20000 });
+    });
+  }
+  async function frSend(sos){
+    if (!fr || fr.share === false) return;
+    const p = await frFix(); if (!p) return;
+    await frApi('pos', { lng:p.lng, lat:p.lat, spd:driving ? lastKmh : p.spd || 0, bat:frBat, at:myAt(p), sos:!!sos }).catch(() => {});
+  }
+  function frMarker(f){
+    let m = frMarkers[f.id];
+    const html = `<span class="fr-av">${esc(f.e || '🙂')}</span><span class="fr-nm">${esc(f.name)}${f.spd > 5 ? ` · ${Math.round(f.spd)} км/ч` : ''}</span>${f.sos ? '<span class="fr-sos">SOS</span>' : ''}`;
+    if (!m){
+      const el = document.createElement('div'); el.className = 'fr-pin';
+      el.onclick = ev => { ev.stopPropagation(); frShow(f.id); };
+      m = frMarkers[f.id] = new maplibregl.Marker({ element:el, anchor:'bottom' }).setLngLat([f.lng, f.lat]).addTo(map);
+    }
+    m.getElement().innerHTML = html; m.getElement().classList.toggle('old', Date.now() - f.ts > 15 * 60e3);
+    m.setLngLat([f.lng, f.lat]);
+  }
+  async function frPoll(){
+    if (!fr || document.hidden) return;
+    await frSend();
+    const j = await frApi('list').catch(() => null); if (!j?.ok) return;
+    fr.me = j.me; frList = j.items || [];
+    const seen = new Set();
+    frList.forEach(f => {
+      if (f.lng == null) return; seen.add(f.id); frMarker(f);
+      const prev = frPrevAt[f.id];
+      if (prev !== undefined && prev !== (f.at || '')){
+        const msg = f.at ? `${f.e} ${f.name}: пришёл(а) — ${f.at}` : prev ? `${f.e} ${f.name}: ушёл(а) — ${prev}` : '';
+        if (msg){ toast(msg); try{ if (Notification.permission === 'granted') new Notification('Свои на карте', { body:msg, icon:'icons/icon-192.png' }); }catch{} }
+      }
+      frPrevAt[f.id] = f.at || '';
+      if (f.sos && frSosSeen[f.id] !== f.sos){
+        frSosSeen[f.id] = f.sos;
+        const msg = `🆘 ${f.name} нажал(а) SOS! ${f.at || ''} Батарея ${f.bat ?? '?'}%.`;
+        mascot('wave', msg, 15000); toast(msg); try{ navigator.vibrate?.([300, 150, 300, 150, 300]); if (Notification.permission === 'granted') new Notification('🆘 SOS', { body:msg, requireInteraction:true }); }catch{}
+        if (!muted) speak({ ru:`Внимание! ${f.name} просит о помощи.`, kk:`Назар аударыңыз! ${f.name} көмек сұрап тұр.` });
+      }
+    });
+    Object.keys(frMarkers).forEach(id => { if (!seen.has(id)){ frMarkers[id].remove(); delete frMarkers[id]; } });
+    const n = frList.filter(f => f.lng != null).length, b = $('#frN'); if (b){ b.textContent = n; b.hidden = !n; }
+    if (!$('#frSheet').hidden) frRender();
+  }
+  function frStart(){
+    clearInterval(frTimer); if (!fr) return;
+    frPoll(); frTimer = setInterval(frPoll, 20000);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && fr) frPoll(); });
+  function frShow(id){
+    const f = frList.find(x => x.id === id); if (!f || f.lng == null) return;
+    $('#frSheet').hidden = true;
+    map.flyTo({ center:[f.lng, f.lat], zoom:16, duration:900 });
+    const me = myPos(), d = me ? dist([me.lng, me.lat], [f.lng, f.lat]) : null;
+    setTimeout(() => showPopup({ lng:f.lng, lat:f.lat, name:`${f.e} ${f.name}` },
+      `<div class="fr-info">${f.at ? esc(f.at) + ' · ' : ''}${agoTxt(f.ts)}${f.spd > 5 ? ` · едет ${Math.round(f.spd)} км/ч` : ''}${f.bat != null ? ` · 🔋 ${f.bat}%` : ''}${d != null ? ` · ${fmtDist(d)} от вас` : ''}</div>`), 950);
+  }
+  // ---- окно «Свои на карте» ----
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="frSheet" hidden><div class="sheet-card" role="dialog" aria-label="Свои на карте">
+    <div class="sheet-head"><h2>👨‍👩‍👧 Свои на карте</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div><div id="frBody"></div></div></div>`);
+  $('#frSheet').querySelector('[data-close]').onclick = () => $('#frSheet').hidden = true;
+  $('#frSheet').onclick = e => { if (e.target.id === 'frSheet') $('#frSheet').hidden = true; };
+  let frInvite = null;   // код приглашения из ссылки
+  function frRender(){
+    const box = $('#frBody');
+    if (!fr){
+      box.innerHTML = `${frInvite ? `<p class="note fr-inv" id="frInvTxt">Вас пригласили. Сначала представьтесь 👇</p>` : ''}
+        <p class="note">Видите, где ваши близкие, и они видят вас. Только те, кого вы сами добавили, и только по взаимному согласию. Можно скрыться в любой момент.</p>
+        <div class="my-own"><select id="frEmoji" aria-label="Значок">${['🙂', '👨', '👩', '👦', '👧', '👴', '👵', '🧔', '👱', '🐆'].map(e => `<option>${e}</option>`).join('')}</select>
+        <input id="frName" maxlength="24" placeholder="Как вас подписать: Папа, Алихан…"></div>
+        <label class="fr-ok"><input type="checkbox" id="frAgree"> Согласен(на) показывать моё местоположение, скорость и заряд телефона только людям, которых добавлю сам(а). Отключить и удалить всё можно в любой момент.</label>
+        <button class="btn primary" id="frReg" style="width:100%;margin-top:8px">Включить</button>`;
+      $('#frReg').onclick = async () => {
+        const name = $('#frName').value.trim();
+        if (name.length < 2) return toast('Напишите, как вас подписать');
+        if (!$('#frAgree').checked) return toast('Отметьте согласие');
+        const j = await frApi('reg', { name, e:$('#frEmoji').value });
+        if (!j.ok) return toast(j.error === 'no_db' ? '«Свои на карте» ещё подключаются' : 'Не получилось. Проверьте интернет.');
+        fr = { id:j.id, tok:j.tok, share:true }; store.set('fr', fr);
+        try{ if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }catch{}
+        frStart(); if (frInvite) return frPeek(); frRender();
+      };
+      return;
+    }
+    const me = fr.me || {}, hid = (me.hide || 0) > Date.now();
+    const rows = frList.length ? Object.entries(FR_CIRCLE).map(([c, t]) => {
+      const L = frList.filter(f => f.circle === c); if (!L.length) return '';
+      return `<h3>${t}</h3>` + L.map(f => `<div class="fr-row"><span class="fr-av">${esc(f.e)}</span><div class="fr-t"><b>${esc(f.name)}</b>${f.sos ? ' <span class="fr-sos">SOS</span>' : ''}<br>
+        <span>${f.hidden ? '🙈 скрыл(а) себя' : f.lng == null ? 'ещё не делился(лась)' : `${f.at ? esc(f.at) + ' · ' : ''}${agoTxt(f.ts)}${f.spd > 5 ? ` · ${Math.round(f.spd)} км/ч` : ''}${f.bat != null ? ` · 🔋 ${f.bat}%` : ''}`}</span></div>
+        ${f.lng != null && !f.hidden ? `<button class="chip" data-frshow="${f.id}">📍</button><button class="chip" data-frgo="${f.id}">🚗</button>` : ''}<button class="linkbtn" data-frrm="${f.id}" title="Убрать из списка">✕</button></div>`).join('');
+    }).join('') : '<p class="hint">Пока никого. Пригласите семью или друзей кнопками ниже — им придёт ссылка.</p>';
+    box.innerHTML = `${frInvite ? '<p class="note fr-inv" id="frInvTxt">Проверяю приглашение…</p>' : ''}
+      <p class="note">Вы: ${esc(me.e || '🙂')} <b>${esc(me.name || '')}</b> · ${fr.share === false ? '⏸ не делитесь' : hid ? `🙈 скрыты до ${new Date(me.hide).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}` : '🟢 вас видят свои'}</p>
+      ${rows}
+      <div class="fr-acts"><button class="btn primary" data-frinv="family">＋ В семью</button><button class="btn" data-frinv="friends">＋ Друга</button></div>
+      <div id="frQr"></div>
+      <h3>Я</h3>
+      <div class="fr-acts">${hid || fr.share === false ? '<button class="btn" data-frhide="0">👁 Показать меня</button>' : '<button class="btn" data-frhide="1">🙈 Скрыться на 1 час</button><button class="btn" data-frhide="night">🌙 До утра</button>'}
+        <button class="btn sos" id="frSos">🆘 SOS</button></div>
+      <p class="hint">SOS — ваше место и заряд сразу уходят всем своим, у них звучит сигнал. Пока карта открыта на телефоне, место обновляется каждые 20 секунд; когда закрыта — свои видят, где вы были последний раз.</p>
+      <p class="hint">Голосом: «Барыс, где мама?», «где Алихан?».</p>
+      <button class="linkbtn" id="frWipe">Выключить и удалить все мои данные</button>`;
+    box.querySelectorAll('[data-frshow]').forEach(b => b.onclick = () => frShow(b.dataset.frshow));
+    box.querySelectorAll('[data-frgo]').forEach(b => b.onclick = () => { const f = frList.find(x => x.id === b.dataset.frgo); if (!f) return; $('#frSheet').hidden = true; goTo({ lng:f.lng, lat:f.lat, name:`${f.e} ${f.name}` }); });
+    box.querySelectorAll('[data-frrm]').forEach(b => b.onclick = async () => {
+      const f = frList.find(x => x.id === b.dataset.frrm); if (!f) return;
+      if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Точно убрать?'; return; }
+      await frApi('remove', { fid:f.id }); frList = frList.filter(x => x.id !== f.id); frMarkers[f.id]?.remove(); delete frMarkers[f.id]; frRender();
+    });
+    box.querySelectorAll('[data-frinv]').forEach(b => b.onclick = async () => {
+      const j = await frApi('invite', { circle:b.dataset.frinv }); if (!j.ok) return toast('Не получилось создать приглашение');
+      const url = `${location.origin}/#fr=${j.code}`, txt = `${me.name || 'Я'} приглашает вас в «${b.dataset.frinv === 'family' ? 'Семью' : 'Друзья'}» на Карте Астаны — будем видеть друг друга на карте. Ссылка действует ${j.days} дней:`;
+      try{ await loadQr(); const qr = qrcode(0, 'M'); qr.addData(url); qr.make(); $('#frQr').innerHTML = `<p class="hint">Покажите QR или отправьте ссылку:</p><div class="fr-qr">${qr.createSvgTag({ cellSize:4, margin:2, scalable:true })}</div>`; }catch{}
+      if (navigator.share) navigator.share({ title:'Свои на карте', text:txt, url }).catch(() => {});
+      else { navigator.clipboard?.writeText(txt + ' ' + url).catch(() => {}); toast('Ссылка скопирована — отправьте её в WhatsApp или Telegram'); }
+    });
+    box.querySelectorAll('[data-frhide]').forEach(b => b.onclick = async () => {
+      const v = b.dataset.frhide, t = new Date();
+      if (v === '0'){ fr.share = true; store.set('fr', fr); await frApi('share', { on:true }); await frApi('hide', { until:0 }); }
+      else { const until = v === '1' ? Date.now() + 3600e3 : (t.getHours() < 7 ? t.setHours(7, 0, 0, 0) : new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1, 7).getTime()); await frApi('hide', { until }); }
+      frPoll();
+    });
+    $('#frSos').onclick = async () => {
+      const b = $('#frSos'); if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Нажмите ещё раз — отправить SOS'; return; }
+      await frSend(true); toast('🆘 SOS отправлен всем своим'); b.dataset.sure = ''; b.textContent = '🆘 SOS';
+    };
+    $('#frWipe').onclick = async () => {
+      const b = $('#frWipe'); if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Точно? Нажмите ещё раз — удалю всё'; return; }
+      await frApi('wipe'); fr = null; store.set('fr', null); frList = []; clearInterval(frTimer);
+      Object.values(frMarkers).forEach(m => m.remove()); frMarkers = {}; const n = $('#frN'); if (n) n.hidden = true;
+      toast('Готово: вы выключили «Свои на карте», данные удалены'); frRender();
+    };
+    if (frInvite) frPeek();
+  }
+  async function frPeek(){
+    const code = frInvite, el = () => $('#frInvTxt'); if (!code || !fr) return;
+    const j = await frApi('peek', { code });
+    if (!j.ok){ frInvite = null; if (el()) el().textContent = 'Приглашение устарело — попросите прислать новое.'; return; }
+    if (j.self){ frInvite = null; if (el()) el().textContent = 'Это ваше приглашение — отправьте ссылку тому, кого зовёте.'; return; }
+    if (!el()) return;
+    el().innerHTML = `${esc(j.e)} <b>${esc(j.name)}</b> приглашает вас в «${j.circle === 'family' ? 'Семью' : 'Друзья'}». Вы будете видеть друг друга. <button class="btn primary" id="frAcc">Принять</button> <button class="linkbtn" id="frDecl">Нет</button>`;
+    $('#frAcc').onclick = async () => { const a = await frApi('accept', { code }); frInvite = null; toast(a.ok ? `✅ ${j.name} теперь в ваших` : 'Не получилось — приглашение устарело'); history.replaceState(null, '', location.pathname); await frPoll(); frRender(); };
+    $('#frDecl').onclick = () => { frInvite = null; history.replaceState(null, '', location.pathname); frRender(); };
+  }
+  function openFriends(){ $('#frSheet').hidden = false; frRender(); if (fr) frPoll(); }
+  window.__fr = { poll:() => frPoll() };   // для автотестов
+  // кнопка на карте рядом с квестами
+  $('#tQuest')?.insertAdjacentHTML('afterend', '<button class="tool" id="tFr" title="Свои на карте" aria-label="Свои на карте">👨‍👩‍👧<span class="q-badge" id="frN" hidden></span></button>');
+  $('#tFr') && ($('#tFr').onclick = openFriends);
+  // приглашение по ссылке: #fr=код
+  const frHash = location.hash.match(/^#fr=([a-z0-9]{6,12})$/);
+  if (frHash){ frInvite = frHash[1]; setTimeout(openFriends, 1200); }
+  if (fr) setTimeout(frStart, 2500);
+  // голос: «где мама», «где Алихан»
+  const localCmd29 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    if (/^(свои на карте|мои близкие|семья на карте|покажи (семью|своих|друзей))/.test(t)) return () => { $('#asstSheet').hidden = true; openFriends(); return 'Открываю «Свои на карте».'; };
+    const m = t.match(/^где\s+(?:сейчас\s+)?(?:мой|моя|мои)?\s*(.{2,})$/);
+    if (m && frList.length){
+      const st = myStem(m[1].replace(/\s+сейчас$/, ''));
+      const f = frList.find(x => low(x.name).startsWith(st) || st.startsWith(myStem(x.name)));
+      if (f) return () => {
+        if (f.hidden) return `${f.name} сейчас скрыл(а) своё место.`;
+        if (f.lng == null) return `${f.name} ещё не делился(лась) местом.`;
+        $('#asstSheet').hidden = true; frShow(f.id);
+        const me = myPos(), d = me ? dist([me.lng, me.lat], [f.lng, f.lat]) : null;
+        return `${f.name}: ${f.at ? f.at.replace(/^\S+\s/, '') + ', ' : ''}${agoTxt(f.ts)}${f.spd > 5 ? `, едет ${Math.round(f.spd)} километров в час` : ''}${d != null ? `, ${fmtDist(d)} от вас` : ''}.`;
+      };
+    }
+    return localCmd29.apply(this, arguments);
+  };
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    .fr-pin{display:flex;flex-direction:column;align-items:center;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+    .fr-pin .fr-av{width:38px;height:38px;border-radius:50%;background:#fff;border:3px solid #7c4dff;display:grid;place-items:center;font-size:22px}
+    .fr-pin .fr-nm{margin-top:2px;background:#7c4dff;color:#fff;font:600 12px/1.2 system-ui;padding:2px 7px;border-radius:9px;white-space:nowrap}
+    .fr-pin.old .fr-av{border-color:#999;opacity:.75}.fr-pin.old .fr-nm{background:#888}
+    .fr-sos{background:#e53935;color:#fff;font:700 11px system-ui;padding:1px 6px;border-radius:8px;animation:frb 1s infinite}
+    @keyframes frb{50%{opacity:.35}}
+    .fr-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)}
+    .fr-row .fr-av{width:36px;height:36px;border-radius:50%;background:var(--chip,#f1f1f1);display:grid;place-items:center;font-size:20px;flex:none}
+    .fr-row .fr-t{flex:1;min-width:0;font-size:14px}.fr-row .fr-t span{color:var(--muted);font-size:12.5px}
+    .fr-acts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.fr-acts .btn{flex:1;min-width:130px}
+    .btn.sos{background:#e53935;color:#fff;border-color:#e53935}
+    .fr-ok{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:10px;line-height:1.35}
+    .fr-qr{width:180px;margin:6px auto}.fr-info{font-size:13px;margin:2px 0 6px;color:var(--muted)}
+    .fr-inv{background:#fff7d6;color:#333;padding:8px 10px;border-radius:10px}
+  </style>`);
 
   // ---------- Настройки ----------
   function openSettings(){
