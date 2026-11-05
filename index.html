@@ -310,6 +310,18 @@ body.navmode .mascot{top:calc(270px + env(safe-area-inset-top,0px))}
 @keyframes m-z{0%{opacity:0;transform:translate(0,4px)}50%{opacity:1}100%{opacity:0;transform:translate(7px,-9px)}}
 .mascot.wave .m-paw{transform-box:fill-box;transform-origin:50% 100%;animation:m-wave .3s ease-in-out 8 alternate}
 @keyframes m-wave{from{transform:translateY(-14px) rotate(-25deg)}to{transform:translateY(-14px) rotate(20deg)}}
+.m-hat,.m-scarf,.m-umb,.m-sun,.m-drops,.m-flakes,.m-umb-open{display:none}
+.mascot[data-wx~="cold"] .m-hat,.mascot[data-wx~="cold"] .m-scarf{display:block}
+.mascot[data-wx~="cold"] .m-ears,.mascot[data-wx~="cold"] .m-collar{display:none}
+.mascot[data-wx~="rain"] .m-umb,.mascot[data-wx~="snow"] .m-umb{display:block}
+.mascot[data-wx~="hot"] .m-sun{display:block}
+.mascot[data-wx~="hot"] .m-eye{visibility:hidden}
+.mascot[data-umb="open"] .m-umb-closed{display:none}
+.mascot[data-umb="open"] .m-umb-open{display:block;transform-box:view-box;transform-origin:78px 16px;animation:m-umb .55s cubic-bezier(.3,1.5,.6,1)}
+@keyframes m-umb{from{transform:scale(.08,.5)}to{transform:scale(1,1)}}
+.mascot[data-umb="open"][data-wx~="rain"] .m-drops,.mascot[data-umb="open"][data-wx~="snow"] .m-flakes{display:block;animation:m-fall 1.1s linear infinite}
+@keyframes m-fall{from{transform:translateY(-10px);opacity:0}30%{opacity:1}to{transform:translateY(14px);opacity:0}}
+.mascot[data-wx~="hot"] .m-mouth{stroke-width:1.6}
 .m-bubble{position:absolute;right:82px;top:4px;width:max-content;max-width:min(240px,58vw);background:var(--surface);color:var(--fg);border-radius:14px 14px 4px 14px;padding:8px 10px;font-size:13px;line-height:1.35;box-shadow:var(--shadow)}
 .level{display:grid;gap:6px;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .level b{font-size:16px}
@@ -600,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.9.1</p>
+    <p class="set-ver">Версия 2.10.0</p>
   </div>
 </div>
 
@@ -776,30 +788,93 @@ body.night .nav .btn{background:#1d2731;border:0}
   </div>
 </div>
 <div class="rulerbar" id="tripBar" hidden><b id="tripInfo">🚗</b><button class="btn" id="tripClose">Закрыть</button></div>
-<div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" hidden>
+<div class="mascot" id="mascot" role="button" aria-label="Барсёнок Барыс" data-wx="" hidden>
   <div class="m-bubble" id="mBubble" hidden></div>
   <svg viewBox="0 0 100 100" width="76" height="76" aria-hidden="true">
+    <defs>
+      <radialGradient id="mgFur" cx="50%" cy="38%" r="68%"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#eef1f4"/><stop offset="1" stop-color="#c9d1d8"/></radialGradient>
+      <radialGradient id="mgBody" cx="50%" cy="30%" r="75%"><stop offset="0" stop-color="#fbfcfd"/><stop offset=".7" stop-color="#e6eaee"/><stop offset="1" stop-color="#bfc8d0"/></radialGradient>
+      <radialGradient id="mgIris" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#e3f0e6"/><stop offset=".55" stop-color="#9fc2ad"/><stop offset="1" stop-color="#4f7464"/></radialGradient>
+      <linearGradient id="mgUmb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe14d"/><stop offset="1" stop-color="#f2a900"/></linearGradient>
+      <linearGradient id="mgHat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22b8f0"/><stop offset="1" stop-color="#0077b6"/></linearGradient>
+      <linearGradient id="mgScarf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e63946"/><stop offset="1" stop-color="#b5212e"/></linearGradient>
+    </defs>
     <g class="m-all">
-      <g class="m-tail"><path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#cfd5db" stroke-width="11" stroke-linecap="round"/><path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#f3f5f7" stroke-width="8" stroke-linecap="round"/>
-        <path d="M84 86 l3 4 M92 76 l5 1 M90 64 l4 -3" stroke="#4a4f57" stroke-width="2.4" stroke-linecap="round"/></g>
-      <ellipse cx="50" cy="80" rx="23" ry="15" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/>
-      <g fill="none" stroke="#4a4f57" stroke-width="1.6"><circle cx="36" cy="80" r="2.6"/><circle cx="64" cy="80" r="2.6"/><circle cx="44" cy="86" r="2"/><circle cx="57" cy="87" r="2"/></g>
-      <path d="M31 65 Q50 74 69 65 L69 70 Q50 80 31 70 Z" fill="#00a3e0"/><circle cx="50" cy="73" r="3.2" fill="#ffd200"/>
-      <ellipse cx="40" cy="93" rx="7" ry="4.5" fill="#fff" stroke="#cfd5db" stroke-width="1.2"/>
-      <g class="m-paw"><ellipse cx="60" cy="93" rx="7" ry="4.5" fill="#fff" stroke="#cfd5db" stroke-width="1.2"/></g>
-      <g class="m-ears"><circle cx="29" cy="24" r="9" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/><circle cx="29" cy="24" r="4.6" fill="#f6b8c8"/><circle cx="71" cy="24" r="9" fill="#f3f5f7" stroke="#cfd5db" stroke-width="1.2"/><circle cx="71" cy="24" r="4.6" fill="#f6b8c8"/></g>
-      <circle cx="50" cy="44" r="27" fill="#f8f9fa" stroke="#cfd5db" stroke-width="1.2"/>
-      <g fill="#4a4f57"><circle cx="40" cy="26" r="2"/><circle cx="50" cy="22.5" r="2.3"/><circle cx="60" cy="26" r="2"/><circle cx="27" cy="40" r="1.8"/><circle cx="73" cy="40" r="1.8"/><circle cx="45" cy="30" r="1.3"/><circle cx="55" cy="30" r="1.3"/></g>
-      <ellipse cx="32" cy="53" rx="5" ry="3" fill="#ffc1d0" opacity=".75"/><ellipse cx="68" cy="53" rx="5" ry="3" fill="#ffc1d0" opacity=".75"/>
-      <g class="m-eye"><ellipse cx="40" cy="44" rx="5.4" ry="6.6" fill="#2b5876"/><circle cx="41.9" cy="41.4" r="1.9" fill="#fff"/></g>
-      <g class="m-eye"><ellipse cx="60" cy="44" rx="5.4" ry="6.6" fill="#2b5876"/><circle cx="61.9" cy="41.4" r="1.9" fill="#fff"/></g>
-      <g class="m-happy" fill="none" stroke="#2b3036" stroke-width="2.6" stroke-linecap="round"><path d="M35 46 Q40 39 45 46"/><path d="M55 46 Q60 39 65 46"/></g>
-      <g class="m-closed" fill="none" stroke="#2b3036" stroke-width="2.4" stroke-linecap="round"><path d="M35 44 Q40 48 45 44"/><path d="M55 44 Q60 48 65 44"/></g>
-      <g class="m-brows" stroke="#2b3036" stroke-width="2.2" stroke-linecap="round"><path d="M34 34 L45 37"/><path d="M66 34 L55 37"/></g>
-      <path d="M46 53 Q50 50 54 53 Q50 57.5 46 53 Z" fill="#e88aa0"/>
-      <path class="m-mouth" d="M44 58 Q47 61.5 50 58 Q53 61.5 56 58" stroke="#2b3036" stroke-width="1.7" fill="none" stroke-linecap="round"/>
-      <ellipse class="m-open" cx="50" cy="60.5" rx="4" ry="3.2" fill="#7a2e3a"/>
-      <g stroke="#9aa3ad" stroke-width="1" stroke-linecap="round"><path d="M30 55 L19 53"/><path d="M30 58 L20 60"/><path d="M70 55 L81 53"/><path d="M70 58 L80 60"/></g>
+      <!-- хвост: пушистый, с розетками и тёмным кончиком -->
+      <g class="m-tail">
+        <path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#c3ccd4" stroke-width="13" stroke-linecap="round"/>
+        <path d="M66 88 C90 92 98 70 88 61 C82 56 75 60 79 65" fill="none" stroke="#f1f4f6" stroke-width="10" stroke-linecap="round"/>
+        <g fill="none" stroke="#565d66" stroke-width="1.8" stroke-linecap="round"><path d="M82 85 a3 3 0 1 1 4 -3"/><path d="M91 75 a3 3 0 1 1 3 -4"/><path d="M90 64 a2.6 2.6 0 1 1 -1 -4"/></g>
+        <circle cx="79.5" cy="65" r="5" fill="#4a5058"/>
+      </g>
+      <!-- тело -->
+      <ellipse cx="50" cy="80" rx="23" ry="15.5" fill="url(#mgBody)" stroke="#bcc5cd" stroke-width="1"/>
+      <ellipse cx="50" cy="84" rx="12" ry="9" fill="#fff" opacity=".9"/>
+      <g fill="#d9c9ae" stroke="#565d66" stroke-width="1.5"><circle cx="34" cy="78" r="2.6"/><circle cx="66" cy="78" r="2.6"/><circle cx="39" cy="88" r="2"/><circle cx="62" cy="88" r="2"/></g>
+      <!-- ошейник (без шарфа) -->
+      <g class="m-collar"><path d="M31 65 Q50 74 69 65 L69 70 Q50 80 31 70 Z" fill="#00a3e0"/><circle cx="50" cy="73" r="3.2" fill="#ffd200" stroke="#d9a400" stroke-width=".6"/></g>
+      <!-- лапы -->
+      <g><ellipse cx="40" cy="93" rx="7.5" ry="4.6" fill="#fdfdfe" stroke="#bcc5cd" stroke-width="1"/><path d="M37 95.5 v-2 M40 96 v-2 M43 95.5 v-2" stroke="#b7c0c8" stroke-width=".9" stroke-linecap="round"/></g>
+      <g class="m-paw"><ellipse cx="60" cy="93" rx="7.5" ry="4.6" fill="#fdfdfe" stroke="#bcc5cd" stroke-width="1"/><path d="M57 95.5 v-2 M60 96 v-2 M63 95.5 v-2" stroke="#b7c0c8" stroke-width=".9" stroke-linecap="round"/></g>
+      <!-- уши: светлые, с тёмной каймой, как у настоящего ирбиса -->
+      <g class="m-ears">
+        <circle cx="29.5" cy="24" r="8.5" fill="#e9edf0" stroke="#4f565e" stroke-width="2.2"/><circle cx="29.5" cy="24.5" r="4.4" fill="#e8b4bf"/>
+        <circle cx="70.5" cy="24" r="8.5" fill="#e9edf0" stroke="#4f565e" stroke-width="2.2"/><circle cx="70.5" cy="24.5" r="4.4" fill="#e8b4bf"/>
+      </g>
+      <!-- голова: широкие щёки, пушистые бакенбарды -->
+      <path d="M23 46 C22 27 35 17 50 17 C65 17 78 27 77 46 C76 52 79 55 75 58 C70 64 62 67 50 67 C38 67 30 64 25 58 C21 55 24 52 23 46 Z" fill="url(#mgFur)" stroke="#bcc5cd" stroke-width="1"/>
+      <path d="M25 56 l-4 3 l5 -.5 l-3 3.5 l5.5 -2 M75 56 l4 3 l-5 -.5 l3 3.5 l-5.5 -2" fill="none" stroke="#c3ccd4" stroke-width="1" stroke-linejoin="round"/>
+      <!-- пятна на лбу и щеках -->
+      <g fill="#565d66"><circle cx="50" cy="23" r="1.9"/><circle cx="44" cy="26.5" r="1.5"/><circle cx="56" cy="26.5" r="1.5"/><circle cx="39.5" cy="30.5" r="1.1"/><circle cx="60.5" cy="30.5" r="1.1"/><circle cx="47" cy="31" r=".9"/><circle cx="53" cy="31" r=".9"/></g>
+      <g fill="none" stroke="#565d66" stroke-width="1.6" stroke-linecap="round"><path d="M27 38 a3 3 0 1 1 3 4"/><path d="M73 38 a3 3 0 1 0 -3 4"/><path d="M29 48 a2.4 2.4 0 1 1 2 3"/><path d="M71 48 a2.4 2.4 0 1 0 -2 3"/></g>
+      <!-- мордочка -->
+      <ellipse cx="50" cy="56" rx="12.5" ry="8.5" fill="#ffffff"/>
+      <ellipse cx="34" cy="53" rx="4.5" ry="2.6" fill="#ffc1d0" opacity=".55"/><ellipse cx="66" cy="53" rx="4.5" ry="2.6" fill="#ffc1d0" opacity=".55"/>
+      <!-- глаза: светло-зелёные, как у ирбиса -->
+      <g class="m-eye"><ellipse cx="40" cy="43" rx="6" ry="5.4" fill="#2b2f36"/><circle cx="40" cy="43" r="4.4" fill="url(#mgIris)"/><ellipse cx="40" cy="43" rx="1.5" ry="3.1" fill="#1b1f24"/><circle cx="41.6" cy="41.4" r="1.3" fill="#fff"/></g>
+      <g class="m-eye"><ellipse cx="60" cy="43" rx="6" ry="5.4" fill="#2b2f36"/><circle cx="60" cy="43" r="4.4" fill="url(#mgIris)"/><ellipse cx="60" cy="43" rx="1.5" ry="3.1" fill="#1b1f24"/><circle cx="61.6" cy="41.4" r="1.3" fill="#fff"/></g>
+      <path d="M34 39.5 Q40 37 46 39.5 M54 39.5 Q60 37 66 39.5" fill="none" stroke="#7d858e" stroke-width=".9" stroke-linecap="round"/>
+      <g class="m-happy" fill="none" stroke="#2b3036" stroke-width="2.6" stroke-linecap="round"><path d="M35 45 Q40 38 45 45"/><path d="M55 45 Q60 38 65 45"/></g>
+      <g class="m-closed" fill="none" stroke="#2b3036" stroke-width="2.4" stroke-linecap="round"><path d="M35 43 Q40 47 45 43"/><path d="M55 43 Q60 47 65 43"/></g>
+      <g class="m-brows" stroke="#2b3036" stroke-width="2.2" stroke-linecap="round"><path d="M34 33 L45 36"/><path d="M66 33 L55 36"/></g>
+      <!-- солнечные очки (жара) -->
+      <g class="m-sun"><path d="M32 40 h16 v4 q0 5 -8 5 q-8 0 -8 -5 Z M52 40 h16 v4 q0 5 -8 5 q-8 0 -8 -5 Z" fill="#1d2833"/><path d="M48 41 h4" stroke="#1d2833" stroke-width="1.6"/><path d="M35 42 l4 0" stroke="#7fb3d5" stroke-width="1.2" stroke-linecap="round"/><path d="M55 42 l4 0" stroke="#7fb3d5" stroke-width="1.2" stroke-linecap="round"/></g>
+      <!-- нос и рот -->
+      <path d="M46.3 50.5 Q50 48.6 53.7 50.5 Q52.3 54.2 50 54.8 Q47.7 54.2 46.3 50.5 Z" fill="#d98a98" stroke="#a8606e" stroke-width=".6"/>
+      <path class="m-mouth" d="M50 55 L50 57 M50 57 Q47.5 60 44.8 58.4 M50 57 Q52.5 60 55.2 58.4" stroke="#3a3f46" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <ellipse class="m-open" cx="50" cy="60" rx="3.8" ry="3.2" fill="#7a2e3a"/>
+      <g fill="#9aa3ad"><circle cx="43" cy="56" r=".55"/><circle cx="41" cy="58" r=".55"/><circle cx="57" cy="56" r=".55"/><circle cx="59" cy="58" r=".55"/></g>
+      <g stroke="#a7b0b9" stroke-width=".8" stroke-linecap="round"><path d="M38 56 L19 52"/><path d="M38 58 L19 59"/><path d="M39 60 L21 65"/><path d="M62 56 L81 52"/><path d="M62 58 L81 59"/><path d="M61 60 L79 65"/></g>
+      <!-- шапка с помпоном (холодно) -->
+      <g class="m-hat">
+        <path d="M25 35 C24 15 76 15 75 35 Z" fill="url(#mgHat)"/>
+        <g stroke="#0a6aa3" stroke-width=".8" opacity=".7"><path d="M38 33 C38 24 40 19 43 17"/><path d="M50 33 V16.5"/><path d="M62 33 C62 24 60 19 57 17"/></g>
+        <path d="M23.5 33 Q50 27 76.5 33 L76.5 39.5 Q50 33.5 23.5 39.5 Z" fill="#ffd200" stroke="#e0b400" stroke-width=".6"/>
+        <path d="M27 36 l3 -1.4 M33 34.6 l3 -1 M40 33.6 l3 -.6 M47 33.2 h3 M54 33.4 l3 .4 M61 34 l3 .8 M68 35.1 l3 1.2" stroke="#e0b400" stroke-width="1"/>
+        <circle cx="50" cy="14" r="5.5" fill="#fff" stroke="#d5dbe0" stroke-width="1"/><circle cx="48.5" cy="12.5" r="1.6" fill="#f1f4f6"/>
+      </g>
+      <!-- шарф (холодно) -->
+      <g class="m-scarf">
+        <path d="M27 62 Q50 75 73 62 L74 70 Q50 83 26 70 Z" fill="url(#mgScarf)"/>
+        <path d="M33 66.5 Q50 76 67 66.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="3 2.4" opacity=".85"/>
+        <path d="M59 71 L64 88 L56.5 89 L53.5 73 Z" fill="url(#mgScarf)"/>
+        <path d="M55 82 h8.2 M54.5 79 h8" stroke="#fff" stroke-width="1.2" opacity=".85"/>
+        <path d="M57 89 v3 M59 89 v3.3 M61 88.7 v3.2 M63 88.5 v3" stroke="#b5212e" stroke-width="1" stroke-linecap="round"/>
+      </g>
+      <!-- зонтик (дождь, снег) -->
+      <g class="m-umb">
+        <line x1="78" y1="80" x2="78" y2="8" stroke="#4a3b2a" stroke-width="1.6"/>
+        <path d="M78 80 q0 5 -4 5 q-3 0 -3 -3" fill="none" stroke="#4a3b2a" stroke-width="2.2" stroke-linecap="round"/>
+        <path class="m-umb-closed" d="M78 10 L74.5 40 Q78 44 81.5 40 Z" fill="url(#mgUmb)" stroke="#d99200" stroke-width=".6"/>
+        <g class="m-umb-open">
+          <path d="M46 16 Q78 -16 110 16 Q105 11 99 16 Q94 11 88.5 16 Q83.5 11 78 16 Q72.5 11 67.5 16 Q62 11 56.5 16 Q51 11 46 16 Z" fill="url(#mgUmb)" stroke="#d99200" stroke-width=".8"/>
+          <path d="M78 0.5 Q73 6 67.5 16 M78 0.5 Q83 6 88.5 16 M78 0.5 Q64 5 56.5 16 M78 0.5 Q92 5 99 16" fill="none" stroke="#00a3e0" stroke-width="1.4" opacity=".75"/>
+          <circle cx="78" cy="-0.5" r="1.6" fill="#4a3b2a"/>
+        </g>
+        <ellipse cx="78" cy="78" rx="5" ry="4" fill="#fdfdfe" stroke="#bcc5cd" stroke-width="1"/>
+        <g class="m-drops" stroke="#4aa8e0" stroke-width="1.4" stroke-linecap="round"><path d="M44 24 l-1 4"/><path d="M54 30 l-1 4"/><path d="M104 22 l-1 4"/><path d="M96 34 l-1 4"/><path d="M110 30 l-1 4"/><path d="M40 36 l-1 4"/></g>
+        <g class="m-flakes" fill="#ffffff" stroke="#7fb8e6" stroke-width=".7"><circle cx="44" cy="24" r="1.6"/><circle cx="55" cy="31" r="1.3"/><circle cx="104" cy="22" r="1.6"/><circle cx="97" cy="34" r="1.3"/><circle cx="110" cy="30" r="1.5"/><circle cx="40" cy="36" r="1.3"/></g>
+      </g>
       <text class="m-z" x="76" y="16" font-size="13" font-weight="700" fill="#5d6c79">z</text>
     </g>
   </svg>
@@ -6515,6 +6590,36 @@ body.night .nav .btn{background:#1d2731;border:0}
     .fr-inv{background:#fff7d6;color:#333;padding:8px 10px;border-radius:10px}
   </style>`);
 
+  // =====================================================================
+  // ---------- 2.10.0: Барыс одевается по погоде — шапка и шарф в мороз, зонтик в дождь и снег, очки в жару ----------
+  const RAIN_CODES = c => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+  let mWxDemo = (location.hash.match(/mascot=(rain|snow|cold|hot|clear)/) || [])[1] || null;
+  function mascotWx(){
+    const w = wx, tags = [];
+    if (mWxDemo){ ({ rain:['rain'], snow:['snow', 'cold'], cold:['cold'], hot:['hot'], clear:[] })[mWxDemo].forEach(x => tags.push(x)); }
+    else if (w){
+      if (w.snow) tags.push('snow'); else if (RAIN_CODES(w.code)) tags.push('rain');
+      if (w.feel <= 3) tags.push('cold');
+      if (w.t >= 26 && w.code <= 2) tags.push('hot');
+    }
+    mascotEl.dataset.wx = tags.join(' ');
+  }
+  const applySnow30 = applySnow;
+  applySnow = function(){ const r = applySnow30.apply(this, arguments); mascotWx(); return r; };
+  mascotWx();
+  // нажали в дождь или снег — Барыс раскрывает зонтик
+  let umbT = null;
+  const mClick30 = mascotEl.onclick;
+  mascotEl.onclick = function(e){
+    const tg = mascotEl.dataset.wx || '';
+    if (/rain|snow/.test(tg) && mascotEl.dataset.umb !== 'open'){
+      mascotEl.dataset.umb = 'open'; clearTimeout(umbT); umbT = setTimeout(() => mascotEl.dataset.umb = '', 7000);
+      const t = wx ? ` Сейчас ${wx.t > 0 ? '+' : ''}${wx.t}°.` : '';
+      return mascot('happy', (/snow/.test(tg) ? 'Снег идёт — раскрываю зонтик! ❄☂' : 'Дождик — раскрываю зонтик! ☂') + t + ' Осторожно на дороге.', 6000);
+    }
+    if (/cold/.test(tg) && Math.random() < .4 && wx) return mascot('wave', `Брр, ощущается как ${wx.feel}°! Я в шапке и шарфе — и вы одевайтесь теплее 🧣`, 6000);
+    return mClick30.call(this, e);
+  };
   // ---------- Настройки ----------
   function openSettings(){
     $('#setView').value = view().id; $('#setTheme').value = theme;
