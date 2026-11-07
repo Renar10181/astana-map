@@ -1,7 +1,7 @@
+import { inCities } from '../../lib/cities.js';
 // «Свои на карте»: семья и друзья видят друг друга — только по взаимному согласию.
 // Хранится в Cloudflare D1 (привязка DB). Таблицы создаются сами при первом запросе.
 // Точка хранится одна (последняя), истории нет. «Удалить всё» стирает человека целиком.
-const BOX = { w: 70.0, s: 50.0, e: 73.5, n: 52.5 };   // Астана с запасом (дачи, трасса)
 const MAX_LINKS = 30, MIN_GAP = 8e3, INVITE_DAYS = 7;
 
 const SCHEMA = [
@@ -80,7 +80,7 @@ export async function onRequestPost({ request, env }) {
     }
     case 'pos': {
       const lng = +b.lng, lat = +b.lat;
-      if (!(lat > BOX.s && lat < BOX.n && lng > BOX.w && lng < BOX.e)) return json({ ok: false, error: 'outside' }, 400);
+      if (!inCities(lat, lng, 1)) return json({ ok: false, error: 'outside' }, 400);
       const last = await db.prepare('SELECT ts FROM fr_pos WHERE id = ?').bind(me.id).first();
       if (last && now - last.ts < MIN_GAP && !b.sos) return json({ ok: true, skipped: true });
       const spd = Math.max(0, Math.min(250, +b.spd || 0)), bat = Number.isFinite(+b.bat) ? Math.max(0, Math.min(100, Math.round(+b.bat))) : null;

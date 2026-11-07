@@ -1,3 +1,4 @@
+import { inCities } from '../../lib/cities.js';
 // Организации, которые добавили сами владельцы. Хранится в Cloudflare KV (привязка CAMERAS), ключ «biz».
 // GET  /api/business               — публичный список (без контактов для связи)
 // POST /api/business               — добавить или обновить карточку (до 5 в день с одного адреса)
@@ -6,7 +7,6 @@
 // Рекламные форматы (2.6): ads = { objav, premium, navlogo, stopbanner, routebb, billboard, stories: { until, text, img, radius } }
 //   PATCH { id, ad:'objav', until, text, img, radius }  — включить формат;  { id, ad:'objav', off:true } — выключить
 //   PATCH { id, pack:'lite'|'start'|'media', until, text } — включить пакет (несколько форматов сразу)
-const BOX = { w: 70.95, s: 50.85, e: 71.95, n: 51.40 };
 const PER_DAY = 5, MAX = 5000;
 const json = (o, status = 200) => Response.json(o, { status, headers: { 'Cache-Control': 'no-store' } });
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -45,7 +45,7 @@ export async function onRequestPost({ request, env }) {
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
   const lat = +b.lat, lng = +b.lng, name = str(b.name, 80);
   if (!name || name.length < 2) return json({ ok: false, error: 'name' }, 400);
-  if (!(lat > BOX.s && lat < BOX.n && lng > BOX.w && lng < BOX.e)) return json({ ok: false, error: 'outside Astana' }, 400);
+  if (!inCities(lat, lng)) return json({ ok: false, error: 'outside city' }, 400);
   if (/https?:\/\/\S+\s+https?:\/\//i.test(b.desc || '')) return json({ ok: false, error: 'spam' }, 400);
   const db = await load(env), who = await voter(request), d = new Date().toISOString().slice(0, 10);
   // владелец — по секретному ключу из его телефона (IP у мобильного меняется), иначе по хэшу адреса

@@ -1,14 +1,14 @@
+import { inCities } from '../../lib/cities.js';
 // Отметки камер от водителей. Хранятся в Cloudflare KV (привязка CAMERAS).
 //  list   — камеры, отмеченные водителями (с числом подтверждений от РАЗНЫХ водителей; подтверждённая — от 3)
 //  hidden — камеры из OpenStreetMap, которые водители пометили как «камеры нет»
-const BOX = { w: 70.95, s: 50.85, e: 71.95, n: 51.40 };
 
 function distM(a, b) {
   const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
   return 2 * 6371000 * Math.asin(Math.sqrt(h));
 }
-const inBox = (lat, lng) => lat > BOX.s && lat < BOX.n && lng > BOX.w && lng < BOX.e;
+const inBox = (lat, lng) => inCities(lat, lng);
 const read = async (env, key) => JSON.parse((await env.CAMERAS.get(key)) || '[]');
 // водителя различаем по хэшу IP с солью — сам IP не храним
 async function voter(request) {
@@ -27,7 +27,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.CAMERAS) return Response.json({ ok: false, error: 'storage not configured' }, { status: 503 });
   let body; try { body = await request.json(); } catch { return Response.json({ ok: false }, { status: 400 }); }
   const lat = +body.lat, lng = +body.lng;
-  if (!inBox(lat, lng)) return Response.json({ ok: false, error: 'outside Astana' }, { status: 400 });
+  if (!inBox(lat, lng)) return Response.json({ ok: false, error: 'outside city' }, { status: 400 });
   const items = await read(env, 'list');
   const v = await voter(request);
   let near = items.find(c => distM(c, { lat, lng }) < 60);

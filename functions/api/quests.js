@@ -1,7 +1,7 @@
+import { inCities } from '../../lib/cities.js';
 // Квесты Барыса: ответы жителей о местах (часы работы, вход, работает ли, остановка, пандус).
 // Хранится в Cloudflare KV (привязка CAMERAS), ключ «quests».
 // Факт подтверждён, когда 3 РАЗНЫХ человека дали одинаковый ответ. Не больше 30 ответов в день с одного адреса.
-const BOX = { w: 70.95, s: 50.85, e: 71.95, n: 51.40 };
 const KINDS = ['hours', 'open', 'entrance', 'access', 'stop'];
 const NEED = 3, PER_DAY = 30, MAX_ITEMS = 4000;
 
@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
   const id = String(b.id || '').slice(0, 80), kind = String(b.kind || ''), val = String(b.v || '').slice(0, 40);
   const lat = +b.lat, lng = +b.lng, name = String(b.name || '').slice(0, 80);
   if (!id || !KINDS.includes(kind) || !val) return Response.json({ ok: false, error: 'bad request' }, { status: 400 });
-  if (!(lat > BOX.s && lat < BOX.n && lng > BOX.w && lng < BOX.e)) return Response.json({ ok: false, error: 'outside Astana' }, { status: 400 });
+  if (!inCities(lat, lng)) return Response.json({ ok: false, error: 'outside city' }, { status: 400 });
 
   const db = await load(env), who = await voter(request), d = today();
   if (db.day.d !== d) db.day = { d, c: {} };

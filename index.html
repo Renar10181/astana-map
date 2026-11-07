@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.10.0</p>
+    <p class="set-ver">Версия 2.11.0</p>
   </div>
 </div>
 
@@ -885,10 +885,25 @@ body.night .nav .btn{background:#1d2731;border:0}
 <script>
 (() => {
   // ---------- Настройки ----------
-  const CENTER = [71.4304, 51.1282];
-  const BOUNDS = [[70.95, 50.85], [71.95, 51.40]];
-  const VIEWBOX = '71.20,51.30,71.75,50.95';
-  const BBOX = '71.20,50.95,71.75,51.30';
+  // ---------- Города (с 2.11.0). Новый город — запись здесь + строка в lib/cities.js ----------
+  // live:false — город ещё готовится: в списке «скоро», выбрать нельзя. Астана — основной, всё как раньше.
+  const CITIES = {
+    astana:{ id:'astana', name:'Астана', kk:'Астана', en:'Astana', e:'🏙', live:true, main:true,
+      center:[71.4304, 51.1282], bounds:[[70.95, 50.85], [71.95, 51.40]], viewbox:'71.20,51.30,71.75,50.95', bbox:'71.20,50.95,71.75,51.30', ovp:'50.95,71.20,51.30,71.75',
+      po:'по Астане', v:'в Астане' },
+    oral:{ id:'oral', name:'Орал', kk:'Орал', en:'Oral', e:'🌊', live:false,
+      center:[51.3667, 51.2333], bounds:[[51.15, 51.05], [51.60, 51.38]], viewbox:'51.22,51.31,51.52,51.13', bbox:'51.22,51.13,51.52,51.31', ovp:'51.13,51.22,51.31,51.52',
+      po:'по Оралу', v:'в Орале' },
+    almaty:{ id:'almaty', name:'Алматы', kk:'Алматы', en:'Almaty', e:'🏔', live:false, soon:true },
+  };
+  // «Уральск», «Уральске», «Uralsk» → всегда Орал
+  const CITY_SAY = [[/(^|\s)(орал|уральск|урал|oral|uralsk)\S*/i, 'oral'], [/(^|\s)(астан|нур-султан|astana)\S*/i, 'astana']];
+  let CUR = CITIES.astana;
+  try{ const c = JSON.parse(localStorage.getItem('city') || 'null'); if (c && CITIES[c]?.live) CUR = CITIES[c]; }catch{}
+  const CENTER = CUR.center;
+  const BOUNDS = CUR.bounds;
+  const VIEWBOX = CUR.viewbox;
+  const BBOX = CUR.bbox;
   const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
   const ROUTER = { car:'routed-car', foot:'routed-foot', bike:'routed-bike', scoot:'routed-bike' };
   const PITCH_3D = 55;
@@ -1776,7 +1791,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   const isDarkNow = () => theme === 'on' || (theme === 'auto' && (() => { const h = new Date().getHours(); return h >= 18 || h < 7; })())
     || (theme === 'sun' && (() => { const t = sunTimes(new Date()), now = Date.now(); return now < t.rise || now > t.set; })());
   // Восход и закат над Астаной (упрощённая формула NOAA, точность ±2 минуты)
-  function sunTimes(d, lat = 51.13, lng = 71.43){
+  function sunTimes(d, lat = CENTER[1], lng = CENTER[0]){
     const rad = Math.PI / 180, n = Math.round(d / 864e5 + 2440587.5 - 2451545.0009 + lng / 360), Js = 2451545.0009 - lng / 360 + n;
     const M = (357.5291 + 0.98560028 * (Js - 2451545)) % 360;
     const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
@@ -2657,7 +2672,7 @@ body.night .nav .btn{background:#1d2731;border:0}
 
   // ---------- 1.2: слои карты (как в Google, 2GIS, Mapy и геопортале Астаны) ----------
   const GIS = 'https://gis.esaulet.kz/server/rest/services/Sloi_geoportala_otkrytiy_kontur_0702/MapServer';
-  const CITY = '50.95,71.20,51.30,71.75';
+  const CITY = CUR.ovp;
   const OVL = [
     { id:'bus', e:'🚌', n:'Остановки и маршруты автобусов', kind:'bus' },
     { id:'bike', e:'🚲', n:'Велодорожки', kind:'bike' },
@@ -2990,7 +3005,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   const WX_ICON = c => c === 0 ? '☀' : c <= 3 ? '⛅' : c <= 48 ? '🌫' : c <= 67 || (c >= 80 && c <= 82) ? '🌧' : c <= 77 || c === 85 || c === 86 ? '❄' : '⛈';
   async function loadWeather(){
     try{
-      const j = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=51.13&longitude=71.43&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,snowfall&wind_speed_unit=ms&timezone=auto')).json();
+      const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CENTER[1].toFixed(2)}&longitude=${CENTER[0].toFixed(2)}&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,snowfall&wind_speed_unit=ms&timezone=auto`)).json();
       const c = j.current;
       wx = { t:Math.round(c.temperature_2m), feel:Math.round(c.apparent_temperature), wind:Math.round(c.wind_speed_10m), code:c.weather_code,
         snow:(c.snowfall || 0) > 0 || [71, 73, 75, 77, 85, 86].includes(c.weather_code) };
@@ -3732,7 +3747,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'shch', ru:'Астана — Щучинск', brg:338 },
     { id:'temir', ru:'Астана — Темиртау', brg:138 },
   ];
-  const CITY_C = [71.4304, 51.1282];
+  const CITY_C = CENTER;
   const brgDiff = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
   function avgZone(p){ if (dist(CITY_C, p) < 22000) return null; const b = brng(CITY_C, p); return AVG.find(z => brgDiff(b, z.brg) < 18) || null; }
   function routeAvgZone(r){ const c = r.geometry.coordinates; for (let i = 0; i < c.length; i += Math.max(1, Math.floor(c.length / 60))){ const z = avgZone(c[i]); if (z) return z; } return null; }
@@ -3803,7 +3818,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   let aqi = null;
   async function loadAir(){
     try{
-      const j = await (await fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=51.13&longitude=71.43&current=us_aqi,pm2_5&timezone=auto')).json();
+      const j = await (await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${CENTER[1].toFixed(2)}&longitude=${CENTER[0].toFixed(2)}&current=us_aqi,pm2_5&timezone=auto`)).json();
       aqi = j.current?.us_aqi ?? null;
       const chip = $('#wxChip'); if (aqi >= 150 && chip.textContent && !chip.textContent.includes('😷')) chip.textContent += ' 😷';
     }catch{}
@@ -6620,6 +6635,78 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (/cold/.test(tg) && Math.random() < .4 && wx) return mascot('wave', `Брр, ощущается как ${wx.feel}°! Я в шапке и шарфе — и вы одевайтесь теплее 🧣`, 6000);
     return mClick30.call(this, e);
   };
+  // =====================================================================
+  // ---------- 2.11.0: выбор города. Город — настройка (CITIES вверху); Астана — основной, всё как раньше ----------
+  const cityLabel = c => uiLang === 'kk' ? c.kk : uiLang === 'en' ? c.en : c.name;
+  // кнопка города в строке поиска
+  $('#q')?.insertAdjacentHTML('beforebegin', `<button class="city-chip" id="cityChip" type="button" aria-label="Город">${esc(cityLabel(CUR))} ▾</button>`);
+  $('#q').placeholder = uiLang === 'kk' ? 'Іздеу' : uiLang === 'en' ? 'Search' : 'Поиск';
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    .city-chip{flex:none;border:1px solid #f0d34d;background:#fff3b0;color:#1d2228;border-radius:11px;padding:5px 8px;font:700 13px/1.1 system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+    .city-list .item{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:12px;margin-bottom:6px;background:var(--chip,#f4f5f7);border:0;color:inherit;font:inherit;font-size:15px;text-align:left;cursor:pointer}
+    .city-list .item b{flex:1}.city-list .item.on{outline:2px solid #ffd200;background:#fff7d1;color:#1d2228}.city-list .item[disabled]{opacity:.45;cursor:default}
+    .city-tag{font-size:11px;padding:2px 7px;border-radius:8px;background:#e5f4e4;color:#1f7a3a;font-weight:700}.city-tag.s{background:#eee;color:#777}
+  </style>`);
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="citySheet" hidden><div class="sheet-card" role="dialog" aria-label="Выбор города">
+    <div class="sheet-head"><h2>Выберите город</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <div class="city-list" id="cityList"></div>
+    <label class="set-check"><input type="checkbox" id="cityAuto"> 📍 Предлагать город по GPS, когда я в другом городе</label>
+    <p class="hint">Выбор запоминается. «Мои места», «Свои на карте» и поездки — общие для всех городов. Голосом: «Барыс, открой Астану».</p>
+  </div></div>`);
+  const citySheet = $('#citySheet');
+  citySheet.querySelector('[data-close]').onclick = () => citySheet.hidden = true;
+  citySheet.onclick = e => { if (e.target === citySheet) citySheet.hidden = true; };
+  function setCity(id){
+    const c = CITIES[id]; if (!c?.live) return false;
+    if (c.id === CUR.id){ citySheet.hidden = true; return true; }
+    store.set('city', c.id);
+    toast(`Открываю карту: ${cityLabel(c)}…`);
+    setTimeout(() => location.reload(), 300);   // всё пересчитывается заново — центр, погода, данные
+    return true;
+  }
+  function openCities(){
+    $('#cityList').innerHTML = Object.values(CITIES).map(c => `<button class="item${c.id === CUR.id ? ' on' : ''}" data-city="${c.id}"${c.live ? '' : ' disabled'}>
+      <span>${c.e}</span><b>${esc(cityLabel(c))}</b>${c.main ? '<span class="city-tag">основной</span>' : c.live ? '' : '<span class="city-tag s">скоро</span>'}</button>`).join('');
+    $('#cityList').querySelectorAll('[data-city]').forEach(b => b.onclick = () => setCity(b.dataset.city));
+    $('#cityAuto').checked = store.get('cityAuto', true);
+    $('#cityAuto').onchange = e => store.set('cityAuto', e.target.checked);
+    citySheet.hidden = false;
+  }
+  $('#cityChip').onclick = openCities;
+  // строка «Город» в настройках
+  $('#myLevel')?.insertAdjacentHTML('afterend', `<button class="set-check" id="setCity" type="button" style="width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer">🏙 Город: <b>${esc(cityLabel(CUR))}</b> ▸</button>`);
+  $('#setCity') && ($('#setCity').onclick = () => { $('#setSheet') && ($('#setSheet').hidden = true); openCities(); });
+  // GPS: вы в другом городе из списка — один раз предлагаем переключиться (не чаще раза в сутки)
+  const cityAt = p => Object.values(CITIES).find(c => c.live && c.bounds && p.lng > c.bounds[0][0] && p.lng < c.bounds[1][0] && p.lat > c.bounds[0][1] && p.lat < c.bounds[1][1]) || null;
+  function cityHint(p){
+    try{
+      if (!store.get('cityAuto', true)) return;
+      const c = cityAt(p); if (!c || c.id === CUR.id) return;
+      const k = 'cityAsk_' + c.id; if (Date.now() - store.get(k, 0) < 864e5) return; store.set(k, Date.now());
+      $('#cityList').innerHTML = `<p style="margin:0 0 10px">📍 Похоже, вы ${esc(c.v)}. Открыть карту города ${esc(cityLabel(c))}?</p>
+        <button class="btn primary" style="width:100%" data-go>Да, ${esc(cityLabel(c))}</button><button class="btn" style="width:100%;margin-top:8px" data-stay>Остаться: ${esc(cityLabel(CUR))}</button>`;
+      $('#cityList').querySelector('[data-go]').onclick = () => setCity(c.id);
+      $('#cityList').querySelector('[data-stay]').onclick = () => citySheet.hidden = true;
+      citySheet.hidden = false;
+    }catch{}
+  }
+  const getPos211 = getPos;
+  getPos = function(){ return getPos211.apply(this, arguments).then(p => { cityHint({ lng:p.coords.longitude, lat:p.coords.latitude }); return p; }); };
+  // голос: «открой Орал», «переключи на Астану», «Уральск» → всегда Орал
+  const localCmd211 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    if (/(открой|переключи|покажи|смени|выбери|город|карту)/.test(t)){
+      const hit = CITY_SAY.find(([re]) => re.test(t));
+      if (hit && !/(маршрут|едем|поехали|отвези|до |в сторону)/.test(t)){
+        const c = CITIES[hit[1]];
+        return () => !c.live ? `${cityLabel(c)} скоро появится на карте — готовим город.` : c.id === CUR.id ? `Сейчас уже открыта карта: ${cityLabel(c)}.` : (setCity(c.id), `Открываю карту: ${cityLabel(c)}.`);
+      }
+    }
+    return localCmd211.apply(this, arguments);
+  };
+  window.__city = { id:CUR.id, list:Object.keys(CITIES), set:setCity, hint:cityHint };   // для автотестов
+
   // ---------- Настройки ----------
   function openSettings(){
     $('#setView').value = view().id; $('#setTheme').value = theme;
