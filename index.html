@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.11.0</p>
+    <p class="set-ver">Версия 2.12.0</p>
   </div>
 </div>
 
@@ -890,10 +890,10 @@ body.night .nav .btn{background:#1d2731;border:0}
   const CITIES = {
     astana:{ id:'astana', name:'Астана', kk:'Астана', en:'Astana', e:'🏙', live:true, main:true,
       center:[71.4304, 51.1282], bounds:[[70.95, 50.85], [71.95, 51.40]], viewbox:'71.20,51.30,71.75,50.95', bbox:'71.20,50.95,71.75,51.30', ovp:'50.95,71.20,51.30,71.75',
-      po:'по Астане', v:'в Астане' },
-    oral:{ id:'oral', name:'Орал', kk:'Орал', en:'Oral', e:'🌊', live:false,
+      po:'по Астане', v:'в Астане', gen:'Астаны', places:['/data/places-astana.json', '/data/osm-places-astana.json'] },
+    oral:{ id:'oral', name:'Орал', kk:'Орал', en:'Oral', e:'🌊', live:true,
       center:[51.3667, 51.2333], bounds:[[51.15, 51.05], [51.60, 51.38]], viewbox:'51.22,51.31,51.52,51.13', bbox:'51.22,51.13,51.52,51.31', ovp:'51.13,51.22,51.31,51.52',
-      po:'по Оралу', v:'в Орале' },
+      po:'по Оралу', v:'в Орале', gen:'Орала', places:['/data/places-oral.json', '/data/osm-places-oral.json'] },
     almaty:{ id:'almaty', name:'Алматы', kk:'Алматы', en:'Almaty', e:'🏔', live:false, soon:true },
   };
   // «Уральск», «Уральске», «Uralsk» → всегда Орал
@@ -904,6 +904,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   const BOUNDS = CUR.bounds;
   const VIEWBOX = CUR.viewbox;
   const BBOX = CUR.bbox;
+  const IS_AST = CUR.id === 'astana';   // символы, LRT, геопортал, экскурсия — только в Астане
   const STYLE = 'https://tiles.openfreemap.org/styles/liberty';
   const ROUTER = { car:'routed-car', foot:'routed-foot', bike:'routed-bike', scoot:'routed-bike' };
   const PITCH_3D = 55;
@@ -1902,7 +1903,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (camsLoaded) return; camsLoaded = true;
     const out = [];
     try{
-      const q = '[out:json][timeout:25];(node["highway"="speed_camera"](50.85,70.95,51.40,71.95);node["enforcement"="maxspeed"](50.85,70.95,51.40,71.95););out;';
+      const bb = `${BOUNDS[0][1]},${BOUNDS[0][0]},${BOUNDS[1][1]},${BOUNDS[1][0]}`, q = `[out:json][timeout:25];(node["highway"="speed_camera"](${bb});node["enforcement"="maxspeed"](${bb}););out;`;
       const j = await (await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:'data=' + encodeURIComponent(q),
         headers:{ 'Content-Type':'application/x-www-form-urlencoded' } })).json();
       (j.elements || []).forEach(e => out.push({ lng:e.lon, lat:e.lat, v:parseInt(e.tags?.maxspeed) || 0, src:'osm' }));
@@ -2096,7 +2097,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       if (id !== searchReq) return;
       const list = [...ov.slice(0, 6), ...list0.filter(it => !ov.some(o => near({ lng:+it.lon, lat:+it.lat }, { lng:+o.lon, lat:+o.lat }, 60) && title(o).toLowerCase() === title(it).toLowerCase()))].slice(0, 12);
       res.hidden = false;
-      if (!list.length){ res.innerHTML = '<div class="empty">Ничего не нашлось в Астане. Попробуйте «Кабанбай батыра 53» или название места.</div>'; return; }
+      if (!list.length){ res.innerHTML = `<div class="empty">Ничего не нашлось ${CUR.v}. Попробуйте улицу с номером дома или название места.</div>`; return; }
       res.innerHTML = list.map((it, k) => `<button data-k="${k}"><div class="t">${esc(title(it))}${it.promo ? ' <span class="ad">Реклама</span>' : ''}</div><div class="s">${esc(it.ov ? [catRu(it.cat), it.addr].filter(Boolean).join(' · ') : sub(it))}${it.hours && openNow(it.hours) === true ? ' · 🟢 открыто' : ''}</div></button>`).join('');
       res.querySelectorAll('button').forEach(b => b.onclick = () => pick(list[+b.dataset.k]));
     }catch{ res.hidden = false; res.innerHTML = '<div class="empty">Поиск недоступен. Проверьте интернет.</div>'; }
@@ -2159,7 +2160,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   function sub(it){
     const a = it.address || {};
-    return [a.road && it.name ? a.road + (a.house_number ? ' ' + a.house_number : '') : null, a.suburb || a.city_district, 'Астана'].filter(Boolean).join(', ');
+    return [a.road && it.name ? a.road + (a.house_number ? ' ' + a.house_number : '') : null, a.suburb || a.city_district, CUR.name].filter(Boolean).join(', ');
   }
   async function reverse(p){
     try{
@@ -2189,7 +2190,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       const p = { lng:pos.coords.longitude, lat:pos.coords.latitude };
       if (!inAstana(p)){
         if (!state.from){ lbl.textContent = 'Адрес или точка на карте'; }
-        return toast('Вы сейчас за пределами Астаны — поставьте точку А на карте.');
+        return toast(`Вы сейчас за пределами города ${CUR.name} — поставьте точку А на карте.`);
       }
       showMe(p);
       if (!state.from || state.from.me){ setPoint('from', { ...p, name:'Моё местоположение', me:true }); }
@@ -2957,7 +2958,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   const TIPS = [
     () => 'Привет! Я Барыс 🐾 Зажмите точку на карте — покажу меню.',
     () => `Ваш уровень: ${levelOf(score.pts).name} · ${score.pts} очков. Отмечайте ДТП и гололёд — получите ещё!`,
-    () => wx ? `В Астане ${wx.t}°, ощущается как ${wx.feel}°, ветер ${wx.wind} м/с. ${wx.feel <= -20 ? 'Одевайтесь теплее!' : 'Хорошей дороги!'}` : 'Хорошей дороги!',
+    () => wx ? `${CUR.v[0].toUpperCase() + CUR.v.slice(1)} ${wx.t}°, ощущается как ${wx.feel}°, ветер ${wx.wind} м/с. ${wx.feel <= -20 ? 'Одевайтесь теплее!' : 'Хорошей дороги!'}` : 'Хорошей дороги!',
     () => `Коллекция Астаны: ${collected.length} из ${LANDMARKS.length}. Проезжайте мимо Байтерека — расскажу историю!`,
     () => 'Нажмите 🔍 «По пути» — найду АЗС, кофе или аптеку на маршруте.',
     () => 'Сәлем! Қазақша сөйлеуім үшін баптауларда Айгүл немесе Дәулет дауысын таңдаңыз.',
@@ -2965,7 +2966,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   let tipIdx = 0;
   mascotEl.onclick = () => mascot('wave', TIPS[tipIdx++ % TIPS.length](), 6000);
   $('#setMascot').onchange = e => setMascot(e.target.checked);
-  setTimeout(() => { if (!driving && !store.get('mascotHello', false)){ store.set('mascotHello', true); mascot('wave', 'Сәлем! Я Барыс — ваш помощник на карте Астаны 🐾 Нажмите на меня, если нужна подсказка.', 8000); } }, 3500);
+  setTimeout(() => { if (!driving && !store.get('mascotHello', false)){ store.set('mascotHello', true); mascot('wave', `Сәлем! Я Барыс — ваш помощник на карте ${CUR.gen} 🐾 Нажмите на меня, если нужна подсказка.`, 8000); } }, 3500);
 
   // ---------- Очки и уровни ----------
   let score = store.get('score', { pts:0 });
@@ -3145,6 +3146,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'nuralem', n:'Нур Алем', q:'Нур Алем', ru:'Нур Алем — шар-павильон выставки ЭКСПО-2017, теперь музей энергии будущего.', kk:'Нұр Әлем — ЭКСПО-2017 көрмесінің шар тәріздес павильоны, қазір болашақ энергиясы мұражайы.' },
     { id:'museum', n:'Национальный музей', q:'Национальный музей Республики Казахстан', ru:'Национальный музей Казахстана открыт в 2014 году. Здесь можно увидеть Золотого человека.', kk:'Қазақстан Республикасының Ұлттық музейі 2014 жылы ашылды. Мұнда Алтын адамды көруге болады.' },
   ];
+  if (!IS_AST) LANDMARKS.length = 0;   // аудиогид и коллекция — пока только Астана
   let collected = store.get('collected', []), lmPos = store.get('lmPos', {}), lmTold = new Set(), lmResolving = false;
   async function resolveLandmarks(){
     if (lmResolving) return; lmResolving = true;
@@ -3241,7 +3243,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   }
   async function openPoint(p){
     popup?.remove();
-    const code = plusCode(p.lat, p.lng), short = code.slice(4) + ' Астана';
+    const code = plusCode(p.lat, p.lng), short = code.slice(4) + ' ' + CUR.name;
     const url = location.origin + location.pathname + `#p=${(+p.lng).toFixed(6)},${(+p.lat).toFixed(6)}~${encodeURIComponent(p.name || '')}`;
     $('#ptName').textContent = p.name || 'Точка на карте'; $('#ptCode').textContent = short; $('#ptQr').innerHTML = '<p class="hint">QR-код…</p>';
     $('#ptSheet').hidden = false;
@@ -3298,7 +3300,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   function loadPlaces(){
     if (placesDb) return Promise.resolve(placesDb);
     const get = u => fetch(u).then(r => r.ok ? r.json() : { items:[] }).catch(() => ({ items:[] }));
-    placesLoading = placesLoading || Promise.all([get('/data/places-astana.json'), get('/data/osm-places-astana.json'), get('/api/business')])
+    placesLoading = placesLoading || Promise.all([get(CUR.places[0]), get(CUR.places[1]), get('/api/business')])
       .then(([ov, osm, biz]) => { placesDb = mergePlaces(biz.items || [], ov.items || [], osm.items || []); return placesDb; })
       .catch(() => { placesDb = []; return placesDb; });
     return placesLoading;
@@ -3747,6 +3749,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'shch', ru:'Астана — Щучинск', brg:338 },
     { id:'temir', ru:'Астана — Темиртау', brg:138 },
   ];
+  if (!IS_AST) AVG.length = 0;
   const CITY_C = CENTER;
   const brgDiff = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
   function avgZone(p){ if (dist(CITY_C, p) < 22000) return null; const b = brng(CITY_C, p); return AVG.find(z => brgDiff(b, z.brg) < 18) || null; }
@@ -4098,6 +4101,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     [/азия ?парк|asia park/, 'Asia Park'], [/абу ?даби/, 'Abu Dhabi Plaza'], [/ботаническ/, 'Ботанический сад'], [/центральн[а-я]* парк/, 'Центральный парк'],
     [/назарбаев университет|назарбаев универ/, 'Назарбаев Университет'], [/атамекен|карта казахстана/, 'Атамекен'], [/триумфальн|арка мангилик/, 'Мәңгілік Ел'],
     [/шабыт|дворец творчества/, 'Шабыт'], [/опер|астана опера/, 'Астана Опера'], [/хан ?шатр/, 'Хан Шатыр']];
+  if (!IS_AST) ALIAS.length = 0;   // народные названия мест — свои у каждого города
   // «шатыра», «мегу», «Хан Шатырға» → основа слова для поиска
   const stem = q => q.split(/\s+/).map(w => w.length > 4 ? w.replace(/(ға дейін|ге дейін|ғa|ға|ге|қа|ке|дан|ден|тан|тен|нан|нен|ого|его|ому|ему|ой|ей|ую|юю|ом|ем|ам|ям|ах|ях|ы|и|у|ю|а|я|е)$/, '') : w).join(' ');
   async function findPlace(q){
@@ -4114,7 +4118,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     const text = String(query || '').replace(/[.!?,]+/g, ' ').replace(/\s+/g, ' ').trim(); if (text.length < 2) return 'Куда едем? Скажите название или адрес.';
     if (mode && mode !== state.mode && !driving) setMode(mode);
     const it = found || await findPlace(low(text));
-    if (!it) return `Не нашёл «${text}» в Астане. Скажите по-другому: название места или улицу с номером дома.`;
+    if (!it) return `Не нашёл «${text}» ${CUR.v}. Скажите по-другому: название места или улицу с номером дома.`;
     const p = { lng:+it.lon, lat:+it.lat, name:title(it) || text };
     if (driving && !demo && nav.shown) return changeDest(p);
     const prev = state.routes;
@@ -4224,7 +4228,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (loc){ try{ reply(await loc()); }catch{ reply('Что-то пошло не так. Попробуйте ещё раз.'); } return; }
     reply('Думаю…', true);
     try{
-      const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null };
+      const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null, city:CUR.id };
       const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:enMode() ? 'en' : kkMode() ? 'kk' : 'ru', ctx }) });
       if (r.status === 503 || r.status === 404) return reply(await placeFallback(text));
       if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
@@ -4300,7 +4304,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   let fog = new Set(store.get('fog', [])), fogDirty = false, fogNew = 0;
   const fogKey = (lng, lat) => Math.floor(lat / FOG_LAT) + ':' + Math.floor(lng / FOG_LNG);
   function fogVisit(lng, lat){
-    if (!inAstana({ lng, lat })) return;
+    if (!IS_AST || !inAstana({ lng, lat })) return;
     const k = fogKey(lng, lat); if (fog.has(k)) return;
     fog.add(k); fogDirty = true; fogNew++;
     if (fogNew % 5 === 0) addPts(1, 'за новые кварталы');
@@ -5670,7 +5674,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     };
     try{ map.addLayer(lm3d); }catch(e){ console.warn('lm3d', e); lm3d = null; }
   }
-  function maybeLandmarks(){ if (lmOn && map.getZoom() >= 11.5 && !map.getLayer('lm3d')) addLandmarks3D(); }
+  function maybeLandmarks(){ if (!IS_AST) return; if (lmOn && map.getZoom() >= 11.5 && !map.getLayer('lm3d')) addLandmarks3D(); }
   map.on('zoomend', maybeLandmarks);
   map.on('style.load', () => setTimeout(maybeLandmarks, 600));
   map.once('idle', maybeLandmarks);
@@ -6706,6 +6710,45 @@ body.night .nav .btn{background:#1d2731;border:0}
     return localCmd211.apply(this, arguments);
   };
   window.__city = { id:CUR.id, list:Object.keys(CITIES), set:setCity, hint:cityHint };   // для автотестов
+
+  // ---------- 2.12.0: Орал — что в нём своё, что пока только в Астане ----------
+  if (!IS_AST){
+    // слои, которых в Орале нет: геопортал Астаны, LRT, 3D-символы, игра «Открой Астану»
+    for (let i = OVL.length - 1; i >= 0; i--) if (['gis', 'lrt', 'lm3d', 'fog'].includes(OVL[i].kind)) OVL.splice(i, 1);
+    const pp = OVL.find(o => o.id === 'paidpark'); if (pp) pp.n = 'Платные парковки (по данным OpenStreetMap)';
+    document.querySelectorAll('p.hint').forEach(p => { if (/геопортала Астаны/.test(p.textContent)) p.hidden = true; });
+    // справка Барыса по Оралу (без выдуманных цифр)
+    Object.assign(KB, {
+      parking:'Про платные парковки Орала точных данных у меня пока нет — смотрите знаки на месте. Оплатить можно в Kaspi: Платежи → Транспорт → Парковки.',
+      lrt:'В Орале LRT нет — по городу ходят автобусы. Слой «Остановки и маршруты автобусов» в 🗂 Слоях.',
+      districts:'Орал — центр Западно-Казахстанской области, стоит при слиянии рек Жайық (Урал) и Шаған. Основан в 1613 году. Аэропорт — имени Мәншүк Мәметовой.',
+    });
+    Object.assign(KB_KK, {
+      parking:'Оралдағы ақылы тұрақтар туралы нақты дерегім әзірге жоқ — орнындағы белгілерге қараңыз. Kaspi-де төлеуге болады: Төлемдер → Көлік → Тұрақтар.',
+      lrt:'Оралда LRT жоқ — қалада автобустар жүреді. «Аялдамалар мен автобус бағыттары» қабатын 🗂 Қабаттардан қосыңыз.',
+      districts:'Орал — Батыс Қазақстан облысының орталығы, Жайық пен Шаған өзендерінің құйылысында орналасқан. 1613 жылы негізі қаланған. Әуежайы — Мәншүк Мәметова атындағы.',
+    });
+    // сервисы: общие ссылки по Казахстану, без астанинских страниц
+    SVC.food = [{ e:'🟡', n:'Glovo', u:'https://glovoapp.com/kz/ru/' }, { e:'🍱', n:'Яндекс Еда', u:'https://eda.yandex.kz/' }];
+    SVC.tickets = [{ e:'🎟', n:'Ticketon', u:'https://ticketon.kz/' }, { e:'🔴', n:'Kaspi', u:'https://kaspi.kz/' }];
+    try{
+      const sv = $('#svcSheet');
+      sv.setAttribute('aria-label', 'Сервисы: ' + CUR.name);
+      const h2 = sv.querySelector('.sheet-head h2'); if (h2) h2.textContent = '🧩 Сервисы: ' + CUR.name;
+      sv.querySelectorAll('h3').forEach(h => { if (/парковку/.test(h.textContent)){ h.hidden = true; let n = h.nextElementSibling; while (n && n.tagName !== 'H3'){ n.hidden = true; n = n.nextElementSibling; } } });
+      const tb = sv.querySelector('[data-tour]'); if (tb) tb.hidden = true;
+    }catch{}
+    document.head.insertAdjacentHTML('beforeend', '<style>[data-tourq]{display:none!important}</style>');
+    // подсказки Барыса: вместо «Коллекции Астаны» — квесты
+    TIPS[3] = () => `Нажмите 🎯 — квесты рядом: помогите дополнить карту ${CUR.gen} и получите очки!`;
+    // праздники: «День столицы» — только для Астаны
+    const holidayNow212 = holidayNow;
+    holidayNow = function(){ const h = holidayNow212.apply(this, arguments); return h && /столиц|Елорда/i.test((h.n || '') + (h.ru || '')) ? null : h; };
+    const ob = $('#offBtn'); if (ob && /Астаны/.test(ob.textContent)) ob.textContent = `⬇ Скачать карту ${CUR.gen}`;
+    // первый раз в городе — Барыс здоровается
+    setTimeout(() => { const k = 'hello_' + CUR.id; if (!driving && !store.get(k, false)){ store.set(k, true); store.set('mascotHello', true);
+      mascot('wave', `Сәлем, ${CUR.name}! Я Барыс 🐾 Погода, заправки, аптеки и маршруты — теперь ${CUR.po}. Нажмите на меня, если нужна подсказка.`, 9000); } }, 3000);
+  }
 
   // ---------- Настройки ----------
   function openSettings(){
