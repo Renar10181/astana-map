@@ -13,7 +13,7 @@ import time
 import urllib.parse
 import urllib.request
 
-BBOX = "50.95,71.20,51.30,71.75"   # юг, запад, север, восток
+BBOX = os.environ.get("BBOX", "50.95,71.20,51.30,71.75")   # юг, запад, север, восток; для Орала задаёт workflow
 SERVERS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
 KEYS = ["amenity", "shop", "tourism", "leisure", "office", "craft", "healthcare", "club"]
