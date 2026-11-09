@@ -23,6 +23,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git pull --rebase -q
           git add data/osm-places-astana.json
-          git diff --cached --quiet || (git commit -m "Обновлены заведения OpenStreetMap для Астаны" && git push)
+          git diff --cached --quiet && exit 0
+          git commit -m "Обновлены заведения OpenStreetMap для Астаны"
+          git checkout -- . && git clean -fdq
+          git pull --rebase -q origin main
+          git push origin HEAD:main
