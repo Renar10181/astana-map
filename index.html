@@ -2381,12 +2381,12 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'wc', e:'🚻', n:'Туалет', q:'nwr["amenity"="toilets"]' },
   ];
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
-  // 2.14.0: у каждого сервера 12 секунд; сервер, который недавно не ответил, пробуем последним — карта не «зависает»
+  // 2.14.0: у каждого сервера 9 секунд; сервер, который недавно не ответил, пробуем последним — карта не «зависает»
   const ovBad = {};
   async function overpass(query){
     const list = [...OVERPASS].sort((a, b) => (Date.now() - (ovBad[a] || 0) < 180e3) - (Date.now() - (ovBad[b] || 0) < 180e3));
     for (const u of list){
-      const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 12000);
+      const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 9000);
       try{
         const r = await fetch(u, { method:'POST', body:'data=' + encodeURIComponent(query), headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, signal:ac.signal });
         if (r.ok){ const j = await r.json(); delete ovBad[u]; return j; }
@@ -2851,7 +2851,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   // Часы работы из OpenStreetMap: «Mo-Fr 09:00-18:00; Sa 10:00-16:00», «24/7», ночные смены через полночь
   const DAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
   function openNow(oh, now = new Date()){
-    oh = String(oh).trim(); if (oh === '24/7') return true;
+    oh = String(oh).trim().replace(/\s*,\s*PH\b/g, '').replace(/;\s*PH\s+off\b/gi, '').replace(/^PH\s+off\s*;?\s*/i, ''); if (oh === '24/7') return true;   // праздники (PH) не учитываем
     const day = (now.getDay() + 6) % 7, prev = (day + 6) % 7, mins = now.getHours() * 60 + now.getMinutes();
     let today = null, carry = false;
     for (const rule of oh.split(';').map(x => x.trim()).filter(Boolean)){
@@ -7379,6 +7379,16 @@ body.night .nav .btn{background:#1d2731;border:0}
     $('#knowTitle').textContent = '💡 ' + (p.name && !/Определяю|Точка на карте/.test(p.name) ? p.name : 'Что знать');
     $('#knowList').innerHTML = '<li class="hint">Собираю, что известно…</li>';
     const out = [];
+    // сначала быстро — из базы заведений, потом дополняем из OpenStreetMap
+    (p.name ? searchPlaces(p.name).catch(() => []) : Promise.resolve([])).then(db0 => {
+      if (knowP !== p || !/Собираю/.test($('#knowList').textContent)) return;
+      const r0 = (db0 || []).find(x => dist([+x.lon, +x.lat], [p.lng, p.lat]) < 150) || {}, h0 = p.hours || r0.hours;
+      const pre = [];
+      if (h0){ const st = openNow(h0); pre.push(`🕒 ${st === true ? '<b style="color:#1f9d55">Сейчас открыто</b>' : st === false ? '<b style="color:#e53935">Сейчас закрыто</b>' : 'Часы работы'} — ${esc(ohRu(h0))}`); }
+      if (r0.phone) pre.push(`📞 <a href="tel:${esc(String(r0.phone).replace(/[^\d+]/g, ''))}">${esc(r0.phone)}</a>`);
+      pre.push('<span class="hint">Уточняю парковку и вход по OpenStreetMap…</span>');
+      $('#knowList').innerHTML = pre.map(x => `<li>${x}</li>`).join('');
+    });
     const [oh, j, db] = await Promise.all([
       hoursFor(p),
       overpass(`[out:json][timeout:15];(nwr(around:45,${p.lat},${p.lng})["name"];nwr["amenity"="parking"](around:250,${p.lat},${p.lng}););out center tags 80;`).catch(() => null),
