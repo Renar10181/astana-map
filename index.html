@@ -6616,7 +6616,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     .fr-sos{background:#e53935;color:#fff;font:700 11px system-ui;padding:1px 6px;border-radius:8px;animation:frb 1s infinite}
     @keyframes frb{50%{opacity:.35}}
     .fr-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line,#eee)}
-    .fr-row .fr-av{width:36px;height:36px;border-radius:50%;background:var(--chip,#f1f1f1);display:grid;place-items:center;font-size:20px;flex:none}
+    .fr-row .fr-av{width:36px;height:36px;border-radius:50%;background:rgba(127,127,127,.15);display:grid;place-items:center;font-size:20px;flex:none}
     .fr-row .fr-t{flex:1;min-width:0;font-size:14px}.fr-row .fr-t span{color:var(--muted);font-size:12.5px}
     .fr-acts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.fr-acts .btn{flex:1;min-width:130px}
     .btn.sos{background:#e53935;color:#fff;border-color:#e53935}
@@ -6663,7 +6663,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   $('#q').placeholder = uiLang === 'kk' ? 'Іздеу' : uiLang === 'en' ? 'Search' : 'Поиск';
   document.head.insertAdjacentHTML('beforeend', `<style>
     .city-chip{flex:none;border:1px solid #f0d34d;background:#fff3b0;color:#1d2228;border-radius:11px;padding:5px 8px;font:700 13px/1.1 system-ui,sans-serif;white-space:nowrap;cursor:pointer}
-    .city-list .item{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:12px;margin-bottom:6px;background:var(--chip,#f4f5f7);border:0;color:inherit;font:inherit;font-size:15px;text-align:left;cursor:pointer}
+    .city-list .item{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border-radius:12px;margin-bottom:6px;background:rgba(127,127,127,.15);border:0;color:inherit;font:inherit;font-size:15px;text-align:left;cursor:pointer}
     .city-list .item b{flex:1}.city-list .item.on{outline:2px solid #ffd200;background:#fff7d1;color:#1d2228}.city-list .item[disabled]{opacity:.45;cursor:default}
     .city-tag{font-size:11px;padding:2px 7px;border-radius:8px;background:#e5f4e4;color:#1f7a3a;font-weight:700}.city-tag.s{background:#eee;color:#777}
   </style>`);
@@ -6770,14 +6770,14 @@ body.night .nav .btn{background:#1d2731;border:0}
   // ---------- 2.13.0: Выпуск А «Турист и простота» (оба города) ----------
   // таксисту-карточка, 112 с адресом, подборки, транспорт, «ограничение впереди» и школы, 5/10/15 мин, погода в месте прибытия, «где я» на время
   document.head.insertAdjacentHTML('beforeend', `<style>
-    .big-card .addr{border-radius:14px;background:var(--chip,#f4f5f7);padding:10px 12px;margin:0 0 8px}
+    .big-card .addr{border-radius:14px;background:rgba(127,127,127,.15);padding:10px 12px;margin:0 0 8px}
     .big-card .addr small{display:block;font-size:12px;opacity:.65;margin-bottom:2px}
     .big-card .addr b{display:block;font-size:24px;line-height:1.2;word-break:break-word}
     .big-card .ask{font-size:16px;margin:0 0 10px;line-height:1.35}
     .big-card .bigname{font-size:28px;font-weight:800;line-height:1.15;margin:0 0 8px}
     .sos-call{display:flex;align-items:center;justify-content:center;gap:8px;background:#e53935;color:#fff!important;text-decoration:none;font:800 22px/1.1 system-ui,sans-serif;border-radius:14px;padding:16px;margin-bottom:8px}
     .sos-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
-    .sos-grid a{display:block;text-align:center;text-decoration:none;color:inherit;background:var(--chip,#f4f5f7);border-radius:12px;padding:10px 6px;font-weight:700}
+    .sos-grid a{display:block;text-align:center;text-decoration:none;color:inherit;background:rgba(127,127,127,.15);border-radius:12px;padding:10px 6px;font-weight:700}
     .sos-grid a span{display:block;font-weight:400;font-size:12px;opacity:.7}
     .tool.t112{color:#e53935;font-weight:800;font-size:14px}
     .col-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;scrollbar-width:none}
@@ -7178,7 +7178,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   // «💡 Что знать» в карточке места, «🌱 лёгкий маршрут», «✅ проверка перед выездом», фирменный голос Барыса
   document.head.insertAdjacentHTML('beforeend', `<style>
     .know-list{list-style:none;padding:0;margin:0 0 8px}.know-list li{padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06);line-height:1.35}
-    .trip-check{border-radius:12px;background:var(--chip,#f4f5f7);padding:8px 10px;margin:6px 0}.trip-check div{padding:3px 0}
+    .trip-check{border-radius:12px;background:rgba(127,127,127,.15);padding:8px 10px;margin:6px 0}.trip-check div{padding:3px 0}
     .r-tools{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px}.r-tools .chip.on{outline:2px solid #1f9d55}
     #asstEx{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}#asstEx::-webkit-scrollbar{display:none}#asstEx .chip{flex:none}
   </style>`);
