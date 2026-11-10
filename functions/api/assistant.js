@@ -6,7 +6,7 @@
 const MODELS = ['@cf/qwen/qwen3-30b-a3b-fp8', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'];
 const CATS = ['fuel', 'ev', 'food', 'cafe', 'pharm', 'shop', 'atm', 'park', 'wash', 'tyre', 'wc'];
 const EVENTS = ['accident', 'jam', 'works', 'closed', 'police', 'pothole', 'danger', 'ice', 'snow'];
-const ACTIONS = ['route_to', 'find_category', 'report', 'eta', 'weather', 'taxi', 'start_nav', 'stop_nav', 'my_car', 'quests', 'about', 'open_now', 'where_am_i', 'fuel_price', 'events_ahead', 'nearby', 'facts', 'none'];
+const ACTIONS = ['route_to', 'find_category', 'report', 'eta', 'weather', 'taxi', 'start_nav', 'stop_nav', 'my_car', 'quests', 'about', 'open_now', 'where_am_i', 'fuel_price', 'events_ahead', 'nearby', 'facts', 'add_stop', 'easy_route', 'trip_check', 'none'];
 
 // грубое ограничение: не больше 40 запросов в час с одного адреса (в памяти воркера)
 const hits = new Map();
@@ -26,6 +26,9 @@ function prompt(lang, ctx) {
 Действия:
 - route_to {"query":"куда ехать — название места ПО-РУССКИ или как на карте Астаны (Khan Shatyr → Хан Шатыр, airport → аэропорт, railway station → вокзал Нұрлы жол)"} — построить маршрут к месту или адресу
 - find_category {"cat":"${CATS.join('|')}"} — найти рядом или по пути (fuel=АЗС, ev=зарядка, food=еда, cafe=кофе, pharm=аптека, shop=продукты, atm=банкомат, park=парковка, wash=мойка, tyre=шиномонтаж, wc=туалет)
+- add_stop {"cat":"${CATS.join('|')}"} — заехать по пути (добавить остановку на маршрут): «заедем на заправку», «по дороге в аптеку»
+- easy_route {} — лёгкий маршрут для новичка: меньше левых поворотов и разворотов
+- trip_check {} — проверить поездку перед выездом: открыто ли, парковка, пробки, погода
 - report {"type":"${EVENTS.join('|')}"} — сообщить о событии на дороге
 - eta {} — сколько ехать / когда приедем
 - weather {} — погода
@@ -50,6 +53,7 @@ function prompt(lang, ctx) {
 - Самокаты: с 25.08.2026 по тротуарам нельзя, штраф 8 650 ₸.
 - Трассы: КазАвтоЖол 1403, приложение Sapar.
 Контекст: ${JSON.stringify(ctx).slice(0, 600)}
+Если пользователь говорит «она», «он», «там», «туда», «это место» — речь о ctx.last_place (если есть). «А дешевле?» после разговора о топливе — fuel_price.
 Не выдумывай адреса, цены и часы работы. Если не знаешь — так и скажи.`;
 }
 
@@ -62,6 +66,9 @@ function promptOral(lang, ctx) {
 Действия:
 - route_to {"query":"куда ехать — название места ПО-РУССКИ или как на карте Орала (airport → аэропорт, railway station → вокзал)"} — построить маршрут к месту или адресу
 - find_category {"cat":"${CATS.join('|')}"} — найти рядом или по пути (fuel=АЗС, ev=зарядка, food=еда, cafe=кофе, pharm=аптека, shop=продукты, atm=банкомат, park=парковка, wash=мойка, tyre=шиномонтаж, wc=туалет)
+- add_stop {"cat":"${CATS.join('|')}"} — заехать по пути (добавить остановку на маршрут): «заедем на заправку», «по дороге в аптеку»
+- easy_route {} — лёгкий маршрут для новичка: меньше левых поворотов и разворотов
+- trip_check {} — проверить поездку перед выездом: открыто ли, парковка, пробки, погода
 - report {"type":"${EVENTS.join('|')}"} — сообщить о событии на дороге
 - eta {} — сколько ехать / когда приедем
 - weather {} — погода
@@ -86,6 +93,7 @@ function promptOral(lang, ctx) {
 - Самокаты: с 25.08.2026 по тротуарам нельзя, штраф 8 650 ₸.
 - Трассы: КазАвтоЖол 1403, приложение Sapar.
 Контекст: ${JSON.stringify(ctx).slice(0, 600)}
+Если пользователь говорит «она», «он», «там», «туда», «это место» — речь о ctx.last_place (если есть). «А дешевле?» после разговора о топливе — fuel_price.
 Не выдумывай адреса, цены, часы работы и районы. Если не знаешь — так и скажи.`;
 }
 
@@ -116,7 +124,7 @@ export async function onRequestPost({ request, env }) {
       if (!j || typeof j.say !== 'string') continue;
       const action = ACTIONS.includes(j.action) ? j.action : 'none';
       const args = typeof j.args === 'object' && j.args ? j.args : {};
-      if (action === 'find_category' && !CATS.includes(args.cat)) return Response.json({ ok: true, say: j.say.slice(0, 200), action: 'none', args: {} });
+      if ((action === 'find_category' || action === 'add_stop') && !CATS.includes(args.cat)) return Response.json({ ok: true, say: j.say.slice(0, 200), action: 'none', args: {} });
       if (action === 'report' && !EVENTS.includes(args.type)) return Response.json({ ok: true, say: j.say.slice(0, 200), action: 'none', args: {} });
       return Response.json({ ok: true, say: j.say.slice(0, 200), action, args, model });
     } catch (e) { /* пробуем следующую модель */ }

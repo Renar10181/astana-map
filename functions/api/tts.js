@@ -4,7 +4,10 @@ const VOICES = {
   'kk-KZ-AigulNeural': 'kk-KZ', 'kk-KZ-DauletNeural': 'kk-KZ',
   'ru-RU-SvetlanaNeural': 'ru-RU', 'ru-RU-DariyaNeural': 'ru-RU', 'ru-RU-DmitryNeural': 'ru-RU',
   'en-US-GuyNeural': 'en-US', 'en-US-JennyNeural': 'en-US',
+  'ru-RU-Barys': 'ru-RU', 'kk-KZ-Barys': 'kk-KZ',
 };
+// Фирменный голос «Барыс» — мужской голос Azure чуть выше и бодрее, как у персонажа-барсёнка
+const CHAR = { 'ru-RU-Barys': ['ru-RU-DmitryNeural', '+14%', '+8%'], 'kk-KZ-Barys': ['kk-KZ-DauletNeural', '+14%', '+8%'] };
 
 export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
@@ -22,7 +25,8 @@ export async function onRequestGet({ request, env, waitUntil }) {
   if (hit) return hit;
 
   const esc = s => s.replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
-  const ssml = `<speak version="1.0" xml:lang="${VOICES[v]}"><voice name="${v}"><prosody rate="+4%">${esc(t)}</prosody></voice></speak>`;
+  const [name, pitch, rate] = CHAR[v] || [v, '+0%', '+4%'];
+  const ssml = `<speak version="1.0" xml:lang="${VOICES[v]}"><voice name="${name}"><prosody pitch="${pitch}" rate="${rate}">${esc(t)}</prosody></voice></speak>`;
   const r = await fetch(`https://${env.AZURE_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`, {
     method: 'POST',
     headers: {

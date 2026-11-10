@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.13.0</p>
+    <p class="set-ver">Версия 2.14.0</p>
   </div>
 </div>
 
@@ -1582,6 +1582,8 @@ body.night .nav .btn{background:#1d2731;border:0}
     { id:'az:ru-RU-SvetlanaNeural', name:'Светлана · русский, жен.', lang:'ru' },
     { id:'az:ru-RU-DariyaNeural',   name:'Дарья · русский, жен.',    lang:'ru' },
     { id:'az:ru-RU-DmitryNeural',   name:'Дмитрий · русский, муж.',  lang:'ru' },
+    { id:'az:ru-RU-Barys',          name:'🐆 Барыс · фирменный, русский', lang:'ru' },
+    { id:'az:kk-KZ-Barys',          name:'🐆 Барыс · фирменный, қазақша', lang:'kk' },
     { id:'az:en-US-GuyNeural',      name:'Guy · English, male',      lang:'en' },
     { id:'az:en-US-JennyNeural',    name:'Jenny · English, female',  lang:'en' },
   ];
@@ -4230,7 +4232,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (loc){ try{ reply(await loc()); }catch{ reply('Что-то пошло не так. Попробуйте ещё раз.'); } return; }
     reply('Думаю…', true);
     try{
-      const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null, city:CUR.id };
+      const ctx = { driving, kmh:lastKmh, to:state.to?.name || null, left_m:driving ? Math.round(nav.left || 0) : null, home_saved:!!places.home, time:hhmm(new Date()), temp:wx?.t ?? null, city:CUR.id, last_place:memPlace(), last_cat:memCat(), stops:state.stops.length };
       const r = await fetch('/api/assistant', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ text, lang:enMode() ? 'en' : kkMode() ? 'kk' : 'ru', ctx }) });
       if (r.status === 503 || r.status === 404) return reply(await placeFallback(text));
       if (r.status === 429) return reply('Много вопросов подряд — давайте через пару минут 🐾');
@@ -7163,6 +7165,380 @@ body.night .nav .btn{background:#1d2731;border:0}
     return localCmd213.apply(this, arguments);
   };
   window.__a = { latin, addr3, showDriver, open112, openCollections, openHere, hereStart, hereStop, here:() => here, wxAt, limitAhead, reach:() => reachMin };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.14.0: Выпуск Б «Умный Барыс» (оба города) ----------
+  // память диалога («а она открыта?», «а дешевле?», «а пешком?»), несколько остановок одной фразой, поиск с опечатками,
+  // «💡 Что знать» в карточке места, «🌱 лёгкий маршрут», «✅ проверка перед выездом», фирменный голос Барыса
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    .know-list{list-style:none;padding:0;margin:0 0 8px}.know-list li{padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06);line-height:1.35}
+    .trip-check{border-radius:12px;background:var(--chip,#f4f5f7);padding:8px 10px;margin:6px 0}.trip-check div{padding:3px 0}
+    .r-tools{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px}.r-tools .chip.on{outline:2px solid #1f9d55}
+    #asstEx{display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:4px}#asstEx::-webkit-scrollbar{display:none}#asstEx .chip{flex:none}
+  </style>`);
+  // ---- память: о каком месте и о чём говорили последние 15 минут ----
+  const mem = { p:null, cat:null, list:[], li:0, offer:null, offerT:0, t:0 };
+  const memFresh = () => Date.now() - mem.t < 15 * 60e3;
+  function memPlace(){ return mem && memFresh() && mem.p ? mem.p.name || null : null; }
+  function memCat(){ return mem && memFresh() ? mem.cat : null; }
+  const setPoint214 = setPoint;
+  setPoint = function(kind, p){
+    if (kind === 'to' && p && !p.me){ mem.p = { lng:+p.lng, lat:+p.lat, name:p.name && !/Определяю/.test(p.name) ? p.name : '', hours:p.hours || '' }; mem.t = Date.now(); }
+    return setPoint214.apply(this, arguments);
+  };
+  // часы работы места: из базы заведений, из точки, или из OpenStreetMap рядом
+  async function hoursFor(p){
+    if (!p) return '';
+    if (p.hours) return p.hours;
+    const key = low(p.name || '').replace(/[«»"🏛⛽💊🍔☕🛒🏧🅿️🚿🛞🚻🔌]/g, '').split(/[ ,]/).find(w => w.length >= 3) || '';
+    try{ const db = key ? await searchPlaces(p.name) : []; const h = db.find(x => x.hours && dist([+x.lon, +x.lat], [p.lng, p.lat]) < 150); if (h) return h.hours; }catch{}
+    try{
+      const j = await overpass(`[out:json][timeout:15];nwr(around:90,${p.lat},${p.lng})["opening_hours"];out tags 30;`);
+      const els = j.elements || [];
+      const e = els.find(x => key && (low(x.tags.name || '').includes(key) || low(x.tags['name:ru'] || '').includes(key))) || (els.length === 1 ? els[0] : null);
+      return e?.tags?.opening_hours || '';
+    }catch{ return null; }
+  }
+  async function openAnswer(p){
+    const oh = await hoursFor(p), nm = p.name || 'Это место';
+    if (oh === null) return 'Не получилось узнать часы — проверьте интернет.';
+    if (!oh) return `${nm}: часов работы нет в данных карты. Подскажите их в квестах 🎯 — получите очки.`;
+    const st = openNow(oh), soon = openNow(oh, new Date(Date.now() + 45 * 60e3));
+    return `${nm}: ${st === true ? (soon === false ? 'открыто, но скоро закроется' : 'сейчас открыто') : st === false ? 'сейчас закрыто' : 'часы работы'} — ${ohRu(oh)}.`;
+  }
+  // места категории вдоль маршрута (в поездке — только впереди)
+  async function catAlong(id){
+    const cat = CATS.find(c => c.id === id), line = activeLine();
+    if (!cat || !line || line.length < 2) return null;
+    const [s, w, n, e] = bboxOf(line, 0.004);
+    if ((n - s) * (e - w) > 0.6) return { cat, items:[] };
+    const j = await overpass(`[out:json][timeout:20];${cat.q}(${s},${w},${n},${e});out center 300;`);
+    let items = (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat, name:el.tags?.name || el.tags?.brand || cat.n, hours:el.tags?.opening_hours || '' }))
+      .filter(x => x.lng != null).map(x => { const r = lineDist([x.lng, x.lat], line); return { ...x, off:r.d, at:r.at }; }).filter(x => x.off < 500);
+    if (driving) items = items.filter(x => x.at > 150);
+    items.forEach(x => { x.open = x.hours ? openNow(x.hours) : null; });
+    items.sort((a, b) => (a.open === false) - (b.open === false) || a.off - b.off || a.at - b.at);
+    if (id === 'fuel'){ await loadFuel().catch(() => {}); items.forEach(x => { const f = fuelAt(x); if (f) x.price = f; }); }
+    return { cat, items };
+  }
+  const stopName = (cat, x) => `${cat.e} ${x.name}`;
+  async function addCatStop(id){
+    const cat = CATS.find(c => c.id === id); if (!cat) return '';
+    if (!activeLine()){ doAction('find_category', { cat:id }); return `Маршрута пока нет — показываю ${cat.n.toLowerCase()} рядом. Выберите и нажмите «Сюда».`; }
+    if (state.stops.length >= MAX_STOPS) return 'Остановок уже пять — больше нельзя.';
+    let r; try{ r = await catAlong(id); }catch{ return 'Не получилось найти — проверьте интернет.'; }
+    if (!r?.items.length) return `${cat.n} по пути не нашёл. Скажите «найди ${cat.n.toLowerCase()}» — поищу рядом.`;
+    const x = r.items[0];
+    mem.cat = id; mem.list = r.items; mem.li = 0; mem.t = Date.now();
+    addStop({ lng:x.lng, lat:x.lat, name:stopName(cat, x) }, false);
+    return `Заезжаем: ${x.name}${x.off > 60 ? `, крюк около ${fmtDist(Math.round(x.off * 2 / 10) * 10)}` : ', прямо на пути'}${x.price ? '. ' + fuelLine(x.price.p) : ''}${x.open === false ? '. Внимание: по часам сейчас закрыто' : ''}.`;
+  }
+  // «а другую» — следующая из того же списка вместо только что добавленной
+  function nextCatStop(){
+    const cat = CATS.find(c => c.id === mem.cat);
+    if (!cat || !mem.list.length) return null;
+    const cur = mem.list[mem.li], i = state.stops.findIndex(s => cur && s.name === stopName(cat, cur));
+    if (++mem.li >= mem.list.length) return `Других вариантов (${cat.n}) по пути нет.`;
+    const x = mem.list[mem.li]; mem.t = Date.now();
+    if (i >= 0) state.stops.splice(i, 1);
+    addStop({ lng:x.lng, lat:x.lat, name:stopName(cat, x) }, false);
+    return `Тогда ${x.name}: ${x.off > 60 ? 'крюк около ' + fmtDist(Math.round(x.off * 2 / 10) * 10) : 'прямо на пути'}${x.price ? ', ' + fuelLine(x.price.p) : ''}.`;
+  }
+  // «а дешевле?» — пока цены есть только у АЗС
+  async function cheaper(kind){
+    const k = kind || mem.kind || 'a92', nm = { a92:'АИ-92', a95:'АИ-95', dt:'дизель', gas:'газ' }[k];
+    mem.kind = k; mem.cat = 'fuel'; mem.t = Date.now();
+    let list = [];
+    if (activeLine()){ try{ list = ((await catAlong('fuel'))?.items || []).filter(x => x.price?.p?.[k]).map(x => ({ ...x, pr:x.price.p[k], how:x.off > 60 ? 'крюк ' + fmtDist(Math.round(x.off * 2 / 10) * 10) : 'на пути' })); }catch{} }
+    if (!list.length){
+      await loadFuel(true).catch(() => {});
+      const h = myPos() || map.getCenter();
+      list = Object.values(fuelDb || {}).filter(f => f.p?.[k] && Date.now() - f.ts < 7 * 864e5).map(f => ({ lng:f.lng, lat:f.lat, name:f.n, pr:f.p[k], d:dist([h.lng, h.lat], [f.lng, f.lat]) }))
+        .filter(f => f.d < 15000).map(f => ({ ...f, how:fmtDist(f.d) + ' от вас' }));
+    }
+    if (!list.length) return `Цен на ${nm} рядом пока никто не отметил. Отметьте на АЗС — получите очки!`;
+    list.sort((a, b) => a.pr - b.pr);
+    const b = list[0]; mem.offer = { lng:b.lng, lat:b.lat, name:'⛽ ' + b.name }; mem.offerT = Date.now();
+    return `${nm} дешевле всего: ${b.name} — ${b.pr} ₸, ${b.how}. Заехать? Скажите «заедем».`;
+  }
+  async function modeAgain(m){
+    if (!state.to) return 'Сначала скажите, куда едем.';
+    const prev = state.routes; setMode(m); buildRoute();
+    const r = await waitRoute(prev);
+    const w = { car:'На машине', foot:'Пешком', bike:'На велосипеде', scoot:'На самокате' }[m];
+    return r ? `${w}: ${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}.` : 'Строю маршрут…';
+  }
+
+  // ---- несколько остановок одной фразой: «едем в Хан Шатыр через аптеку и заправку», «сначала в аптеку, потом в Мегу, потом домой» ----
+  const PREP = /^(?:(?:поехали|поедем|едем|заедем|заехать|заскочим|отвези|вези|потом|затем|а)\s+)*(?:в|во|до|на|к|ко|за)\s+/;
+  function multiParse(t){
+    const s = t.replace(FILL, ' ').replace(/\s+/g, ' ').trim();
+    let parts = null, m;
+    if (!/(поехали|поедем|едем|отвези|вези|маршрут|сначала|сперва|заедем|потом|затем|через|^(в|во|до|на|к|ко) )/.test(s) || /через \d|через (минут|час|полчас)/.test(s)) return null;
+    if ((m = s.match(/^(?:(?:поехали|поедем|едем|отвези|вези|маршрут|построй маршрут|проложи маршрут|хочу|нужно|надо)\s+)?(?:(?:в|во|до|на|к|ко)\s+)?(.+?)\s+(?:через|с заездом в|с заездом на|заехав в|заехав на)\s+(.+)$/)))
+      parts = [...m[2].split(/\s*(?:,|\sи\s|\sпотом\s)\s*/), m[1]];
+    else if (/^(?:сначала|сперва)\s/.test(s) || /\s(?:потом|затем|после этого)\s/.test(s))
+      parts = s.replace(/^(?:сначала|сперва)\s+/, '').replace(/,?\s*(?:а\s+)?(?:потом|затем|после этого)\s+/g, '|').replace(/,\s*/g, '|').split('|');
+    if (!parts) return null;
+    parts = parts.map(x => x.replace(PREP, '').replace(/^(?:маршрут|едем|поехали)\s+/, '').trim()).filter(x => x.length >= 2);
+    return parts.length >= 2 && parts.length <= MAX_STOPS + 1 ? parts : null;
+  }
+  async function resolvePart(x){
+    const sv = savedIn(x.length <= 6 ? x : ' ' + x);
+    if (sv.length) return sv[0].p ? { p:{ ...sv[0].p, name:sv[0].p.name || sv[0].label }, label:sv[0].label } : { miss:sv[0].label };
+    const cw = CAT_WORDS.find(([, re]) => re.test(x));
+    if (cw && x.split(' ').length <= 2) return { cat:cw[0] };
+    const it = await findPlace(low(x));
+    return it ? { p:{ lng:+it.lon, lat:+it.lat, name:title(it) || x }, label:title(it) || x } : { none:x };
+  }
+  // категория между двумя точками — с наименьшим крюком
+  async function catBetween(id, a, b){
+    const cat = CATS.find(c => c.id === id);
+    const [s, w, n, e] = bboxOf([[a.lng, a.lat], [b.lng, b.lat]], 0.012);
+    if ((n - s) * (e - w) > 0.6) return null;
+    const j = await overpass(`[out:json][timeout:20];${cat.q}(${s},${w},${n},${e});out center 300;`);
+    const D = (p, q) => dist([p.lng, p.lat], [q.lng, q.lat]);
+    const best = (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat, name:el.tags?.name || el.tags?.brand || cat.n, hours:el.tags?.opening_hours || '' }))
+      .filter(x => x.lng != null && !(x.hours && openNow(x.hours) === false)).map(x => ({ ...x, c:D(a, x) + D(x, b) - D(a, b) })).sort((p, q) => p.c - q.c)[0];
+    return best ? { lng:best.lng, lat:best.lat, name:`${cat.e} ${best.name}` } : null;
+  }
+  async function routeMulti(parts){
+    const h = myPos() || (state.from && !driving ? state.from : null);
+    if (!h) return 'Не знаю, где вы — включите геолокацию, и построю маршрут с остановками.';
+    const rs = [];
+    for (const x of parts) rs.push(await resolvePart(x));
+    const miss = rs.find(r => r.miss); if (miss) return `${miss.miss} пока не сохранено. Нажмите на адрес на карте и выберите 📌.`;
+    const none = rs.find(r => r.none); if (none) return `Не нашёл «${none.none}» ${CUR.v}. Скажите по-другому.`;
+    const pts = rs.map(r => r.p || null);
+    // категории — между соседними точками
+    for (let i = 0; i < rs.length; i++){
+      if (!rs[i].cat) continue;
+      const a = i ? pts[i - 1] || h : h, b = pts.slice(i + 1).find(Boolean) || a;
+      let p = null; try{ p = await catBetween(rs[i].cat, a, b); }catch{}
+      if (!p) return `${CATS.find(c => c.id === rs[i].cat).n} по пути не нашёл.`;
+      pts[i] = p; rs[i].label = p.name;
+    }
+    const dest = pts.at(-1), via = pts.slice(0, -1);
+    mem.p = { ...dest, hours:'' }; mem.t = Date.now();
+    if (driving && !demo && nav.shown){ state.stops = via.map(p => ({ ...p })); renderStops(); return changeDest({ ...dest }); }
+    const prev = state.routes;
+    setPoint('from', { lng:h.lng, lat:h.lat, name:'Моё местоположение', me:true }, true);
+    state.stops = via.map(p => ({ lng:p.lng, lat:p.lat, name:p.name })); renderStops();
+    goTo({ ...dest });
+    const r = await waitRoute(prev);
+    const chain = pts.map(p => p.name.replace(/^[^\wА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі]+\s*/, '')).join(' → ');
+    return r ? `${chain}: ${fmtTime(r.duration * (r._f || 1))}, ${fmtDist(r.distance)}. Скажите «поехали».` : `Строю маршрут: ${chain}…`;
+  }
+
+  // ---- поиск с опечатками и вперемешку KZ/RU/латиница: «Ханшатыр», «Khan Shatyr», «Хилтн» ----
+  function levN(a, b){
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    let prev = Array.from({ length:b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++){
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  const searchPlaces214 = searchPlaces;
+  searchPlaces = async function(text){
+    const r = await searchPlaces214.apply(this, arguments);
+    if (r.length) return r;
+    const db = await loadPlaces(); if (!db.length) return [];
+    const qj = normKey(text).replace(/ /g, ''); if (qj.length < 4) return [];
+    const tol = qj.length >= 9 ? 2 : 1, c = map.getCenter(), out = [];
+    for (const p of db){
+      const kj = p.k.replace(/ /g, ''); if (kj.length < 3) continue;
+      const sc = kj.startsWith(qj) ? 3 : levN(kj.slice(0, qj.length), qj) <= tol ? 2 : levN(kj, qj) <= tol ? 2 : 0;
+      if (sc) out.push({ p, sc:sc + (p.r[11] ? 1 : 0), d:dist([c.lng, c.lat], [p.r[0], p.r[1]]) });
+    }
+    out.sort((a, b) => b.sc - a.sc || a.d - b.d);
+    return out.slice(0, 8).map(({ p:{ r } }) => ({ lon:r[0], lat:r[1], name:r[2], ov:true, cat:r[3], addr:r[4], phone:r[5], web:r[6], src:r[7], hours:r[8] || '', desc:r[9] || '', bid:r[10] || '', promo:r[11] || '', display_name:r[2], address:{} }));
+  };
+
+  // ---- «💡 Что знать до поездки» — в карточке места, по данным карты (без выдумок) ----
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="knowSheet" hidden><div class="sheet-card" role="dialog" aria-label="Что знать до поездки">
+    <div class="sheet-head"><h2 id="knowTitle">💡 Что знать</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <ul class="know-list" id="knowList"></ul>
+    <div class="row"><button class="btn primary" id="knowGo" style="flex:1">Сюда</button></div>
+    <p class="hint">По данным OpenStreetMap, базы заведений и погоды. Чего нет в данных — не придумываю.</p>
+  </div></div>`);
+  const knowSheet = $('#knowSheet');
+  knowSheet.addEventListener('click', e => { if (e.target === knowSheet || e.target.closest('[data-close]')) knowSheet.hidden = true; });
+  let knowP = null;
+  $('#knowGo').onclick = () => { knowSheet.hidden = true; if (knowP) goTo(knowP); };
+  async function knowAbout(p){
+    knowP = p; popup?.remove(); knowSheet.hidden = false;
+    $('#knowTitle').textContent = '💡 ' + (p.name && !/Определяю|Точка на карте/.test(p.name) ? p.name : 'Что знать');
+    $('#knowList').innerHTML = '<li class="hint">Собираю, что известно…</li>';
+    const out = [];
+    const [oh, j, db] = await Promise.all([
+      hoursFor(p),
+      overpass(`[out:json][timeout:15];(nwr(around:45,${p.lat},${p.lng})["name"];nwr["amenity"="parking"](around:250,${p.lat},${p.lng}););out center tags 80;`).catch(() => null),
+      p.name ? searchPlaces(p.name).catch(() => []) : [],
+    ]);
+    if (knowP !== p) return;
+    const els = j?.elements || [], key = low(p.name || '').split(/[ ,]/).find(w => w.length >= 3) || '';
+    const self = els.find(e => key && low(e.tags?.name || '').includes(key)) || {}, tg = self.tags || {};
+    const rec = (db || []).find(x => dist([+x.lon, +x.lat], [p.lng, p.lat]) < 150) || {};
+    if (oh === null) out.push('🕒 Часы работы не загрузились — нет связи.');
+    else if (!oh) out.push('🕒 Часов работы нет в данных — лучше позвонить заранее.');
+    else {
+      const st = openNow(oh), soon = openNow(oh, new Date(Date.now() + 60 * 60e3));
+      out.push(`🕒 ${st === true ? (soon === false ? '<b>Открыто, но закроется в течение часа</b>' : '<b style="color:#1f9d55">Сейчас открыто</b>') : st === false ? '<b style="color:#e53935">Сейчас закрыто</b>' : 'Часы работы'} — ${esc(ohRu(oh))}`);
+    }
+    const pk = els.filter(e => e.tags?.amenity === 'parking'), free = pk.filter(e => e.tags.fee === 'no').length, paid = pk.filter(e => e.tags.fee && e.tags.fee !== 'no').length;
+    out.push(pk.length ? `🅿️ Парковок в 250 м: ${pk.length}${free ? ` · бесплатных ${free}` : ''}${paid ? ` · платных ${paid}` : ''}` : '🅿️ Парковок рядом в данных карты нет — возможно, только у дороги.');
+    if (tg.wheelchair) out.push(tg.wheelchair === 'yes' ? '♿ Доступно для колясок' : tg.wheelchair === 'limited' ? '♿ Частично доступно для колясок' : '♿ Для колясок недоступно');
+    if (tg.level) out.push(`🏢 Этаж: ${esc(tg.level)}`);
+    if (tg['payment:cards'] === 'yes' || tg['payment:kaspi'] === 'yes') out.push('💳 Можно оплатить картой' + (tg['payment:kaspi'] === 'yes' ? ' и Kaspi' : ''));
+    if (/yes|only/.test(tg['diet:halal'] || '')) out.push('🕌 Отмечено как халяль');
+    const ph = rec.phone || tg.phone || tg['contact:phone']; if (ph) out.push(`📞 <a href="tel:${esc(String(ph).replace(/[^\d+]/g, ''))}">${esc(ph)}</a>`);
+    if (wx && (wx.feel <= -15 || wx.snow || wx.wind >= 12)) out.push(`🌡 На улице ${wx.t}°, ощущается ${wx.feel}°${wx.snow ? ', снег — скользко' : ''}${wx.wind >= 12 ? ', сильный ветер' : ''}. Оденьтесь теплее.`);
+    const h = myPos();
+    if (h){ const d = dist([h.lng, h.lat], [p.lng, p.lat]); out.push(`🚗 ${fmtDist(d)} от вас · на машине примерно ${fmtTime(d * 1.3 / 7)}, пешком ${fmtTime(d * 1.3 / 1.25)}`); }
+    $('#knowList').innerHTML = out.map(x => `<li>${x}</li>`).join('');
+  }
+
+  // ---- «🌱 Лёгкий маршрут» и «✅ Проверить поездку» — в списке вариантов ----
+  let easyOn = store.get('easyRoute', false), checkFor = null;
+  const hardness = r => { let rb = 0; try{ rb = (r.legs || []).flatMap(l => l.steps || []).filter(s => /roundabout|rotary/.test(s.maneuver?.type || '')).length; }catch{} return leftTurns(r) + rb * 0.5; };
+  function pickEasy(say){
+    const rs = state.routes; if (state.mode !== 'car' || rs.length < 2) return say ? 'Здесь один путь — проще не найти.' : '';
+    const f = r => r.duration * (r._f || 1), best = Math.min(...rs.map(f));
+    let k = -1, hk = Infinity;
+    rs.forEach((r, i) => { const hd = hardness(r); if (f(r) <= best * 1.3 && hd < hk){ hk = hd; k = i; } });
+    if (k < 0) return '';
+    if (k !== state.active) selectRoute(k, true);
+    const r = rs[k], dt = Math.round((f(r) - best) / 60);
+    return `Лёгкий вариант ${LET[k] || ''}: ${leftTurns(r)} ${leftTurns(r) === 1 ? 'левый поворот' : leftTurns(r) >= 2 && leftTurns(r) <= 4 ? 'левых поворота' : 'левых поворотов'}${dt > 0 ? `, дольше на ${dt} мин` : ', и он же самый быстрый'}.`;
+  }
+  async function tripCheck(quiet){
+    const r = state.routes[state.active], to = state.to;
+    if (!r || !to) return 'Сначала постройте маршрут.';
+    checkFor = r;
+    const arr = new Date(departDate().getTime() + r.duration * (r._f || 1) * 1000), lines = [], warn = [];
+    const [oh, wxa, pk] = await Promise.all([
+      hoursFor(to),
+      wxAt(to, arr.getTime()).catch(() => null),
+      state.mode === 'car' ? overpass(`[out:json][timeout:15];nwr["amenity"="parking"](around:300,${to.lat},${to.lng});out tags 40;`).catch(() => null) : null,
+    ]);
+    if (oh){
+      const a = openNow(oh, arr), soon = openNow(oh, new Date(arr.getTime() + 30 * 60e3));
+      if (a === false){ lines.push(`🔒 К приезду (${hm13(arr)}) будет закрыто — ${ohRu(oh)}`); warn.push('к вашему приезду место будет закрыто'); }
+      else if (a === true && soon === false){ lines.push(`⏳ Закроется вскоре после приезда — ${ohRu(oh)}`); warn.push('место закроется вскоре после приезда'); }
+      else if (a === true) lines.push(`✅ К приезду (${hm13(arr)}) будет открыто`);
+    } else if (oh === '') lines.push('🕒 Часов работы нет в данных');
+    if (pk){ const n = (pk.elements || []).length; lines.push(n ? `🅿️ Парковок у места: ${n}` : '🅿️ Парковок у места в данных нет'); if (!n) warn.push('парковок у места в данных нет'); }
+    const f = r._f || 1;
+    if (state.mode === 'car') lines.push(f >= 1.3 ? `🚗 Час пик: дорога займёт примерно на ${Math.round(r.duration * (f - 1) / 60)} мин дольше обычного` : f >= 1.15 ? '🚗 Небольшая загрузка дорог (оценка по времени суток)' : '🚗 Пробок по времени суток не ожидается');
+    if (state.mode === 'car' && f >= 1.3) warn.push('час пик');
+    const ev = events.filter(x => lineDist([x.lng, x.lat], r.geometry.coordinates).d < 45);
+    if (ev.length){ lines.push(`⚠ На пути: ${[...new Set(ev.map(x => EV[x.type]?.n.toLowerCase()).filter(Boolean))].join(', ')}`); warn.push('на пути отмечены события'); }
+    if (wxa){
+      const bad = (wxa.pp ?? 0) >= 50 || wxa.feel <= -20 || wxa.wind >= 12;
+      lines.push(`${WX_ICON(wxa.code)} В ${hm13(arr)} на месте ${wxa.t}°, ощущается ${wxa.feel}°${wxa.pp != null ? `, осадки ${wxa.pp}%` : ''}`);
+      if (bad) warn.push('погода так себе — оденьтесь по погоде');
+    }
+    document.querySelector('#routes .trip-check')?.remove();
+    if (state.routes[state.active] === r) $('#routes').insertAdjacentHTML('beforeend', `<div class="trip-check"><b>✅ Проверка перед выездом</b>${lines.map(x => `<div>${esc(x)}</div>`).join('')}</div>`);
+    const sayTxt = warn.length ? 'Обратите внимание: ' + warn.join(', ') + '.' : 'Всё в порядке — можно ехать.';
+    if (quiet && !warn.length) return '';
+    return sayTxt;
+  }
+  const selectRoute214 = selectRoute;
+  selectRoute = function(i){
+    const out = selectRoute214.apply(this, arguments);
+    try{
+      if (state.routes.length && state.to && !driving && !$('#routes .r-tools')){
+        $('#routes').insertAdjacentHTML('afterbegin', `<div class="r-tools">${state.mode === 'car' && state.routes.length > 1 ? `<button class="chip${easyOn ? ' on' : ''}" data-easy title="Меньше левых поворотов и разворотов — для новичков">🌱 Лёгкий маршрут</button>` : ''}<button class="chip" data-check>✅ Проверить поездку</button></div>`);
+        const eb = $('#routes [data-easy]');
+        if (eb){
+          if (easyOn){ const r = state.routes[state.active]; const k = state.routes.reduce((m, x, j) => hardness(x) < hardness(state.routes[m]) ? j : m, 0); if (state.routes[k] === r) document.querySelector(`#routes [data-r="${state.active}"] .pros`)?.insertAdjacentHTML('afterbegin', '<b>🌱 лёгкий</b> · '); }
+          eb.onclick = () => { easyOn = !easyOn; store.set('easyRoute', easyOn); const t = easyOn ? pickEasy(true) : 'Лёгкий маршрут выключен — снова самый быстрый.'; if (!easyOn) selectRoute(0, true); toast(t); };
+        }
+        $('#routes [data-check]').onclick = async () => { const t = await tripCheck(false); mascot('happy', t, 7000); };
+      }
+    }catch{}
+    return out;
+  };
+  const buildRoute214 = buildRoute;
+  buildRoute = async function(){
+    const out = await buildRoute214.apply(this, arguments);
+    try{ if (easyOn && state.mode === 'car' && !driving && state.routes.length > 1) pickEasy(false); }catch{}
+    return out;
+  };
+  // «Поехали» — быстрая проверка; говорим только если есть что сказать
+  const startNav214 = startNav;
+  startNav = async function(isDemo){
+    const r = state.routes[state.active], chk = !isDemo && r && checkFor !== r;
+    const out = await startNav214.apply(this, arguments);
+    if (chk) tripCheck(true).then(t => { if (t && driving) speak({ ru:t, kk:t }); }).catch(() => {});
+    return out;
+  };
+
+  // ---- входы: карточка места, голос ----
+  const showPopup214 = showPopup;
+  showPopup = function(p){
+    const r = showPopup214.apply(this, arguments);
+    try{
+      const row = popup?.getElement()?.querySelector('.pop-save');
+      if (row && !row.querySelector('[data-s="know"]')){
+        row.insertAdjacentHTML('afterbegin', '<button class="chip" data-s="know" title="Часы, парковка, вход, погода — что знать до поездки">💡 Что знать</button>');
+        row.querySelector('[data-s="know"]').onclick = ev => { ev.stopPropagation(); knowAbout(p); };
+      }
+    }catch{}
+    return r;
+  };
+  const doAction214 = doAction;
+  doAction = async function(a, args = {}, text){
+    if (a === 'find_category' && args.cat){ mem.cat = args.cat; mem.t = Date.now(); }
+    if (a === 'add_stop' && args.cat) return addCatStop(args.cat);
+    if (a === 'easy_route'){ easyOn = true; store.set('easyRoute', true); return pickEasy(true) || 'Лёгкий маршрут включён — выберу его при следующем маршруте.'; }
+    if (a === 'trip_check') return tripCheck(false);
+    if (a === 'fuel_price'){ mem.cat = 'fuel'; mem.kind = args.kind || 'a92'; mem.t = Date.now(); }
+    return doAction214.apply(this, arguments);
+  };
+  const MODE_ONLY = [[/^(а )?(если )?(пешком|пешочком|жаяу)( если)?$/, 'foot'], [/^(а )?(если )?на (машине|авто|автомобиле)$/, 'car'], [/^(а )?(если )?на (велосипеде|велике)$/, 'bike'], [/^(а )?(если )?на самокате$/, 'scoot']];
+  const localCmd214 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    // несколько остановок одной фразой
+    const mp = multiParse(t);
+    if (mp && !mp.every(x => savedIn(' ' + x).length)) return () => routeMulti(mp);
+    // «едем в Кофейня Бариста» — это название места, а не просто «кофе рядом»
+    const rt = parseRoute(t);
+    if (rt && rt.place.split(' ').length >= 2 && CAT_WORDS.some(([, re]) => re.test(rt.place)) && !/(ближайш|любую|любой|какую.?нибудь|рядом|по пути|по дороге)/.test(rt.place) && !/(заед|заех|заскоч|добав)/.test(t))
+      return () => routeToPlace(rt.place, rt.mode);
+    // «заедем в аптеку», «добавь заправку по пути»
+    if (/(добав|заед|заех|заскоч|по пути|по дороге|остановк)/.test(t)){
+      const cw = CAT_WORDS.find(([, re]) => re.test(t));
+      if (cw && (activeLine() || /по пути|по дороге/.test(t))) return () => addCatStop(cw[0]);
+    }
+    if (/^(отмени|убери|удали) (остановку|заезд)|^(без|не надо) заезд/.test(t) && state.stops.length) return () => { removeStop(state.stops.length - 1); return 'Убрал остановку.'; };
+    if (/^(лёгкий|легкий|простой) маршрут|без левых поворотов|меньше (левых )?поворотов|я новичок|новичок за рулем/.test(t)) return () => doAction('easy_route');
+    if (/^(проверь|проверить) (поездку|маршрут|план)|все ли в порядке|всё ли в порядке|ничего не забыл/.test(t)) return () => tripCheck(false);
+    if (/^(что знать|что нужно знать|расскажи что знать)/.test(t) && (state.to || mem.p)) return () => { knowAbout(state.to || mem.p); return 'Вот что известно об этом месте.'; };
+    // уточнения к последнему разговору
+    if (memFresh()){
+      const rest = t.replace(/(^|\s)(а|она|он|оно|они|там|туда|это|место|сейчас|еще|ещё|ли|вообще|скажи|подскажи|открыт[аоы]?|работает|работают|закрыт[аоы]?|до скольки[х]?|во сколько|закрывается|открывается|ашық па|жұмыс істей ме)(?=\s|$)/g, ' ').trim();
+      if (mem.p && !rest && /(открыт|работает|работают|закрыт|до скольк|во сколько|ашық|жұмыс)/.test(t)) return () => openAnswer(mem.p);
+      if (/^(а )?(где )?(подешевле|дешевле)/.test(t)) return () => mem.cat === 'fuel' ? cheaper(/95/.test(t) ? 'a95' : /дизел/.test(t) ? 'dt' : null) : 'Цен у меня пока нет — только цены топлива на АЗС, которые отмечают водители.';
+      if (/^(а )?(другую|другой|другая|другое|следующ|ещё вариант|еще вариант|подальше|не эту|не ту)/.test(t) && mem.list.length) return () => nextCatStop() || 'Других вариантов нет.';
+      if (/^(а )?(сколько (туда|ехать|идти|до него|до нее)|далеко (ли)?|долго (ли)?)/.test(t)) return () => etaText();
+    }
+    if (mem.offer && Date.now() - mem.offerT < 3 * 60e3 && /^(да|давай|заедем|заезжаем|заедь|едем туда|поехали туда|ага|ок)( туда| заедем)?$/.test(t)){
+      const o = mem.offer; mem.offer = null;
+      return () => { if (state.stops.some(st => dist([st.lng, st.lat], [o.lng, o.lat]) < 40)) return `${o.name.replace(/^⛽ /, '')} уже в маршруте.`; if (activeLine()){ addStop(o, false); return `Заезжаем: ${o.name.replace(/^⛽ /, '')}.`; } goTo(o); return `Строю маршрут: ${o.name.replace(/^⛽ /, '')}.`; };
+    }
+    if (state.to && !driving){ const mo = MODE_ONLY.find(([re]) => re.test(t)); if (mo) return () => modeAgain(mo[1]); }
+    return localCmd214.apply(this, arguments);
+  };
+  ['Проверь поездку', 'Лёгкий маршрут', 'А она открыта?', 'Заедем на заправку по пути', 'Едем в Хан Шатыр через аптеку']
+    .forEach(t => { if (!$('#asstEx')?.querySelector(`[data-ex="${t}"]`)) $('#asstEx')?.insertAdjacentHTML('afterbegin', `<button class="chip" data-ex="${esc(t)}">${esc(t)}</button>`); });
+  $('#asstEx')?.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => handleCmd(b.dataset.ex));
+  window.__b = { mem, multiParse, routeMulti, addCatStop, cheaper, knowAbout, pickEasy, tripCheck, hardness, levN, openAnswer, easy:() => easyOn };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
