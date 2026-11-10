@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.14.0</p>
+    <p class="set-ver">Версия 2.15.0</p>
   </div>
 </div>
 
@@ -7555,6 +7555,97 @@ body.night .nav .btn{background:#1d2731;border:0}
     .forEach(t => { if (!$('#asstEx')?.querySelector(`[data-ex="${t}"]`)) $('#asstEx')?.insertAdjacentHTML('afterbegin', `<button class="chip" data-ex="${esc(t)}">${esc(t)}</button>`); });
   $('#asstEx')?.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => handleCmd(b.dataset.ex));
   window.__b = { mem, multiParse, routeMulti, addCatStop, cheaper, knowAbout, pickEasy, tripCheck, hardness, levN, openAnswer, easy:() => easyOn };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.15.0: Выпуск В, шаг 1 — доступность: крупно, контрастно, чтение экрана, вибрация, ступеньки ----------
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    body.a11y-big .sheet-card{zoom:1.15;width:min(400px,calc(100vw / 1.15))}
+    body.a11y-big .panel{zoom:1.1;max-width:calc((100vw - 24px) / 1.1)}
+    body.a11y-big #q{font-size:19px}
+    body.a11y-big .toast,body.a11y-big .m-bubble,body.a11y-big .maplibregl-popup-content,body.a11y-big .navtop{zoom:1.15}
+    body.a11y-big .tools .tool{width:54px;height:54px;font-size:15px}
+    body.a11y-hc .hint,body.a11y-hc .note,body.a11y-hc .muted{opacity:1!important;color:inherit!important}
+    body.a11y-hc .toast{background:#000!important;color:#fff!important;outline:2px solid #ffbf00}
+    body.a11y-hc .sheet-card,body.a11y-hc .panel,body.a11y-hc .search-box,body.a11y-hc .tool:not(.on),body.a11y-hc .m-bubble{background:var(--bg)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+    body.a11y-hc .chip,body.a11y-hc .btn,body.a11y-hc .tool,body.a11y-hc .pt,body.a11y-hc .cat{outline:2px solid currentColor;outline-offset:-2px}
+    body.a11y-hc #map canvas{filter:contrast(1.25) saturate(1.15)}
+    body.a11y-hc *:focus-visible{outline:3px solid #ffbf00!important;outline-offset:2px}
+    .a11y-box{border:1px solid rgba(127,127,127,.3);border-radius:12px;padding:6px 10px;margin:8px 0}.a11y-box b{display:block;margin:2px 0 4px}
+  </style>`);
+  const A11Y = { big:store.get('a11yBig', false), hc:store.get('a11yHc', false), vib:store.get('a11yVib', false), steps:store.get('a11ySteps', true) };
+  const a11yApply = () => { document.body.classList.toggle('a11y-big', A11Y.big); document.body.classList.toggle('a11y-hc', A11Y.hc); };
+  a11yApply();
+  $('#setTips')?.closest('label')?.insertAdjacentHTML('afterend', `<div class="a11y-box" role="group" aria-label="Доступность"><b>♿ Доступность · Қолжетімділік</b>
+    <label class="set-check"><input type="checkbox" id="a11yBig"> 🔠 Крупный текст и кнопки</label>
+    <label class="set-check"><input type="checkbox" id="a11yHc"> ◐ Высокий контраст</label>
+    <label class="set-check"><input type="checkbox" id="a11yVib"> 📳 Вибрация на поворотах (Android; работает и без звука)</label>
+    <label class="set-check"><input type="checkbox" id="a11ySteps"> ♿ Предупреждать о лестницах на пешем маршруте</label></div>`);
+  [['a11yBig', 'big', 'a11yBig'], ['a11yHc', 'hc', 'a11yHc'], ['a11yVib', 'vib', 'a11yVib'], ['a11ySteps', 'steps', 'a11ySteps']].forEach(([id, k, sk]) => {
+    const el = $('#' + id); if (!el) return;
+    el.checked = A11Y[k];
+    el.onchange = e => { A11Y[k] = e.target.checked; store.set(sk, A11Y[k]); a11yApply(); if (k === 'vib' && A11Y.vib) try{ navigator.vibrate?.([90, 70, 90]); }catch{} };
+  });
+  // чтение экрана (TalkBack / VoiceOver): подсказки и речь Барыса зачитываются, у кнопок-значков есть названия
+  $('#toast')?.setAttribute('role', 'status'); $('#toast')?.setAttribute('aria-live', 'polite');
+  $('#mBubble')?.setAttribute('aria-live', 'polite');
+  $('#ntStreet')?.setAttribute('aria-live', 'polite');
+  $('#map')?.setAttribute('role', 'application');
+  let lblT = 0;
+  const labelIcons = () => document.querySelectorAll('button:not([aria-label]), a.btn:not([aria-label])').forEach(b => {
+    const t = (b.textContent || '').trim();
+    if (b.title) b.setAttribute('aria-label', b.title);
+    else if (t && !/[A-Za-zА-Яа-яЁёӘәҒғҚқҢңӨөҰұҮүҺһІі0-9]/.test(t)) b.setAttribute('aria-label', 'Кнопка ' + t);
+  });
+  labelIcons();
+  new MutationObserver(() => { clearTimeout(lblT); lblT = setTimeout(labelIcons, 400); }).observe(document.body, { childList:true, subtree:true });
+  // вибрация: налево — два коротких, направо — один длинный, прибытие — два длинных
+  const say215 = say;
+  say = function(kind, o = {}){
+    try{
+      if (A11Y.vib && navigator.vibrate && (kind === 'now' || kind === 'ahead' || kind === 'arrive')){
+        const m = o.s?.maneuver?.modifier || '';
+        navigator.vibrate(kind === 'arrive' ? [300, 120, 300] : kind === 'ahead' ? [50] : /left/.test(m) ? [90, 70, 90] : /right/.test(m) ? [320] : [50, 50, 50]);
+      }
+    }catch{}
+    return say215.apply(this, arguments);
+  };
+  // лестницы на пешем маршруте (данные OpenStreetMap: highway=steps)
+  let stepsFor = null;
+  async function stairsOn(r){
+    if (!r || stepsFor === r) return r?._steps;
+    stepsFor = r;
+    const c = r.geometry.coordinates, [s, w, n, e] = bboxOf(c, 0.0005);
+    if ((n - s) * (e - w) > 0.05) return null;
+    try{
+      const j = await overpass(`[out:json][timeout:15];way["highway"="steps"](${s},${w},${n},${e});out geom 200;`);
+      r._steps = (j.elements || []).filter(x => (x.geometry || []).some(g => lineDist([g.lon, g.lat], c).d < 6)).length;
+      return r._steps;
+    }catch{ return null; }
+  }
+  const selectRoute215 = selectRoute;
+  selectRoute = function(i){
+    const out = selectRoute215.apply(this, arguments);
+    const r = state.routes[i];
+    if (A11Y.steps && r && state.mode === 'foot' && !driving){
+      stairsOn(r).then(n => {
+        if (n == null || state.routes[state.active] !== r || document.querySelector('#routes .r-steps')) return;
+        $('#routes').insertAdjacentHTML('beforeend', `<p class="hint r-steps">${n ? `♿ На пути ${n} ${n === 1 ? 'лестница' : n < 5 ? 'лестницы' : 'лестниц'} (по OpenStreetMap). С коляской — посмотрите слой «♿ Доступность для колясок» в 🗂 Слоях.` : '♿ Лестниц на пути нет (по OpenStreetMap).'}</p>`);
+      });
+    }
+    return out;
+  };
+  // голосом: «крупный шрифт», «контраст», «вибрация»
+  const localCmd215 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    const tg = (k, on, sk, txt) => () => { A11Y[k] = on; store.set(sk, on); a11yApply(); const el = $('#' + sk); if (el) el.checked = on; return txt; };
+    if (/(крупн|больш)(ый|ой|ые)? (шрифт|текст|буквы)|сделай крупнее/.test(t)) return tg('big', true, 'a11yBig', 'Сделал текст и кнопки крупнее. Выключить — в настройках.');
+    if (/(обычн|мелк)(ый|ий)? (шрифт|текст)/.test(t)) return tg('big', false, 'a11yBig', 'Вернул обычный размер.');
+    if (/(высок|сильн)(ий|ий|ый)? контраст|контрастн/.test(t)) return tg('hc', true, 'a11yHc', 'Включил высокий контраст.');
+    if (/включи вибрац/.test(t)) return tg('vib', true, 'a11yVib', 'Вибрация на поворотах включена: налево — два коротких, направо — один длинный.');
+    return localCmd215.apply(this, arguments);
+  };
+  window.__acc = { A11Y, apply:a11yApply, stairsOn };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
