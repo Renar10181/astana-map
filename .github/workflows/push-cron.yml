@@ -1,0 +1,16 @@
+name: Уведомления по утрам
+# Каждые 15 минут с 6:30 до 11:00 по Астане (UTC+5) будим сервер карты: он сам решает, кому и что прислать
+# (гололёд/снегопад/мороз — раз в утро, «выезжайте в …» — по будням). Повторный запуск ничего не дублирует.
+on:
+  schedule:
+    - cron: '*/15 1-5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Разбудить рассылку
+        run: curl -fsS --max-time 60 "https://astana-map.pages.dev/api/push?cron=1" || true

@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.16.1</p>
+    <p class="set-ver">Версия 2.17.0</p>
   </div>
 </div>
 
@@ -7663,8 +7663,8 @@ body.night .nav .btn{background:#1d2731;border:0}
   const PUSH_KINDS = [
     ['sos', '🆘 SOS от «Своих на карте» — даже ночью', true, true],
     ['family', '👨‍👩‍👧 «Дошёл до школы», «приехал на работу»', true, false],
-    ['leave', '🚗 Когда выезжать на работу и домой', true, false],
-    ['weather', '❄️ Гололёд, мороз, буран, закрытые трассы', true, false],
+    ['leave', '🚗 Когда выезжать на работу (по будням; нужны 🏠 Дом и 💼 Работа)', true, true],
+    ['weather', '❄️ Гололёд, снегопад, метель, сильный мороз — утром', true, true],
     ['parking', '🅿️ Не забыть оплатить парковку', true, false],
     ['fuel', '⛽ Бензин подешевел на вашей АЗС', true, false],
     ['city', '🎉 События города и перекрытия (раз в неделю)', true, false],
@@ -7679,15 +7679,18 @@ body.night .nav .btn{background:#1d2731;border:0}
     <button class="btn primary" id="pushOn" type="button" style="width:100%">🔔 Включить уведомления</button>
     <div id="pushKinds" hidden>
       ${PUSH_KINDS.map(([k, n, , live]) => `<label class="set-check"><input type="checkbox" data-pk="${k}"> ${n}${live ? '' : ' <span class="city-tag s">скоро</span>'}</label>`).join('')}
-      <label class="set-check"><input type="checkbox" data-pk="quiet"> 🌙 Тишина ночью 22:00–8:00 (кроме SOS)</label>
+      <div class="set-row" id="pushWorkRow" style="display:flex;align-items:center;gap:8px;margin:2px 0 6px"><label for="pushWorkAt">💼 Быть на работе к</label><input type="time" id="pushWorkAt" value="09:00" style="font:inherit;padding:6px;border-radius:8px;border:1px solid rgba(127,127,127,.4);background:transparent;color:inherit"></div>
+      <label class="set-check"><input type="checkbox" data-pk="quiet"> 🌙 Тишина ночью 22:00–6:30 (кроме SOS)</label>
       <div class="row" style="margin-top:6px"><button class="btn" id="pushTest" type="button" style="flex:1">Прислать проверочное</button><button class="btn" id="pushOff" type="button" style="flex:1">Выключить</button></div>
+      <button class="btn" id="pushDiag" type="button" style="width:100%;margin-top:6px">🩺 Проверить связь со своими</button>
+      <div class="hint" id="pushDiagOut"></div>
     </div></div>`);
   const pushNote = t => { const el = $('#pushNote'); if (el){ el.textContent = t; el.hidden = !t; } };
   const b64uBytes = s => { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
   async function pushSub(){ try{ const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); }catch{ return null; } }
   async function pushSend(sub){
     const r = await fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'sub', sub:sub.toJSON(), prefs:{ ...pushPrefs,
-      home:places.home ? { lat:places.home.lat, lng:places.home.lng } : undefined, work:places.work ? { lat:places.work.lat, lng:places.work.lng } : undefined },
+      ...(pushPrefs.leave !== false && places.home && places.work ? { home:{ lat:places.home.lat, lng:places.home.lng }, work:{ lat:places.work.lat, lng:places.work.lng }, workAt:pushPrefs.workAt || '09:00' } : {}) },
       fr:fr ? { id:fr.id, tok:fr.tok } : null, city:CUR.id }) });
     if (r.status === 503 || r.status === 404) throw new Error('nodb');
     const j = await r.json(); if (!j.ok) throw new Error('sub');
@@ -7733,6 +7736,28 @@ body.night .nav .btn{background:#1d2731;border:0}
     pushPrefs[el.dataset.pk] = el.checked; store.set('pushPrefs', pushPrefs);
     const sub = await pushSub(); if (sub) pushSend(sub).catch(() => {});
   });
+  // время начала работы — для «когда выезжать»
+  if ($('#pushWorkAt')){
+    $('#pushWorkAt').value = pushPrefs.workAt || '09:00';
+    $('#pushWorkAt').onchange = async e => { pushPrefs.workAt = e.target.value || '09:00'; store.set('pushPrefs', pushPrefs); const sub = await pushSub(); if (sub) pushSend(sub).then(() => toast('Сохранил: быть на работе к ' + pushPrefs.workAt)).catch(() => {}); };
+  }
+  // 🩺 проверка связи: что сервер знает про этот телефон и про «своих»
+  $('#pushDiag') && ($('#pushDiag').onclick = async () => {
+    const out = $('#pushDiagOut'); out.textContent = 'Проверяю…';
+    const sub = await pushSub(); if (!sub){ out.textContent = '❌ Уведомления на этом телефоне не включены.'; return; }
+    try{
+      await pushSend(sub).catch(() => {});
+      const j = await (await fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'diag', endpoint:sub.endpoint }) })).json();
+      const L = [];
+      L.push(j.known ? '✅ Сервер знает этот телефон' : '❌ Сервер не знает этот телефон — выключите и включите уведомления');
+      L.push(j.linked ? '✅ Связан со «Своими на карте»' : `❌ Не связан со «Своими»${fr ? '' : ' — откройте 👨‍👩‍👧 и войдите (примите приглашение) именно в этом приложении'}`);
+      if (j.last) L.push(`Последняя доставка сюда: ${j.last.status === 201 || j.last.status === 200 ? '✅' : '⚠'} ${new Date(j.last.ts).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })} (${j.last.status} ${j.last.info || ''})`);
+      if (j.linked) L.push(j.friends.length ? 'Свои: ' + j.friends.map(f => `${f.name} — ${f.push ? '🔔 уведомления включены' : '🔕 уведомления не включены'}${f.last ? ` (последняя: ${f.last})` : ''}`).join('; ') : 'Своих пока нет — пригласите в 👨‍👩‍👧.');
+      out.innerHTML = L.map(x => esc(x)).join('<br>');
+    }catch{ out.textContent = 'Нет связи с сервером.'; }
+  });
+  // нажали «Выезжайте в…» — сразу маршрут на работу
+  if (location.hash === '#go=work') setTimeout(() => { history.replaceState(null, '', location.pathname); if (places.work) routeToHome('work').then(t => t && mascot('happy', t, 8000)); }, 2000);
   pushRender();
   // раз в день (и когда вошли в «Свои на карте») — обновляем подписку на сервере
   setTimeout(async () => {
@@ -7741,7 +7766,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     if (s.d !== new Date().toDateString() || s.fr !== (fr?.id || '')) pushSend(sub).catch(() => {});
   }, 8000);
   // нажали на уведомление
-  const pushGo = url => { try{ const u = new URL(url, location.href); if (u.hash === '#fr-open'){ history.replaceState(null, '', location.pathname); openFriends(); } else if (u.hash) location.hash = u.hash; }catch{} };
+  const pushGo = url => { try{ const u = new URL(url, location.href); if (u.hash === '#fr-open'){ history.replaceState(null, '', location.pathname); openFriends(); } else if (u.hash === '#go=work'){ if (places.work) routeToHome('work').then(t => t && mascot('happy', t, 8000)); } else if (u.hash) location.hash = u.hash; }catch{} };
   if (location.hash === '#fr-open') setTimeout(() => pushGo(location.href), 1500);
   navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.push) pushGo(e.data.push); });
   // голосом: «включи уведомления»
