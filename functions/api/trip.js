@@ -1,5 +1,6 @@
 // «Поделиться поездкой»: водитель раз в 30 секунд отправляет, где он, — по ссылке #t=ID это видно на карте.
 // Хранится в том же Cloudflare KV (привязка CAMERAS), запись живёт 30 минут после последнего обновления.
+// Тот же механизм — «поделиться местом на время» (mode: 'here', until).
 // Бесплатный KV разрешает ~1000 записей в сутки: одна поездка 30 минут ≈ 60 записей.
 const okId = id => /^[a-z0-9]{6,16}$/.test(id || '');
 const json = (o, status = 200) => Response.json(o, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -9,6 +10,7 @@ export async function onRequestGet({ request, env }) {
   if (!env.CAMERAS || !okId(id)) return json({ ok: false }, 400);
   const v = JSON.parse((await env.CAMERAS.get('trip:' + id)) || 'null');
   if (!v) return json({ ok: false, ended: true }, 404);
+  if (v.until && Date.now() > v.until) return json({ ok: false, ended: true }, 404);   // «поделиться местом на время»: срок вышел
   delete v.key;
   return json({ ok: true, ...v });
 }
@@ -30,6 +32,8 @@ export async function onRequestPost({ request, env }) {
     left: Math.max(0, +b.left || 0), eta: +b.eta || Date.now(), to: String(b.to || '').slice(0, 80),
     toLat: +b.toLat || null, toLng: +b.toLng || null,
   };
+  // режим «поделиться местом на время» (15 мин / 1 ч / до конца поездки, не дольше 4 часов)
+  if (b.mode === 'here') { v.mode = 'here'; v.until = Math.min(+b.until || 0, Date.now() + 4 * 3600e3) || Date.now() + 900e3; }
   await env.CAMERAS.put('trip:' + b.id, JSON.stringify(v), { expirationTtl: 1800 });
   return json({ ok: true });
 }

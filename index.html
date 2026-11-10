@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.12.0</p>
+    <p class="set-ver">Версия 2.13.0</p>
   </div>
 </div>
 
@@ -2441,12 +2441,13 @@ body.night .nav .btn{background:#1d2731;border:0}
           .filter(x => x.off < 600).sort((a, b) => a.at - b.at);
       } else items = items.map(x => ({ ...x, d:dist(c, [x.lng, x.lat]) })).sort((a, b) => a.d - b.d);
       if (openOnly) items = items.filter(x => x.hours && openNow(x.hours) === true);
+      if (reachMin && x0line(line)) items = items.filter(x => reachSec(x.d) <= reachMin * 60);
       items = items.slice(0, 25);
       clearPoi();
       if (!items.length){ $('#catList').innerHTML = `<p class="hint">${cat.e} ${cat.n}: ничего не нашлось ${line ? 'вдоль маршрута' : 'рядом'}. Данные OpenStreetMap могут быть неполными.</p>`; return; }
       const canStop = state.from && state.to;
       $('#catList').innerHTML = (id === 'ev' ? evHead(items) : '') + items.map((x, i) => `<div class="poi-row" data-op="${esc(x.op || '')}"><div style="min-width:0"><b>${cat.e} ${esc(x.name)}</b>
-        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас'}${x.hours ? ' · ' + ohBadge(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}${id === 'ev' && x.op ? ' · ' + esc(x.op) : ''}</div></div>
+        <div class="hint">${x.at != null ? 'через ' + fmtDist(x.at) + ' · ' + (x.off < 60 ? 'на маршруте' : fmtDist(x.off) + ' в сторону') : fmtDist(x.d) + ' от вас' + (reachMin ? ' · ~' + Math.max(1, Math.round(reachSec(x.d) / 60)) + ' мин ' + reachWord() : '')}${x.hours ? ' · ' + ohBadge(x.hours) : ''}${x.price ? ' · <b>' + esc(fuelLine(x.price.p)) + '</b>' : ''}${id === 'ev' && x.op ? ' · ' + esc(x.op) : ''}</div></div>
         <button class="btn${canStop ? '' : ' primary'}" data-i="${i}">${canStop ? '＋ Заехать' : 'Сюда'}</button></div>`).join('');
       if (id === 'ev') evFilter();
       $('#catList').querySelectorAll('[data-i]').forEach(b => b.onclick = () => {
@@ -3201,7 +3202,7 @@ body.night .nav .btn{background:#1d2731;border:0}
         const r = await fetch('/api/trip?id=' + id), j = await r.json();
         if (!r.ok || !j.ok || j.ended){ clearInterval(tripWatch); $('#tripBar').hidden = false; $('#tripInfo').textContent = '🏁 Поездка завершена или ссылка устарела'; return; }
         if (!tripMarker){
-          const el = document.createElement('div'); el.className = 'pin pulse'; el.style.background = '#ffbf00'; el.style.color = '#ffbf00'; el.dataset.l = '🚗';
+          const el = document.createElement('div'); el.className = 'pin pulse'; el.style.background = '#ffbf00'; el.style.color = '#ffbf00'; el.dataset.l = j.mode === 'here' ? '🙂' : '🚗';
           tripMarker = new maplibregl.Marker({ element:el }).setLngLat([j.lng, j.lat]).addTo(map);
         } else tripMarker.setLngLat([j.lng, j.lat]);
         if (j.toLng && !tripDest) tripDest = new maplibregl.Marker({ element:makePin('#7c4dff', 'Б', false) }).setLngLat([j.toLng, j.toLat]).addTo(map);
@@ -3211,6 +3212,7 @@ body.night .nav .btn{background:#1d2731;border:0}
         }
         const sec = Math.round((Date.now() - j.ts) / 1000);
         $('#tripBar').hidden = false;
+        if (j.mode === 'here'){ $('#tripInfo').textContent = `📍 Делится местом${j.to ? ' · идёт в «' + j.to + '»' : ''}${j.until ? ' · до ' + new Date(j.until).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' }) : ''} · ${sec < 60 ? 'только что' : Math.round(sec / 60) + ' мин назад'}`; return; }
         $('#tripInfo').textContent = `🚗 Едет${j.to ? ' в «' + j.to + '»' : ''} · прибытие ~${new Date(j.eta).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' })} · осталось ${fmtDist(j.left || 0)} · ${sec < 60 ? 'только что' : Math.round(sec / 60) + ' мин назад'}`;
       }catch{ $('#tripBar').hidden = false; $('#tripInfo').textContent = 'Нет связи. Пробую ещё раз…'; }
     };
@@ -3741,7 +3743,7 @@ body.night .nav .btn{background:#1d2731;border:0}
     } else el.hidden = true;
     if (schoolWarn && schoolTime()){
       const sc = (nav.schools || []).find(x => x.at > along && x.at - along <= 200);
-      if (sc && !nav.said['sch' + sc.id]){ nav.said['sch' + sc.id] = 1; speak({ ru:'Рядом школа, будьте внимательны', kk:'Жақын жерде мектеп, абай болыңыз' }); toast('🏫 Рядом школа — снизьте скорость'); }
+      if (sc && !nav.said['sch' + sc.id]){ nav.said['sch' + sc.id] = 1; speak({ ru:'Осторожно, школа', kk:'Абай болыңыз, мектеп', en:'Caution, school ahead' }); toast('🏫 Осторожно, школа — снизьте скорость'); }
     }
   }
   // участки контроля средней скорости на трассах из Астаны (направления из города)
@@ -4250,6 +4252,12 @@ body.night .nav .btn{background:#1d2731;border:0}
   // =====================================================================
   // ---------- 1.6: «Открыто сейчас» и новые категории ----------
   let openOnly = false;
+  // 2.13.0: «доберусь за 5/10/15 мин» — примерно, по прямой с запасом 30% на повороты
+  let reachMin = 0;
+  const x0line = line => !(line && line.length > 1);
+  const reachV = () => ({ car:7, bike:4, scoot:3.5 })[state.mode] || 1.25;
+  const reachSec = d => d * 1.3 / reachV();
+  const reachWord = () => ({ car:'на машине', bike:'на велосипеде', scoot:'на самокате' })[state.mode] || 'пешком';
   function ohBadge(oh){
     const s = openNow(oh);
     return (s === true ? '<b style="color:#1f9d55">открыто</b> · ' : s === false ? '<b style="color:#e53935">закрыто</b> · ' : '') + esc(oh.length > 40 ? oh.slice(0, 39) + '…' : oh);
@@ -6749,6 +6757,412 @@ body.night .nav .btn{background:#1d2731;border:0}
     setTimeout(() => { const k = 'hello_' + CUR.id; if (!driving && !store.get(k, false)){ store.set(k, true); store.set('mascotHello', true);
       mascot('wave', `Сәлем, ${CUR.name}! Я Барыс 🐾 Погода, заправки, аптеки и маршруты — теперь ${CUR.po}. Нажмите на меня, если нужна подсказка.`, 9000); } }, 3000);
   }
+
+  // =====================================================================
+  // ---------- 2.13.0: Выпуск А «Турист и простота» (оба города) ----------
+  // таксисту-карточка, 112 с адресом, подборки, транспорт, «ограничение впереди» и школы, 5/10/15 мин, погода в месте прибытия, «где я» на время
+  document.head.insertAdjacentHTML('beforeend', `<style>
+    .big-card .addr{border-radius:14px;background:var(--chip,#f4f5f7);padding:10px 12px;margin:0 0 8px}
+    .big-card .addr small{display:block;font-size:12px;opacity:.65;margin-bottom:2px}
+    .big-card .addr b{display:block;font-size:24px;line-height:1.2;word-break:break-word}
+    .big-card .ask{font-size:16px;margin:0 0 10px;line-height:1.35}
+    .big-card .bigname{font-size:28px;font-weight:800;line-height:1.15;margin:0 0 8px}
+    .sos-call{display:flex;align-items:center;justify-content:center;gap:8px;background:#e53935;color:#fff!important;text-decoration:none;font:800 22px/1.1 system-ui,sans-serif;border-radius:14px;padding:16px;margin-bottom:8px}
+    .sos-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+    .sos-grid a{display:block;text-align:center;text-decoration:none;color:inherit;background:var(--chip,#f4f5f7);border-radius:12px;padding:10px 6px;font-weight:700}
+    .sos-grid a span{display:block;font-weight:400;font-size:12px;opacity:.7}
+    .tool.t112{color:#e53935;font-weight:800;font-size:14px}
+    .col-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;scrollbar-width:none}
+    .col-row{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+    .col-row .n{flex:1;min-width:0}.col-row .n .hint{margin:2px 0 0}
+    .col-row .k{flex:none;width:26px;height:26px;border-radius:50%;background:#ffd200;color:#1d2228;display:grid;place-items:center;font-weight:800;font-size:13px}
+    .lim-ahead{position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:4px;white-space:nowrap;background:#fff;color:#1d2228;border:2px solid #e53935;border-radius:10px;padding:1px 6px;font:700 12px/1.3 system-ui,sans-serif}
+    .speedo{position:relative}
+    .here-bar b{flex:1}
+  </style>`);
+  const hm13 = t => new Date(t).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+  const badName = n => !n || /Определяю|Моё местоположение|Точка на карте/.test(n);
+  // латиница для туриста и водителя-иностранца: простая читаемая транслитерация
+  const TR13 = { а:'a', б:'b', в:'v', г:'g', д:'d', е:'e', ё:'yo', ж:'zh', з:'z', и:'i', й:'y', к:'k', л:'l', м:'m', н:'n', о:'o', п:'p', р:'r', с:'s', т:'t', у:'u', ф:'f', х:'kh', ц:'ts', ч:'ch', ш:'sh', щ:'shch', ъ:'', ы:'y', ь:'', э:'e', ю:'yu', я:'ya',
+    ә:'a', ғ:'gh', қ:'q', ң:'ng', ө:'o', ұ:'u', ү:'u', һ:'h', і:'i' };
+  function latin(s){
+    return String(s || '').replace(/[а-яёәғқңөұүһі]/gi, ch => { const l = ch.toLowerCase(), t = TR13[l] ?? ch; return ch === l ? t : t.charAt(0).toUpperCase() + t.slice(1); }).replace(/ngg/g, 'ng').replace(/NGG/g, 'NG');
+  }
+  // адрес на трёх языках: Nominatim отдаёт названия на казахском, если они есть в OpenStreetMap
+  const addrCache = {};
+  async function addr3(p){
+    const key = p.lat.toFixed(5) + ',' + p.lng.toFixed(5);
+    if (addrCache[key]) return addrCache[key];
+    const get = async lang => { try{ const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=${lang}&lat=${p.lat}&lon=${p.lng}`)).json(); return j && !j.error ? j : null; }catch{ return null; } };
+    const line = j => {
+      if (!j) return '';
+      const a = j.address || {}, st = a.road || a.pedestrian || a.street || a.footway || '', city = a.city || a.town || a.village || CUR.name;
+      return [st ? st + (a.house_number ? ', ' + a.house_number : '') : (a.suburb || a.neighbourhood || ''), city].filter(Boolean).join(', ');
+    };
+    const ru = await get('ru'), kk = await get('kk');   // по очереди — так просит Nominatim
+    const r = { ru:line(ru), kk:line(kk) || line(ru), name:!badName(p.name) ? p.name : (ru?.name || ''), nameKk:kk?.name || '' };
+    if (!r.ru) r.ru = coords(p);
+    if (ru) addrCache[key] = r;
+    return r;
+  }
+
+  // ---- 1) «Покажите таксисту»: крупно, на казахском, русском и латиницей ----
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="showSheet" hidden><div class="sheet-card big-card" role="dialog" aria-label="Покажите таксисту">
+    <div class="sheet-head"><h2>🪧 Покажите таксисту</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="ask"><b>Мені осы мекенжайға апарыңызшы.</b><br>Отвезите меня, пожалуйста, сюда.<br><i>Please take me to this address.</i></p>
+    <div id="showBody"><p class="hint">Определяю адрес…</p></div>
+    <div class="row"><button class="btn primary" data-taxi style="flex:1">🚕 Вызвать такси</button><button class="btn" data-copy style="flex:1">📋 Копировать</button></div>
+    <p class="hint">Покажите экран водителю. Адрес — по данным OpenStreetMap; номер дома проверьте на месте.</p>
+  </div></div>`);
+  const showSheet = $('#showSheet');
+  let showP = null, showTxt = '';
+  showSheet.addEventListener('click', e => { if (e.target === showSheet || e.target.closest('[data-close]')) showSheet.hidden = true; });
+  async function showDriver(p){
+    if (!p) return toast('Сначала выберите место на карте');
+    popup?.remove(); $('#taxiSheet') && ($('#taxiSheet').hidden = true);
+    showP = p; showSheet.hidden = false;
+    $('#showBody').innerHTML = '<p class="hint">Определяю адрес…</p>';
+    const a = await addr3(p); if (showP !== p) return;
+    const name = a.nameKk && a.nameKk !== a.name ? a.nameKk + ' / ' + a.name : a.name;
+    showTxt = [name, 'KZ: ' + a.kk, 'RU: ' + a.ru, 'EN: ' + latin(a.kk || a.ru), coords(p)].filter(Boolean).join('\n');
+    $('#showBody').innerHTML = (name ? `<div class="bigname">${esc(name)}</div>` : '') +
+      `<div class="addr"><small>Қазақша</small><b>${esc(a.kk)}</b></div>` +
+      (a.ru !== a.kk ? `<div class="addr"><small>По-русски</small><b>${esc(a.ru)}</b></div>` : '') +
+      `<div class="addr"><small>Latin</small><b>${esc(latin(a.kk || a.ru))}</b></div>` +
+      `<p class="hint">📍 ${coords(p)} · код места ${plusCode(p.lat, p.lng)}</p>`;
+  }
+  showSheet.querySelector('[data-taxi]').onclick = () => { showSheet.hidden = true; if (showP) taxiTo(showP); };
+  showSheet.querySelector('[data-copy]').onclick = async () => { try{ await navigator.clipboard.writeText(showTxt); toast('Адрес скопирован'); }catch{ toast(showTxt.split('\n')[1] || ''); } };
+  $('#taxiDest')?.insertAdjacentHTML('afterend', '<button class="btn" id="taxiShow" style="width:100%;margin-bottom:8px">🪧 Показать адрес водителю — крупно</button>');
+  $('#taxiShow') && ($('#taxiShow').onclick = () => showDriver(taxiP));
+
+  // ---- 2) 112: звонок в одно касание и адрес, который можно продиктовать ----
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="sosSheet" hidden><div class="sheet-card big-card" role="dialog" aria-label="Экстренные службы 112">
+    <div class="sheet-head"><h2>🆘 Экстренные службы · Emergency</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <a class="sos-call" href="tel:112">📞 112 <span style="font-weight:600;font-size:15px">· единая служба · бесплатно</span></a>
+    <div class="sos-grid"><a href="tel:101">101<span>Пожарные · Fire</span></a><a href="tel:102">102<span>Полиция · Police</span></a><a href="tel:103">103<span>Скорая · Ambulance</span></a><a href="tel:104">104<span>Газ · Gas</span></a></div>
+    <h3 style="margin:6px 0">Где вы — продиктуйте оператору</h3>
+    <div id="sosAddr"><p class="hint">Определяю, где вы…</p></div>
+    <div class="row"><button class="btn primary" data-send style="flex:1">📤 Отправить адрес</button><button class="btn" data-copy style="flex:1">📋 Копировать</button></div>
+    <p class="hint">Звоните сами — карта не звонит за вас. Адрес — по данным OpenStreetMap, координаты — по GPS телефона.</p>
+  </div></div>`);
+  const sosSheet = $('#sosSheet');
+  let sosTxt = '';
+  sosSheet.addEventListener('click', e => { if (e.target === sosSheet || e.target.closest('[data-close]')) sosSheet.hidden = true; });
+  async function open112(){
+    popup?.remove(); sosSheet.hidden = false;
+    $('#sosAddr').innerHTML = '<p class="hint">Определяю, где вы…</p>';
+    let p = myPos(), gps = !!p;
+    if (!p){ try{ const pos = await getPos(); p = { lng:pos.coords.longitude, lat:pos.coords.latitude }; gps = true; }catch{} }
+    if (!p){ const c = map.getCenter(); p = { lng:c.lng, lat:c.lat }; }
+    p = { lng:+p.lng, lat:+p.lat };
+    $('#sosAddr').innerHTML = `<div class="addr"><small>Координаты${gps ? ' (GPS)' : ' — центр карты, GPS недоступен'}</small><b>${coords(p)}</b></div><p class="hint">Определяю адрес…</p>`;
+    const a = await addr3(p);
+    sosTxt = `Мне нужна помощь. Я здесь: ${a.ru}. Мекенжай: ${a.kk}. Координаты: ${coords(p)}. https://maps.google.com/?q=${p.lat.toFixed(5)},${p.lng.toFixed(5)}`;
+    $('#sosAddr').innerHTML = `<div class="addr"><small>По-русски</small><b>${esc(a.ru)}</b></div>` +
+      (a.kk !== a.ru ? `<div class="addr"><small>Қазақша</small><b>${esc(a.kk)}</b></div>` : '') +
+      `<div class="addr"><small>Координаты${gps ? ' (GPS)' : ' — центр карты, GPS недоступен'}</small><b>${coords(p)}</b></div>`;
+  }
+  sosSheet.querySelector('[data-copy]').onclick = async () => { try{ await navigator.clipboard.writeText(sosTxt); toast('Адрес скопирован'); }catch{ toast(sosTxt); } };
+  sosSheet.querySelector('[data-send]').onclick = async () => {
+    if (!sosTxt) return;
+    try{ if (navigator.share) await navigator.share({ title:'Мне нужна помощь', text:sosTxt }); else { await navigator.clipboard.writeText(sosTxt); toast('Скопировано — вставьте в сообщение'); } }catch{}
+  };
+  ($('#tFr') || $('#tQuest'))?.insertAdjacentHTML('afterend', '<button class="tool t112" id="t112" title="Экстренные службы 112" aria-label="Экстренные службы 112">112</button>');
+  $('#t112') && ($('#t112').onclick = open112);
+
+  // ---- 3) Подборки: «город за 1 день», «с детьми», «халяль» ----
+  const DAY = IS_AST ? [
+    { id:'nuralem', d:'Шар ЭКСПО-2017, музей энергии будущего' }, { id:'khanshatyr', d:'Шатёр Нормана Фостера, внутри пляж' },
+    { id:'baiterek', d:'Символ столицы, смотровая на 97 м' }, { id:'akorda', d:'Резиденция Президента — вид с набережной' },
+    { id:'hazret', d:'Одна из крупнейших мечетей Центральной Азии' }, { id:'pyramid', d:'Пирамида Фостера' }, { id:'museum', d:'Национальный музей Казахстана' },
+  ] : [
+    { q:'Михайло-Архангельский собор', re:/архангельск/i, d:'Старейшее здание Орала, XVIII век' },
+    { q:'музей Пугачёва', re:/пугач/i, d:'Дом-музей Емельяна Пугачёва' },
+    { q:'Храм Христа Спасителя', re:/христа спасит/i, d:'Собор рубежа XIX–XX веков' },
+    { q:'краеведческий музей', re:/краевед/i, d:'История и природа Западного Казахстана' },
+    { q:'драматический театр', re:/театр/i, d:'' },
+    { q:'набережная', re:/набережн|жағалау/i, d:'Прогулка у реки' },
+    { q:'мечеть', re:/мечет|мешіт/i, d:'' },
+  ];
+  const COL_Q = {
+    kids:'nwr["tourism"~"^(zoo|aquarium|theme_park)$"](BB);nwr["leisure"~"^(water_park|amusement_arcade|trampoline_park)$"](BB);nwr["amenity"="theatre"]["name"~"кукол|юн|дет|қуыршақ",i](BB);nwr["leisure"="playground"]["name"](BB);nwr["leisure"="park"]["name"](BB);',
+    halal:'nwr["diet:halal"~"^(yes|only)$"](BB);nwr["cuisine"~"halal"](BB);nwr["name"~"halal|халал|халяль",i](BB);nwr["amenity"="place_of_worship"]["religion"="muslim"](BB);',
+  };
+  const colIcon = t => t.tourism === 'zoo' ? '🦁' : t.tourism === 'aquarium' ? '🐠' : t.tourism === 'theme_park' || t.leisure === 'amusement_arcade' ? '🎡' : t.leisure === 'water_park' ? '🌊'
+    : t.leisure === 'trampoline_park' ? '🤸' : t.amenity === 'theatre' ? '🎭' : t.leisure === 'playground' ? '🛝' : t.leisure === 'park' ? '🌳' : t.amenity === 'place_of_worship' ? '🕌' : t.amenity === 'cafe' ? '☕' : t.shop ? '🛒' : '🍽';
+  const colRank = t => t.tourism || t.leisure === 'water_park' || t.leisure === 'amusement_arcade' || t.leisure === 'trampoline_park' || t.amenity === 'theatre' ? 0 : t.leisure === 'park' ? 1 : t.amenity === 'place_of_worship' ? 1 : 0;
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="colSheet" hidden><div class="sheet-card" role="dialog" aria-label="Подборки">
+    <div class="sheet-head"><h2>🗺 Подборки: ${esc(CUR.name)}</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <div class="col-tabs"><button class="chip" data-tab="day">📸 ${esc(CUR.name)} за 1 день</button><button class="chip" data-tab="kids">🧒 С детьми</button><button class="chip" data-tab="halal">🕌 Халяль</button></div>
+    <div id="colList"></div>
+  </div></div>`);
+  const colSheet = $('#colSheet');
+  colSheet.addEventListener('click', e => { if (e.target === colSheet || e.target.closest('[data-close]')) colSheet.hidden = true; });
+  colSheet.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => colTab(b.dataset.tab));
+  let colReq = 0, colItems = [];
+  const colCache = store.get('colDay_' + CUR.id, null);
+  async function dayItems(){
+    if (IS_AST){
+      if (DAY.some(x => !lmPos[x.id])) await resolveLandmarks();
+      return DAY.map(x => { const l = LANDMARKS.find(k => k.id === x.id), p = lmPos[x.id]; return l && p ? { lng:p.lng, lat:p.lat, name:l.n, d:x.d, e:'🏛' } : null; }).filter(Boolean);
+    }
+    if (colCache && Date.now() - colCache.t < 7 * 864e5) return colCache.items;
+    const out = [];
+    for (const x of DAY){
+      try{
+        const r = await searchPhoton(x.q), it = (r || []).find(k => inAstana({ lng:+k.lon, lat:+k.lat }) && (k.name || '').length);
+        if (it && !out.some(o => dist([o.lng, o.lat], [+it.lon, +it.lat]) < 80)) out.push({ lng:+it.lon, lat:+it.lat, name:it.name, d:x.re.test(it.name) ? x.d : '', e:'🏛' });
+      }catch{}
+    }
+    if (out.length) store.set('colDay_' + CUR.id, { t:Date.now(), items:out });
+    return out;
+  }
+  async function osmItems(kind){
+    const [s, w, n, e] = CUR.ovp.split(','), bb = `${s},${w},${n},${e}`;
+    const j = await overpass(`[out:json][timeout:25];(${COL_Q[kind].replaceAll('BB', bb)});out center 400;`);
+    const c = myPos() || map.getCenter(), me = [+c.lng, +c.lat];
+    const seen = new Set();
+    return (j.elements || []).map(el => ({ lng:el.lon ?? el.center?.lon, lat:el.lat ?? el.center?.lat, name:el.tags?.name || '', t:el.tags || {} }))
+      .filter(x => x.lng != null && x.name && !seen.has(x.name + Math.round(x.lng * 500)) && seen.add(x.name + Math.round(x.lng * 500)))
+      .map(x => ({ ...x, e:colIcon(x.t), r:colRank(x.t), dd:dist(me, [x.lng, x.lat]) }))
+      .sort((a, b) => a.r - b.r || a.dd - b.dd).slice(0, 25);
+  }
+  async function colTab(tab){
+    const my = ++colReq;
+    colSheet.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    $('#colList').innerHTML = '<p class="hint">Собираю подборку…</p>';
+    let items = [];
+    try{ items = tab === 'day' ? await dayItems() : await osmItems(tab); }catch{ if (my === colReq) $('#colList').innerHTML = '<p class="hint">Нет связи с OpenStreetMap. Попробуйте ещё раз через минуту.</p>'; return; }
+    if (my !== colReq) return;
+    colItems = items;
+    if (!items.length){ $('#colList').innerHTML = `<p class="hint">Пока ничего не нашлось ${CUR.v}. Данные OpenStreetMap неполные — добавить место можно через «✏ Не так?» в карточке.</p>`; return; }
+    const here = myPos();
+    $('#colList').innerHTML = (tab === 'day' ? `<p class="hint">Маршрут на день: ${items.length} ${items.length < 5 ? 'места' : 'мест'} по порядку. Нажмите «Маршрут по всем» — карта проложит путь с остановками.</p>
+      <button class="btn primary" data-all style="width:100%;margin-bottom:6px">🧭 Маршрут по всем</button>` : tab === 'halal'
+      ? '<p class="hint">Заведения с отметкой «халяль» и мечети — по данным OpenStreetMap. В Казахстане халяль почти везде, но отметка есть не у всех — уточняйте на месте.</p>'
+      : '<p class="hint">Зоопарки, аквапарки, детские театры, парки и площадки — сначала самое интересное, потом ближайшее.</p>') +
+      items.map((x, i) => `<div class="col-row">${tab === 'day' ? `<span class="k">${i + 1}</span>` : `<span style="font-size:22px">${x.e}</span>`}
+        <div class="n"><b>${esc(x.name)}</b><p class="hint">${[x.d, here ? fmtDist(dist([here.lng, here.lat], [x.lng, x.lat])) + ' от вас' : ''].filter(Boolean).map(esc).join(' · ')}</p></div>
+        <button class="btn" data-show="${i}" aria-label="Показать на карте">👁</button><button class="btn primary" data-go="${i}">Сюда</button></div>`).join('');
+    $('#colList').querySelectorAll('[data-show]').forEach(b => b.onclick = () => { const x = colItems[+b.dataset.show]; colSheet.hidden = true; map.flyTo({ center:[x.lng, x.lat], zoom:16.5, duration:900 }); showPopup({ lng:x.lng, lat:x.lat, name:x.name }); });
+    $('#colList').querySelectorAll('[data-go]').forEach(b => b.onclick = () => { const x = colItems[+b.dataset.go]; colSheet.hidden = true; goTo({ lng:x.lng, lat:x.lat, name:x.name }); });
+    const all = $('#colList').querySelector('[data-all]');
+    if (all) all.onclick = () => {
+      const pts = colItems.slice(0, MAX_STOPS + 2).map(x => ({ lng:x.lng, lat:x.lat, name:x.name }));
+      if (pts.length < 2) return goTo(pts[0]);
+      colSheet.hidden = true;
+      state.stops = pts.slice(1, -1); renderStops();
+      setPoint('from', pts[0]); setPoint('to', pts[pts.length - 1]);
+      $('#panel').classList.remove('collapsed');
+      toast(`Маршрут: ${pts.length} мест. Выберите, как идти — пешком, на машине или самокате`);
+    };
+  }
+  function openCollections(tab){ popup?.remove(); colSheet.hidden = false; colTab(tab || 'day'); }
+
+  // ---- 4) Транспорт: как платить и сколько стоит (в разделе «Сервисы») ----
+  const TRANSPORT = IS_AST
+    ? `<h3>🚌 Транспорт ${esc(CUR.gen)}</h3><div class="howto">
+        <b>Автобус:</b> оплата в салоне — QR-код через приложение <b>Avtobys</b> или Kaspi, либо транспортной картой. Сейчас — <b>110 ₸</b> безналично; с 1 декабря 2026 акимат предлагает 150 ₸ (решение ещё не принято).<br>
+        <b>LRT:</b> оплата в Kaspi — <b>200 ₸</b> поездка, <b>500 ₸</b> день, <b>7 500 ₸</b> месяц.<br>
+        Остановки и маршруты — в 🗂 Слоях. Цены уточняйте в приложении: тарифы меняются.</div>`
+    : `<h3>🚌 Транспорт ${esc(CUR.gen)}</h3><div class="howto">
+        <b>Автобус:</b> оплата в салоне — QR через приложение <b>Avtobys</b> или Kaspi; безналично дешевле, чем наличными. Точную цену покажет приложение — тарифы меняются.<br>
+        LRT ${esc(CUR.v)} нет. Остановки и маршруты — в 🗂 Слоях.</div>`;
+  try{
+    const sv = $('#svcSheet'), h = [...sv.querySelectorAll('h3')].find(x => /Посмотреть город/.test(x.textContent));
+    const html = TRANSPORT + `<h3>🧭 Для гостей города</h3><div class="grid"><button data-col><span class="ic">🗺</span>Подборки мест</button><button data-show><span class="ic">🪧</span>Адрес для таксиста</button><button data-112><span class="ic">🆘</span>112 и мой адрес</button><button data-here><span class="ic">📍</span>Где я — по ссылке</button></div>`;
+    if (h) h.insertAdjacentHTML('beforebegin', html); else sv.querySelector('.sheet-card').insertAdjacentHTML('beforeend', html);
+    sv.querySelector('[data-col]').onclick = () => { sv.hidden = true; openCollections(); };
+    sv.querySelector('[data-show]').onclick = () => { sv.hidden = true; const h0 = myPos(); showDriver(svcP || state.to || (h0 ? { ...h0, name:'' } : null)); };
+    sv.querySelector('[data-112]').onclick = () => { sv.hidden = true; open112(); };
+    sv.querySelector('[data-here]').onclick = () => { sv.hidden = true; openHere(); };
+  }catch{}
+
+  // ---- 5) В поездке: «ограничение впереди» (школы — в checkRoad: «Осторожно, школа», будни 7–19) ----
+  $('#limit')?.insertAdjacentHTML('afterend', '<div class="lim-ahead" id="limAhead" hidden></div>');
+  let limSaid = -1;
+  function limitAhead(){
+    const box = $('#limAhead'); if (!box) return;
+    const i0 = nav.idx, cur = limitAt(i0);
+    let hit = null;
+    for (let i = i0 + 1; i < nav.pts.length - 1; i++){
+      const dd = (nav.cum[i] ?? 0) - (nav.cum[i0] ?? 0); if (dd > 400) break;
+      const m = limitAt(i); if (m.sure && m.v > 0 && m.v <= cur.v - 10){ hit = { i, d:dd, v:m.v }; break; }
+    }
+    box.hidden = !hit;
+    if (!hit) return;
+    box.textContent = `через ${fmtDist(Math.max(10, Math.round(hit.d / 10) * 10))} — ${hit.v}`;
+    if (hit.d < 300 && limSaid !== hit.v * 1e5 + hit.i){
+      limSaid = hit.v * 1e5 + hit.i;
+      speak({ ru:`Впереди ограничение ${hit.v}`, kk:`Алда жылдамдық шегі ${hit.v}`, en:`Speed limit ${hit.v} ahead` });
+    }
+  }
+  setInterval(() => {
+    if (!driving || state.mode !== 'car'){ $('#limAhead') && ($('#limAhead').hidden = true); return; }
+    try{
+      limitAhead();
+    }catch{}
+  }, 1000);
+
+  // ---- 6) 5/10/15 мин — фильтр в «Найти рядом» (сама фильтрация — в findCat) ----
+  const openCats213 = openCats;
+  openCats = function(id){
+    openCats213.apply(this, arguments);
+    if ($('#reachChips')){ $('#reachChips').hidden = !!activeLine(); return; }
+    if (activeLine()) return;
+    $('#catChips').insertAdjacentHTML('afterend', `<div class="chips" id="reachChips" style="margin-top:6px">${[0, 5, 10, 15].map(m => `<button class="chip${reachMin === m ? ' on' : ''}" data-m="${m}">${m ? '⏱ ' + m + ' мин' : 'Любое расстояние'}</button>`).join('')}</div>`);
+    $('#reachChips').querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+      reachMin = +b.dataset.m;
+      $('#reachChips').querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b));
+      if (reachMin) toast(`Примерно, ${reachWord()}: за ${reachMin} мин — около ${fmtDist(reachMin * 60 * reachV() / 1.3)}`);
+      const cur = $('#catChips [data-c].on')?.dataset.c; if (cur) findCat(cur);
+    });
+  };
+
+  // ---- 7) Погода в месте прибытия к нужному часу ----
+  const wxCache = {};
+  async function wxAt(p, t){
+    const k = p.lat.toFixed(2) + ',' + p.lng.toFixed(2);
+    let j = wxCache[k];
+    if (!j || Date.now() - j._t > 30 * 60e3){
+      j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat.toFixed(2)}&longitude=${p.lng.toFixed(2)}&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,wind_speed_10m&wind_speed_unit=ms&forecast_days=2&timezone=auto&timeformat=unixtime`)).json();
+      j._t = Date.now(); wxCache[k] = j;
+    }
+    const H = j.hourly; if (!H?.time?.length) return null;
+    let i = 0; H.time.forEach((x, n) => { if (Math.abs(x * 1000 - t) < Math.abs(H.time[i] * 1000 - t)) i = n; });
+    return { t:Math.round(H.temperature_2m[i]), feel:Math.round(H.apparent_temperature[i]), code:H.weather_code[i], pp:H.precipitation_probability?.[i] ?? null, wind:Math.round(H.wind_speed_10m[i]) };
+  }
+  const selectRoute213 = selectRoute;
+  selectRoute = function(i){
+    const out = selectRoute213.apply(this, arguments);
+    const r = state.routes[i], to = state.to;
+    if (r && to && !driving){
+      const t = Date.now() + r.duration * (r._f || 1) * 1000;
+      wxAt(to, t).then(w => {
+        if (!w || state.routes[state.active] !== r || state.to !== to || document.querySelector('#routes .r-wx')) return;
+        const tips = [];
+        if (w.pp != null && w.pp >= 50) tips.push([71, 73, 75, 77, 85, 86].includes(w.code) ? 'снег — скользко' : 'возьмите зонт');
+        if (w.feel <= -20) tips.push('оденьтесь теплее');
+        if (w.wind >= 12) tips.push('сильный ветер');
+        const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v);
+        $('#routes').insertAdjacentHTML('beforeend', `<p class="hint r-wx">${WX_ICON(w.code)} В месте прибытия к ${hm13(t)}: ${sg(w.t)}°${w.feel !== w.t ? ` (ощущается ${sg(w.feel)}°)` : ''}, ветер ${w.wind} м/с${w.pp != null ? `, осадки ${w.pp}%` : ''}${tips.length ? ' — ' + tips.join(', ') : ''}.</p>`);
+      }).catch(() => {});
+    }
+    return out;
+  };
+
+  // ---- 8) «Где я» на 15 мин / 1 час / до конца поездки — по ссылке, без регистрации ----
+  document.body.insertAdjacentHTML('beforeend', `<div class="sheet" id="hereSheet" hidden><div class="sheet-card" role="dialog" aria-label="Поделиться, где я">
+    <div class="sheet-head"><h2>📍 Поделиться, где я</h2><button class="icon-btn" data-close aria-label="Закрыть">✕</button></div>
+    <p class="hint">По ссылке видно вашу точку на карте — без регистрации и приложения. Ссылка сама перестанет работать, когда выйдет время.</p>
+    <div class="row" style="flex-wrap:wrap"><button class="btn primary" data-h="15" style="flex:1">15 мин</button><button class="btn primary" data-h="60" style="flex:1">1 час</button><button class="btn" data-h="end" style="flex:1 1 100%">🏁 До конца поездки</button></div>
+    <p class="hint" id="hereNote"></p>
+    <button class="btn" id="hereStopBtn" style="width:100%" hidden>⏹ Перестать делиться</button>
+  </div></div>
+  <div class="rulerbar here-bar" id="hereBar" hidden><b id="hereInfo">📍</b><button class="btn" id="hereStop">Стоп</button></div>`);
+  const hereSheet = $('#hereSheet');
+  hereSheet.addEventListener('click', e => { if (e.target === hereSheet || e.target.closest('[data-close]')) hereSheet.hidden = true; });
+  let here = null, hereWatch = null, hereTimer = 0;
+  function openHere(){
+    popup?.remove();
+    $('#hereNote').textContent = state.to ? `«До конца поездки» — пока не дойдёте до «${badName(state.to.name) ? 'точки Б' : state.to.name}» (не дольше 4 часов).` : '«До конца поездки» — сначала поставьте точку Б.';
+    hereSheet.querySelector('[data-h="end"]').disabled = !state.to;
+    $('#hereStopBtn').hidden = !here;
+    hereSheet.hidden = false;
+  }
+  const hereSave = () => store.set('hereShare', here ? { id:here.id, key:here.key, until:here.until, to:here.to } : null);
+  async function hereSend(ended){
+    if (!here) return;
+    here.t = Date.now();
+    const body = { id:here.id, key:here.key, ended:!!ended };
+    if (!ended){
+      const p = here.p || myPos(); if (!p) return;
+      Object.assign(body, { mode:'here', until:here.until, lng:+p.lng, lat:+p.lat, h:0, left:here.to ? Math.round(dist([+p.lng, +p.lat], [here.to.lng, here.to.lat])) : 0, eta:here.until,
+        to:here.to?.name || '', toLng:here.to?.lng, toLat:here.to?.lat });
+    }
+    try{ await fetch('/api/trip', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }); }catch{}
+  }
+  function hereBar(){
+    $('#hereBar').hidden = !here;
+    if (here) $('#hereInfo').textContent = `📍 Вы делитесь местом до ${hm13(here.until)}${here.to ? ' или до «' + (badName(here.to.name) ? 'точки Б' : here.to.name) + '»' : ''}`;
+  }
+  function hereTick(){
+    if (!here) return;
+    if (Date.now() > here.until) return hereStop('⏱ Время вышло — ссылка больше не показывает, где вы');
+    if (here.to && here.p && dist([+here.p.lng, +here.p.lat], [here.to.lng, here.to.lat]) < 60) return hereStop('🏁 Вы на месте — перестал делиться местом');
+    if (Date.now() - here.t >= 30000) hereSend();   // раз в 30 секунд — бережём бесплатный лимит записей
+  }
+  function hereRun(){
+    clearInterval(hereTimer); hereTimer = setInterval(hereTick, 5000);
+    if (navigator.geolocation && hereWatch == null) hereWatch = navigator.geolocation.watchPosition(pos => { if (here) here.p = { lng:pos.coords.longitude, lat:pos.coords.latitude }; }, () => {}, { enableHighAccuracy:true, maximumAge:15000 });
+    hereBar();
+  }
+  async function hereStart(kind){
+    if (here) await hereStop('');
+    const now = Date.now();
+    const to = kind === 'end' && state.to ? { lng:state.to.lng, lat:state.to.lat, name:badName(state.to.name) ? '' : state.to.name } : null;
+    here = { id:rnd(10), key:rnd(16), until:now + (kind === '15' ? 15 : kind === '60' ? 60 : 240) * 60e3, to, t:0, p:null };
+    hereSheet.hidden = true;
+    let p = myPos();
+    if (!p){ try{ const pos = await getPos(); p = { lng:pos.coords.longitude, lat:pos.coords.latitude }; }catch(e){ here = null; return toast('Не получилось определить, где вы. Разрешите доступ к геопозиции.'); } }
+    here.p = { lng:+p.lng, lat:+p.lat };
+    await hereSend(); hereSave(); hereRun();
+    const url = location.origin + '/#t=' + here.id;
+    const text = kind === 'end' ? `Иду${to?.name ? ' в «' + to.name + '»' : ''}. Где я сейчас — по ссылке:` : `Где я — по ссылке (до ${hm13(here.until)}):`;
+    try{
+      if (navigator.share) await navigator.share({ title:'Где я', text, url });
+      else { await navigator.clipboard.writeText(text + ' ' + url); toast('Ссылка скопирована — отправьте её в мессенджер'); }
+    }catch{}
+  }
+  async function hereStop(msg){
+    if (!here) return;
+    await hereSend(true);
+    here = null; hereSave(); clearInterval(hereTimer);
+    if (hereWatch != null){ navigator.geolocation.clearWatch(hereWatch); hereWatch = null; }
+    hereBar(); $('#hereStopBtn').hidden = true;
+    if (msg) toast(msg);
+  }
+  hereSheet.querySelectorAll('[data-h]').forEach(b => b.onclick = () => hereStart(b.dataset.h));
+  $('#hereStopBtn').onclick = () => { hereSheet.hidden = true; hereStop('Вы больше не делитесь местом'); };
+  $('#hereStop').onclick = () => hereStop('Вы больше не делитесь местом');
+  // после перезагрузки страницы — продолжаем, если время ещё не вышло
+  try{ const h = store.get('hereShare', null); if (h && h.until > Date.now()){ here = { ...h, t:0, p:null }; hereRun(); } else if (h) store.set('hereShare', null); }catch{}
+
+  // ---- входы: карточка места, быстрое меню, голос ----
+  const showPopup213 = showPopup;
+  showPopup = function(p){
+    const r = showPopup213.apply(this, arguments);
+    try{
+      const row = popup?.getElement()?.querySelector('.pop-save');
+      if (row && !row.querySelector('[data-s="drv"]')){
+        row.querySelector('[data-s="taxi"]')?.insertAdjacentHTML('afterend', '<button class="chip" data-s="drv" title="Покажите таксисту: адрес крупно на 3 языках">🪧 Таксисту</button>');
+        row.querySelector('[data-s="drv"]').onclick = ev => { ev.stopPropagation(); showDriver(p); };
+      }
+    }catch{}
+    return r;
+  };
+  const renderQuick213 = renderQuick;
+  renderQuick = function(){
+    const r = renderQuick213.apply(this, arguments);
+    const chips = document.querySelector('#results .quick .chips');
+    if (chips && !chips.querySelector('[data-colq]')){
+      chips.insertAdjacentHTML('beforeend', '<button class="chip" data-colq>🗺 Подборки</button><button class="chip" data-hereq>📍 Где я — ссылкой</button>');
+      chips.querySelector('[data-colq]').onclick = () => { $('#results').hidden = true; openCollections(); };
+      chips.querySelector('[data-hereq]').onclick = () => { $('#results').hidden = true; openHere(); };
+    }
+    return r;
+  };
+  const localCmd213 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    if (/(^| )(112|сто двенадцать|скор(ая|ую) помощ|вызови скорую|помогите|спасите|вызови полицию|экстренн|жедел жәрдем|көмектесіңдер)/.test(t)) return () => (open112(), 'Открываю экстренные службы. Звонок на 112 — бесплатный. Ваш адрес — на экране.');
+    if (/таксист|покажи (адрес )?водител/.test(t)) return () => { const h0 = myPos(); showDriver(state.to || (h0 ? { ...h0, name:'' } : null)); return 'Покажите этот экран водителю.'; };
+    if (/подборк|за (1|один) день|с детьми|куда сходить с ребенком|халял|халяль/.test(t)) return () => { openCollections(/дет|ребен/.test(t) ? 'kids' : /халял|халяль/.test(t) ? 'halal' : 'day'); return 'Вот подборка мест.'; };
+    if (/(поделись|отправь|скинь|покажи).*(где я|мо[её] (место|местоположение|геолокац))/.test(t)) return () => (openHere(), 'На сколько поделиться: 15 минут, час или до конца поездки?');
+    return localCmd213.apply(this, arguments);
+  };
+  window.__a = { latin, addr3, showDriver, open112, openCollections, openHere, hereStart, hereStop, here:() => here, wxAt, limitAhead, reach:() => reachMin };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
