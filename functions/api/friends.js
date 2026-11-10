@@ -1,4 +1,5 @@
 import { inCities } from '../../lib/cities.js';
+import { pushFriendsOf } from '../../lib/push.js';
 // «Свои на карте»: семья и друзья видят друг друга — только по взаимному согласию.
 // Хранится в Cloudflare D1 (привязка DB). Таблицы создаются сами при первом запросе.
 // Точка хранится одна (последняя), истории нет. «Удалить всё» стирает человека целиком.
@@ -28,7 +29,7 @@ async function auth(db, b) {
   return u || null;
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   const db = env.DB;
   if (!db) return json({ ok: false, error: 'no_db' }, 503);
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
@@ -81,13 +82,18 @@ export async function onRequestPost({ request, env }) {
     case 'pos': {
       const lng = +b.lng, lat = +b.lat;
       if (!inCities(lat, lng, 1)) return json({ ok: false, error: 'outside' }, 400);
-      const last = await db.prepare('SELECT ts FROM fr_pos WHERE id = ?').bind(me.id).first();
+      const last = await db.prepare('SELECT ts, sos FROM fr_pos WHERE id = ?').bind(me.id).first();
       if (last && now - last.ts < MIN_GAP && !b.sos) return json({ ok: true, skipped: true });
       const spd = Math.max(0, Math.min(250, +b.spd || 0)), bat = Number.isFinite(+b.bat) ? Math.max(0, Math.min(100, Math.round(+b.bat))) : null;
       await db.prepare(`INSERT INTO fr_pos (id, lng, lat, spd, bat, at, ts, sos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET lng = excluded.lng, lat = excluded.lat, spd = excluded.spd, bat = excluded.bat, at = excluded.at, ts = excluded.ts,
         sos = CASE WHEN excluded.sos > 0 THEN excluded.sos ELSE fr_pos.sos END`)
         .bind(me.id, +lng.toFixed(6), +lat.toFixed(6), Math.round(spd), bat, clean(b.at, 40) || null, now, b.sos ? now : 0).run();
+      // SOS — сразу push-уведомление своим (не чаще раза в 10 минут)
+      if (b.sos && !(last?.sos && now - last.sos < 600e3)) {
+        const job = pushFriendsOf(db, me.id, { title: `🆘 ${me.e || ''} ${me.name} просит помощи`.replace(/\s+/g, ' ').trim(), body: `${clean(b.at, 40) ? clean(b.at, 40) + ' · ' : ''}Нажмите — покажу на карте`, url: '/#fr-open', tag: 'sos-' + me.id, urgent: true, kind: 'sos' }).catch(() => 0);
+        if (waitUntil) waitUntil(job); else await job;
+      }
       return json({ ok: true });
     }
     case 'list': {

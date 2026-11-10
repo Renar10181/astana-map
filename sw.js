@@ -1,6 +1,6 @@
 // Карта Астаны — работа без интернета.
 // Приложение: сначала сеть, без сети — из памяти. Плитки карты, шрифты и библиотеки — из памяти, если уже есть.
-const V = '2.15.0';
+const V = '2.16.0';
 const SHELL = 'shell-' + V, TILES = 'tiles-v1', LIBS = 'libs-v1';
 const MAX_TILES = 2500;   // сколько просмотренных плиток держать (скачанная карта хранится отдельно и не удаляется)
 
@@ -57,3 +57,28 @@ async function trimCache(c){
   const keys = await c.keys();
   if (keys.length > MAX_TILES) for (const k of keys.slice(0, keys.length - MAX_TILES)) await c.delete(k);
 }
+
+// ---- Push-уведомления: сигнал пустой, текст забираем с сервера («почтовый ящик» этого телефона) ----
+self.addEventListener('push', e => {
+  e.waitUntil((async () => {
+    let items = [];
+    try {
+      const sub = await self.registration.pushManager.getSubscription();
+      const r = await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ act: 'inbox', endpoint: sub?.endpoint || '' }) });
+      items = (await r.json()).items || [];
+    } catch {}
+    if (!items.length) items = [{ title: 'Карта Астаны', body: 'Есть новости — откройте карту', url: '/' }];
+    await Promise.all(items.slice(-3).map(m => self.registration.showNotification(m.title || 'Карта Астаны', {
+      body: m.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: m.tag || undefined, renotify: !!m.urgent,
+      requireInteraction: !!m.urgent, vibrate: m.urgent ? [300, 120, 300, 120, 300] : [80], data: { url: m.url || '/' } })));
+  })());
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL(e.notification.data?.url || '/', self.location.origin).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    const c = cs.find(x => x.url.startsWith(self.location.origin));
+    if (c) { c.postMessage({ push: url }); return c.focus(); }
+    return self.clients.openWindow(url);
+  }));
+});

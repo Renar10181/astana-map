@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.15.0</p>
+    <p class="set-ver">Версия 2.16.0</p>
   </div>
 </div>
 
@@ -7646,6 +7646,99 @@ body.night .nav .btn{background:#1d2731;border:0}
     return localCmd215.apply(this, arguments);
   };
   window.__acc = { A11Y, apply:a11yApply, stairsOn };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.16.0: 🔔 Push-уведомления, шаг 1 — основа, проверочное, SOS от «Своих на карте» ----------
+  const PUSH_KINDS = [
+    ['sos', '🆘 SOS от «Своих на карте» — даже ночью', true, true],
+    ['family', '👨‍👩‍👧 «Дошёл до школы», «приехал на работу»', true, false],
+    ['leave', '🚗 Когда выезжать на работу и домой', true, false],
+    ['weather', '❄️ Гололёд, мороз, буран, закрытые трассы', true, false],
+    ['parking', '🅿️ Не забыть оплатить парковку', true, false],
+    ['fuel', '⛽ Бензин подешевел на вашей АЗС', true, false],
+    ['city', '🎉 События города и перекрытия (раз в неделю)', true, false],
+    ['quests', '🎯 Новые квесты рядом', true, false],
+    ['here', '📍 «Где я по ссылке» — время вышло', true, false],
+  ];
+  let pushPrefs = { quiet:true, ...Object.fromEntries(PUSH_KINDS.map(([k, , d]) => [k, d])), ...store.get('pushPrefs', {}) };
+  const pushOk = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isIOS16 = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone16 = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  $('.a11y-box')?.insertAdjacentHTML('afterend', `<div class="a11y-box" id="pushBox" role="group" aria-label="Уведомления"><b>🔔 Уведомления · Хабарламалар</b>
+    <p class="hint" id="pushNote" style="margin:0 0 6px"></p>
+    <button class="btn primary" id="pushOn" type="button" style="width:100%">🔔 Включить уведомления</button>
+    <div id="pushKinds" hidden>
+      ${PUSH_KINDS.map(([k, n, , live]) => `<label class="set-check"><input type="checkbox" data-pk="${k}"> ${n}${live ? '' : ' <span class="city-tag s">скоро</span>'}</label>`).join('')}
+      <label class="set-check"><input type="checkbox" data-pk="quiet"> 🌙 Тишина ночью 22:00–8:00 (кроме SOS)</label>
+      <div class="row" style="margin-top:6px"><button class="btn" id="pushTest" type="button" style="flex:1">Прислать проверочное</button><button class="btn" id="pushOff" type="button" style="flex:1">Выключить</button></div>
+    </div></div>`);
+  const pushNote = t => { const el = $('#pushNote'); if (el){ el.textContent = t; el.hidden = !t; } };
+  const b64uBytes = s => { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+  async function pushSub(){ try{ const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); }catch{ return null; } }
+  async function pushSend(sub){
+    const r = await fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'sub', sub:sub.toJSON(), prefs:{ ...pushPrefs,
+      home:places.home ? { lat:places.home.lat, lng:places.home.lng } : undefined, work:places.work ? { lat:places.work.lat, lng:places.work.lng } : undefined },
+      fr:fr ? { id:fr.id, tok:fr.tok } : null, city:CUR.id }) });
+    if (r.status === 503 || r.status === 404) throw new Error('nodb');
+    const j = await r.json(); if (!j.ok) throw new Error('sub');
+    store.set('pushSync', { d:new Date().toDateString(), fr:fr?.id || '' });
+    return j;
+  }
+  async function pushRender(){
+    if (!$('#pushBox')) return;
+    if (!pushOk){ $('#pushOn').hidden = true; return pushNote(isIOS16 && !standalone16 ? 'На iPhone: в Safari нажмите «Поделиться» → «На экран „Домой“», откройте карту оттуда — и включите уведомления здесь.' : 'Этот браузер не умеет уведомления. Откройте карту в Chrome.'); }
+    const sub = Notification.permission === 'granted' ? await pushSub() : null;
+    $('#pushOn').hidden = !!sub; $('#pushKinds').hidden = !sub;
+    document.querySelectorAll('[data-pk]').forEach(el => { el.checked = pushPrefs[el.dataset.pk] !== false; });
+    pushNote(sub ? '✅ Включены. Не больше 1–2 в день, только полезное.' : Notification.permission === 'denied'
+      ? 'Уведомления запрещены в браузере. Нажмите 🔒 слева от адреса → Разрешения → Уведомления → «Разрешить».' : 'Пришлём только полезное: SOS своих, когда выезжать, гололёд. Не больше 1–2 в день.');
+  }
+  async function pushEnable(){
+    try{
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted'){ pushRender(); return toast('Без разрешения уведомления не придут'); }
+      const kr = await fetch('/api/push'); if (!kr.ok) throw new Error('nodb');
+      const { key } = await kr.json();
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64uBytes(key) });
+      await pushSend(sub);
+      toast('🔔 Уведомления включены');
+    }catch(e){ toast(e.message === 'nodb' ? 'На тестовом адресе уведомления не работают — проверим на основном сайте' : 'Не получилось включить уведомления — попробуйте ещё раз'); }
+    pushRender();
+  }
+  $('#pushOn') && ($('#pushOn').onclick = pushEnable);
+  $('#pushTest') && ($('#pushTest').onclick = async () => {
+    const sub = await pushSub(); if (!sub) return pushRender();
+    try{ const j = await (await fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'test', endpoint:sub.endpoint }) })).json();
+      toast(j.ok ? 'Отправил — через пару секунд придёт в шторку' : 'Не дошло — выключите и включите уведомления заново'); }catch{ toast('Нет связи'); }
+  });
+  $('#pushOff') && ($('#pushOff').onclick = async () => {
+    const sub = await pushSub();
+    if (sub){ fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'unsub', endpoint:sub.endpoint }) }).catch(() => {}); try{ await sub.unsubscribe(); }catch{} }
+    toast('Уведомления выключены'); pushRender();
+  });
+  document.querySelectorAll('[data-pk]').forEach(el => el.onchange = async () => {
+    pushPrefs[el.dataset.pk] = el.checked; store.set('pushPrefs', pushPrefs);
+    const sub = await pushSub(); if (sub) pushSend(sub).catch(() => {});
+  });
+  pushRender();
+  // раз в день (и когда вошли в «Свои на карте») — обновляем подписку на сервере
+  setTimeout(async () => {
+    if (!pushOk || Notification.permission !== 'granted') return;
+    const s = store.get('pushSync', {}), sub = await pushSub(); if (!sub) return;
+    if (s.d !== new Date().toDateString() || s.fr !== (fr?.id || '')) pushSend(sub).catch(() => {});
+  }, 8000);
+  // нажали на уведомление
+  const pushGo = url => { try{ const u = new URL(url, location.href); if (u.hash === '#fr-open'){ history.replaceState(null, '', location.pathname); openFriends(); } else if (u.hash) location.hash = u.hash; }catch{} };
+  if (location.hash === '#fr-open') setTimeout(() => pushGo(location.href), 1500);
+  navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.push) pushGo(e.data.push); });
+  // голосом: «включи уведомления»
+  const localCmd216 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    if (/(включи|подключи) уведомлени|хабарламаны қос/.test(t)) return () => { openSettings?.(); setTimeout(() => $('#pushBox')?.scrollIntoView({ block:'center' }), 300); pushEnable(); return 'Разрешите уведомления в окошке браузера.'; };
+    return localCmd216.apply(this, arguments);
+  };
+  window.__push = { prefs:() => pushPrefs, render:pushRender, enable:pushEnable, go:pushGo };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
