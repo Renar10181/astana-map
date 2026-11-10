@@ -29,7 +29,7 @@ async function auth(db, b) {
   return u || null;
 }
 
-export async function onRequestPost({ request, env, waitUntil }) {
+export async function onRequestPost({ request, env }) {
   const db = env.DB;
   if (!db) return json({ ok: false, error: 'no_db' }, 503);
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
@@ -89,11 +89,12 @@ export async function onRequestPost({ request, env, waitUntil }) {
         ON CONFLICT(id) DO UPDATE SET lng = excluded.lng, lat = excluded.lat, spd = excluded.spd, bat = excluded.bat, at = excluded.at, ts = excluded.ts,
         sos = CASE WHEN excluded.sos > 0 THEN excluded.sos ELSE fr_pos.sos END`)
         .bind(me.id, +lng.toFixed(6), +lat.toFixed(6), Math.round(spd), bat, clean(b.at, 40) || null, now, b.sos ? now : 0).run();
-      // SOS — сразу push-уведомление своим (не чаще раза в 10 минут)
+      // SOS — сразу push-уведомление своим (не чаще раза в 10 минут); отвечаем, сколько дошло
+      let push = null;
       if (b.sos && !(last?.sos && now - last.sos < 600e3)) {
-        const job = pushFriendsOf(db, me.id, { title: `🆘 ${me.e || ''} ${me.name} просит помощи`.replace(/\s+/g, ' ').trim(), body: `${clean(b.at, 40) ? clean(b.at, 40) + ' · ' : ''}Нажмите — покажу на карте`, url: '/#fr-open', tag: 'sos-' + me.id, urgent: true, kind: 'sos' }).catch(() => 0);
-        if (waitUntil) waitUntil(job); else await job;
-      }
+        push = await pushFriendsOf(db, me.id, { title: `🆘 ${me.e || ''} ${me.name} просит помощи`.replace(/\s+/g, ' ').trim(), body: `${clean(b.at, 40) ? clean(b.at, 40) + ' · ' : ''}Нажмите — покажу на карте`, url: '/#fr-open', tag: 'sos-' + me.id, urgent: true, kind: 'sos' }).catch(() => ({ sent: 0, subs: 0, friends: 0, error: true }));
+      } else if (b.sos) push = { repeat: true };
+      return json({ ok: true, ...(push ? { push } : {}) });
       return json({ ok: true });
     }
     case 'list': {

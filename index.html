@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.16.0</p>
+    <p class="set-ver">Версия 2.16.1</p>
   </div>
 </div>
 
@@ -6427,7 +6427,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   async function frSend(sos){
     if (!fr || fr.share === false) return;
     const p = await frFix(); if (!p) return;
-    await frApi('pos', { lng:p.lng, lat:p.lat, spd:driving ? lastKmh : p.spd || 0, bat:frBat, at:myAt(p), sos:!!sos }).catch(() => {});
+    return await frApi('pos', { lng:p.lng, lat:p.lat, spd:driving ? lastKmh : p.spd || 0, bat:frBat, at:myAt(p), sos:!!sos }).catch(() => null);
   }
   function frMarker(f){
     let m = frMarkers[f.id];
@@ -6560,7 +6560,18 @@ body.night .nav .btn{background:#1d2731;border:0}
     });
     $('#frSos').onclick = async () => {
       const b = $('#frSos'); if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Нажмите ещё раз — отправить SOS'; return; }
-      await frSend(true); toast('🆘 SOS отправлен всем своим'); b.dataset.sure = ''; b.textContent = '🆘 SOS';
+      b.textContent = 'Отправляю…';
+      const r = await frSend(true), pu = r?.push;
+      b.dataset.sure = ''; b.textContent = '🆘 SOS';
+      // 2.16.1: честно говорим, дошло ли
+      const msg = !fr ? 'Сначала войдите в «Свои на карте»' : fr.share === false ? 'Вы скрыты от своих — нажмите «👁 Показать меня» и повторите SOS'
+        : !r ? 'SOS не ушёл: нет GPS или связи. Включите геолокацию и повторите'
+        : r.error === 'outside' ? 'SOS не ушёл: вы за пределами города на карте. Позвоните 112'
+        : !r.ok ? 'SOS не ушёл — нет связи с сервером. Позвоните 112'
+        : pu?.repeat ? '🆘 SOS уже отправлен в последние 10 минут — свои видят отметку SOS на карте'
+        : pu && pu.subs === 0 ? `🆘 SOS отмечен на карте, но уведомление не ушло: ни у кого из своих (${pu.friends}) не включены уведомления в приложении`
+        : pu ? `🆘 SOS отправлен: уведомление ушло ${pu.sent} из ${pu.subs}${pu.sent < pu.subs ? ' — у кого-то телефон не принял' : ''}` : '🆘 SOS отправлен всем своим';
+      toast(msg); mascot('wave', msg, 10000);
     };
     $('#frWipe').onclick = async () => {
       const b = $('#frWipe'); if (b.dataset.sure !== '1'){ b.dataset.sure = '1'; b.textContent = 'Точно? Нажмите ещё раз — удалю всё'; return; }
@@ -7680,7 +7691,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       fr:fr ? { id:fr.id, tok:fr.tok } : null, city:CUR.id }) });
     if (r.status === 503 || r.status === 404) throw new Error('nodb');
     const j = await r.json(); if (!j.ok) throw new Error('sub');
-    store.set('pushSync', { d:new Date().toDateString(), fr:fr?.id || '' });
+    store.set('pushSync', { d:new Date().toDateString(), fr:fr?.id || '', frOk:!!j.fr });
     return j;
   }
   async function pushRender(){
@@ -7689,7 +7700,9 @@ body.night .nav .btn{background:#1d2731;border:0}
     const sub = Notification.permission === 'granted' ? await pushSub() : null;
     $('#pushOn').hidden = !!sub; $('#pushKinds').hidden = !sub;
     document.querySelectorAll('[data-pk]').forEach(el => { el.checked = pushPrefs[el.dataset.pk] !== false; });
-    pushNote(sub ? '✅ Включены. Не больше 1–2 в день, только полезное.' : Notification.permission === 'denied'
+    const sy = store.get('pushSync', {});
+    if (sub && sy.fr !== (fr?.id || '')) pushSend(sub).then(() => pushRender()).catch(() => {});
+    pushNote(sub ? '✅ Включены. Не больше 1–2 в день, только полезное.' + (sy.frOk ? ' SOS своих — тоже сюда.' : ' ⚠ Чтобы получать SOS своих, войдите в «👨‍👩‍👧 Свои на карте» в этом приложении (на iPhone приложение с экрана «Домой» и Safari — разные, войти нужно именно здесь).') : Notification.permission === 'denied'
       ? 'Уведомления запрещены в браузере. Нажмите 🔒 слева от адреса → Разрешения → Уведомления → «Разрешить».' : 'Пришлём только полезное: SOS своих, когда выезжать, гололёд. Не больше 1–2 в день.');
   }
   async function pushEnable(){
