@@ -3,7 +3,7 @@ import { runCron } from '../../lib/pushcron.js';
 // Push-уведомления: подписка, настройки, проверочное, «почтовый ящик» для телефона.
 // Хранится в Cloudflare D1 (привязка DB). Подписку определяет её адрес (endpoint) — он известен только этому телефону.
 const json = (o, st = 200) => Response.json(o, { status: st, headers: { 'Cache-Control': 'no-store' } });
-const KINDS = ['sos', 'family', 'leave', 'weather', 'parking', 'fuel', 'city', 'quests', 'here'];
+const KINDS = ['sos', 'msg', 'family', 'leave', 'weather', 'parking', 'fuel', 'city', 'quests', 'here'];
 const cleanPrefs = p => {
   const o = {}; KINDS.forEach(k => { if (typeof p?.[k] === 'boolean') o[k] = p[k]; });
   if (typeof p?.quiet === 'boolean') o.quiet = p.quiet;
