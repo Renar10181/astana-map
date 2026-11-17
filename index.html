@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.17.0</p>
+    <p class="set-ver">Версия 2.18.0</p>
   </div>
 </div>
 
@@ -2609,10 +2609,10 @@ body.night .nav .btn{background:#1d2731;border:0}
   };
   const setOnline = () => { $('#offBar').hidden = navigator.onLine; };
   addEventListener('online', () => { setOnline(); toast('Интернет снова есть'); loadEvents(); });
-  addEventListener('offline', () => { setOnline(); toast('Нет интернета — карта из памяти, маршруты и поиск недоступны'); });
+  addEventListener('offline', () => { setOnline(); toast('📴 Нет интернета — карта из памяти, поиск заведений и сохранённые маршруты работают'); });
   setOnline();
 
-  const OFF_BOX = [71.20, 50.95, 71.75, 51.30];   // город целиком
+  const OFF_BOX = CUR.bbox.split(',').map(Number);   // город целиком (2.18.0: и для Орала)
   const lon2x = (lon, z) => Math.floor((lon + 180) / 360 * 2 ** z);
   const lat2y = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z); };
   async function offlineUrls(){
@@ -2642,7 +2642,7 @@ body.night .nav .btn{background:#1d2731;border:0}
   let offBusy = false;
   function offInfo(){
     const at = store.get('offlineAt', 0);
-    if (at) $('#offInfo').textContent = `Карта сохранена ${new Date(at).toLocaleDateString('ru-RU')}. Открывается без интернета. Маршруты и поиск без интернета не работают.`;
+    if (at) $('#offInfo').textContent = `Карта сохранена ${new Date(at).toLocaleDateString('ru-RU')}. Открывается без интернета. Работают поиск заведений, последние 8 маршрутов и направление «по прямой».`;
   }
   offInfo();
   $('#offBtn').onclick = async () => {
@@ -7777,6 +7777,84 @@ body.night .nav .btn{background:#1d2731;border:0}
     return localCmd216.apply(this, arguments);
   };
   window.__push = { prefs:() => pushPrefs, render:pushRender, enable:pushEnable, go:pushGo };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.18.0: Выпуск В, шаг 2 — карта без интернета: поиск, сохранённые маршруты, «по прямой» ----------
+  // 1) маршруты: последние 8 удачных хранятся в телефоне; нет связи — берём подходящий сохранённый
+  const RC_MAX = 8;
+  const rcLoad = () => { try{ return JSON.parse(localStorage.getItem('routeCache') || '[]'); }catch{ return []; } };
+  const rcTrim = j => ({ code:'Ok', waypoints:j.waypoints, routes:(j.routes || []).slice(0, 2).map(r => ({ ...r, legs:(r.legs || []).map(l => ({ ...l, annotation:l.annotation?.maxspeed ? { maxspeed:l.annotation.maxspeed } : undefined })) })) });
+  function rcSave(mode, pts, j){
+    try{
+      const a = pts[0], b = pts.at(-1), row = { m:mode, n:pts.length, a:[+a.lng, +a.lat], b:[+b.lng, +b.lat], name:state.to?.name || '', t:Date.now(), j:rcTrim(j) };
+      let L = rcLoad().filter(x => !(x.m === mode && x.n === pts.length && dist(x.a, row.a) < 60 && dist(x.b, row.b) < 60));
+      L.unshift(row); L = L.slice(0, RC_MAX);
+      while (L.length){ try{ localStorage.setItem('routeCache', JSON.stringify(L)); break; }catch{ L.pop(); } }
+    }catch{}
+  }
+  function rcFind(mode, pts){
+    const a = [+pts[0].lng, +pts[0].lat], b = [+pts.at(-1).lng, +pts.at(-1).lat];
+    const hit = rcLoad().find(x => x.m === mode && x.n === pts.length && dist(x.a, a) < 400 && dist(x.b, b) < 400);
+    return hit ? JSON.parse(JSON.stringify(hit.j)) : null;
+  }
+  const osrm218 = osrm;
+  osrm = async function(pts, alts){
+    try{
+      const j = await osrm218.apply(this, arguments);
+      if (j?.code === 'Ok' && j.routes?.length) rcSave(state.mode, pts, j);
+      return j;
+    }catch(e){
+      const c = rcFind(state.mode, pts);
+      if (c){ toast('📴 Нет интернета — маршрут из сохранённых в телефоне'); return c; }
+      throw e;
+    }
+  };
+  // 2) нет ни связи, ни сохранённого маршрута — линия «по прямой», направление и примерное время
+  const COMPASS = [['север', '↑'], ['северо-восток', '↗'], ['восток', '→'], ['юго-восток', '↘'], ['юг', '↓'], ['юго-запад', '↙'], ['запад', '←'], ['северо-запад', '↖']];
+  function bearing(a, b){
+    const r = Math.PI / 180, y = Math.sin((b[0] - a[0]) * r) * Math.cos(b[1] * r), x = Math.cos(a[1] * r) * Math.sin(b[1] * r) - Math.sin(a[1] * r) * Math.cos(b[1] * r) * Math.cos((b[0] - a[0]) * r);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+  function beelineSet(on){
+    try{
+      if (!map.getSource('beeline')){
+        map.addSource('beeline', { type:'geojson', data:emptyFC() });
+        map.addLayer({ id:'beeline', type:'line', source:'beeline', paint:{ 'line-color':'#7c4dff', 'line-width':3, 'line-dasharray':[2, 2] } });
+      }
+      map.getSource('beeline').setData(on && state.from && state.to ? { type:'FeatureCollection', features:[{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates:[[state.from.lng, state.from.lat], [state.to.lng, state.to.lat]] } }] } : emptyFC());
+    }catch{}
+  }
+  function beelineCard(){
+    const a = [state.from.lng, state.from.lat], b = [state.to.lng, state.to.lat], d = dist(a, b), br = bearing(a, b), c = COMPASS[Math.round(br / 45) % 8];
+    $('#routes').insertAdjacentHTML('afterbegin', `<div class="trip-check r-bee"><b>📴 Нет связи с сервером маршрутов</b>
+      <div>По прямой ${fmtDist(d)} на ${c[0]} ${c[1]} — линия на карте.</div>
+      <div>Примерно: пешком ${fmtTime(d * 1.3 / 1.25)}, на машине ${fmtTime(d * 1.3 / 8)}.</div>
+      <div class="hint">Маршрут построится сам, как только появится интернет. Сохранённые маршруты работают и без него.</div></div>`);
+    showErr('');
+  }
+  const buildRoute218 = buildRoute;
+  buildRoute = async function(){
+    const out = await buildRoute218.apply(this, arguments);
+    try{
+      if (state.routes.length) beelineSet(false);
+      else if (state.from && state.to && (!navigator.onLine || /связи/.test($('#err')?.textContent || ''))){ beelineSet(true); beelineCard(); }
+    }catch{}
+    return out;
+  };
+  addEventListener('online', () => { if (state.from && state.to && !state.routes.length && !driving) buildRoute(); });
+  const routeToPlace218 = routeToPlace;
+  routeToPlace = async function(){
+    const t = await routeToPlace218.apply(this, arguments);
+    const bee = document.querySelector('#routes .r-bee');
+    return bee && !state.routes.length ? 'Нет интернета. ' + (bee.children[1]?.textContent || '') + ' Маршрут построю, когда появится связь.' : t;
+  };
+  // 3) «Скачать карту» сохраняет и базу заведений — поиск работает без интернета
+  $('#offBtn')?.addEventListener('click', () => setTimeout(async () => {
+    try{ const c = await caches.open('offline-map'); for (const u of [...(CUR.places || []), '/']){ try{ const r = await fetch(u); if (r.ok) await c.put(u, r); }catch{} } }catch{}
+  }, 50));
+  const offTxt = 'Без интернета работают: карта, поиск заведений, последние 8 маршрутов и направление «по прямой».';
+  if ($('#offInfo') && !store.get('offlineAt', 0)) $('#offInfo').textContent = 'Карта будет открываться без интернета. ' + offTxt;
+  window.__off = { rcLoad, rcFind, bearing };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){

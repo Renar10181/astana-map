@@ -1,6 +1,6 @@
 // Карта Астаны — работа без интернета.
 // Приложение: сначала сеть, без сети — из памяти. Плитки карты, шрифты и библиотеки — из памяти, если уже есть.
-const V = '2.17.0';
+const V = '2.18.0';
 const SHELL = 'shell-' + V, TILES = 'tiles-v1', LIBS = 'libs-v1';
 const MAX_TILES = 2500;   // сколько просмотренных плиток держать (скачанная карта хранится отдельно и не удаляется)
 
@@ -19,6 +19,7 @@ self.addEventListener('fetch', e => {
   const u = new URL(r.url);
   if (u.origin === location.origin){
     if (u.pathname.startsWith('/api/')) return;               // голос, камеры, события — только сеть
+    if (u.pathname.startsWith('/data/')) return e.respondWith(netFirst(r, 'data-v1'));   // база заведений — переживает обновления, нужна для поиска без интернета
     return e.respondWith(netFirst(r, SHELL, r.mode === 'navigate' ? '/' : null));
   }
   if (u.hostname === 'tiles.openfreemap.org'){
