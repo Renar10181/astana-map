@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.19.0</p>
+    <p class="set-ver">Версия 2.19.1</p>
   </div>
 </div>
 
@@ -7914,6 +7914,12 @@ body.night .nav .btn{background:#1d2731;border:0}
     return localCmd219.apply(this, arguments);
   };
   window.__p3 = { pushLater, parkRemind };   // для автотестов
+  // ярлыки на иконке приложения (долгое нажатие): «Домой», «На работу», «112»
+  setTimeout(() => {
+    const h = location.hash;
+    if (h === '#go=home' && places.home){ history.replaceState(null, '', location.pathname); routeToHome('home').then(t => t && mascot('happy', t, 8000)); }
+    else if (h === '#sos112'){ history.replaceState(null, '', location.pathname); open112(); }
+  }, 2000);
 
   // ---------- Настройки ----------
   function openSettings(){
