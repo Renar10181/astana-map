@@ -64,6 +64,22 @@ export async function onRequestPost({ request, env }) {
       }
       return json({ ok: true, known: !!s, linked: !!s?.fr_id, fails: s?.fails || 0, last: log ? { ts: log.ts, status: log.status, info: log.info } : null, friends });
     }
+    case 'later': {   // напомнить позже: парковка (через 55 мин), «где я» — время вышло
+      const kind = ['parking', 'here'].includes(b.kind) ? b.kind : null, at = +b.at;
+      if (!kind || !(at > now && at < now + 6 * 3600e3)) return json({ ok: false, error: 'bad' }, 400);
+      const s = await db.prepare('SELECT id FROM push_subs WHERE id = ?').bind(id).first();
+      if (!s) return json({ ok: false, error: 'nosub' }, 404);
+      const tag = String(b.tag || kind).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) || kind;
+      const msg = kind === 'parking'
+        ? { title: '🅿️ Не забудьте оплатить парковку', body: 'Машина стоит почти час. Оплата — в Kaspi: Платежи → Транспорт → Парковки.', url: '/', tag, kind }
+        : { title: '📍 Время вышло', body: 'Вы больше не делитесь местом по ссылке. Нужно ещё — откройте карту → «Где я — ссылкой».', url: '/', tag, kind };
+      await db.batch([db.prepare('DELETE FROM push_later WHERE sub = ? AND tag = ?').bind(id, tag), db.prepare('INSERT INTO push_later (sub, at, tag, msg) VALUES (?, ?, ?, ?)').bind(id, at, tag, JSON.stringify(msg))]);
+      return json({ ok: true, at });
+    }
+    case 'later_cancel': {
+      await db.prepare('DELETE FROM push_later WHERE sub = ? AND tag = ?').bind(id, String(b.tag || '')).run();
+      return json({ ok: true });
+    }
     case 'inbox': {   // телефон получил сигнал — забирает тексты
       const rows = await db.prepare('SELECT n, msg FROM push_inbox WHERE sub = ? ORDER BY n').bind(id).all();
       const items = (rows.results || []).map(r => { try { return JSON.parse(r.msg); } catch { return null; } }).filter(Boolean);

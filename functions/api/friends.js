@@ -1,5 +1,5 @@
 import { inCities } from '../../lib/cities.js';
-import { pushFriendsOf } from '../../lib/push.js';
+import { pushFriendsOf, pushInit as pushInitSafe } from '../../lib/push.js';
 // «Свои на карте»: семья и друзья видят друг друга — только по взаимному согласию.
 // Хранится в Cloudflare D1 (привязка DB). Таблицы создаются сами при первом запросе.
 // Точка хранится одна (последняя), истории нет. «Удалить всё» стирает человека целиком.
@@ -82,7 +82,7 @@ export async function onRequestPost({ request, env }) {
     case 'pos': {
       const lng = +b.lng, lat = +b.lat;
       if (!inCities(lat, lng, 1)) return json({ ok: false, error: 'outside' }, 400);
-      const last = await db.prepare('SELECT ts, sos FROM fr_pos WHERE id = ?').bind(me.id).first();
+      const last = await db.prepare('SELECT ts, sos, at, hide, share FROM fr_pos WHERE id = ?').bind(me.id).first();
       if (last && now - last.ts < MIN_GAP && !b.sos) return json({ ok: true, skipped: true });
       const spd = Math.max(0, Math.min(250, +b.spd || 0)), bat = Number.isFinite(+b.bat) ? Math.max(0, Math.min(100, Math.round(+b.bat))) : null;
       await db.prepare(`INSERT INTO fr_pos (id, lng, lat, spd, bat, at, ts, sos) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -94,6 +94,18 @@ export async function onRequestPost({ request, env }) {
       if (b.sos && !(last?.sos && now - last.sos < 600e3)) {
         push = await pushFriendsOf(db, me.id, { title: `🆘 ${me.e || ''} ${me.name} просит помощи`.replace(/\s+/g, ' ').trim(), body: `${clean(b.at, 40) ? clean(b.at, 40) + ' · ' : ''}Нажмите — покажу на карте`, url: '/#fr-open', tag: 'sos-' + me.id, urgent: true, kind: 'sos' }).catch(() => ({ sent: 0, subs: 0, friends: 0, error: true }));
       } else if (b.sos) push = { repeat: true };
+      // «дошёл до школы», «приехал на работу»: человек оказался у своего сохранённого места — своим уведомление (не чаще раза в 2 часа на место)
+      const at = clean(b.at, 40);
+      if (!b.sos && at && at !== (last?.at || '') && !((last?.hide || 0) > now) && last?.share !== 0) {
+        try {
+          await pushInitSafe(db);
+          const key = `arr:${me.id}:${at}`, prev = await db.prepare('SELECT v FROM push_cfg WHERE k = ?').bind(key).first();
+          if (!prev || now - +prev.v > 2 * 3600e3) {
+            await db.prepare('INSERT OR REPLACE INTO push_cfg (k, v) VALUES (?, ?)').bind(key, String(now)).run();
+            await pushFriendsOf(db, me.id, { title: `${me.e || '🙂'} ${me.name}: ${at}`, body: 'На месте. Нажмите — покажу на карте', url: '/#fr-open', tag: 'arr-' + me.id, kind: 'family' });
+          }
+        } catch {}
+      }
       return json({ ok: true, ...(push ? { push } : {}) });
       return json({ ok: true });
     }

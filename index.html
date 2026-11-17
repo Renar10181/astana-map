@@ -612,7 +612,7 @@ body.night .nav .btn{background:#1d2731;border:0}
       <p>«Поехали» — навигатор по GPS с голосом. «Демо» — посмотреть маршрут заранее. Время в пути без учёта пробок.</p>
     </details>
     <p class="set-credits">Данные: © участники OpenStreetMap, OpenFreeMap, OSRM, Photon, снимки © Esri. Заведения: Overture Maps Foundation (Meta, Microsoft, PinMeTo — CDLA-Permissive-2.0; Foursquare — Apache-2.0; AllThePlaces — CC0). Погода — Open-Meteo.</p>
-    <p class="set-ver">Версия 2.18.0</p>
+    <p class="set-ver">Версия 2.19.0</p>
   </div>
 </div>
 
@@ -7662,14 +7662,14 @@ body.night .nav .btn{background:#1d2731;border:0}
   // ---------- 2.16.0: 🔔 Push-уведомления, шаг 1 — основа, проверочное, SOS от «Своих на карте» ----------
   const PUSH_KINDS = [
     ['sos', '🆘 SOS от «Своих на карте» — даже ночью', true, true],
-    ['family', '👨‍👩‍👧 «Дошёл до школы», «приехал на работу»', true, false],
+    ['family', '👨‍👩‍👧 Свои: «дошёл до школы», «приехал на работу»', true, true],
     ['leave', '🚗 Когда выезжать на работу (по будням; нужны 🏠 Дом и 💼 Работа)', true, true],
     ['weather', '❄️ Гололёд, снегопад, метель, сильный мороз — утром', true, true],
-    ['parking', '🅿️ Не забыть оплатить парковку', true, false],
+    ['parking', '🅿️ Напомнить оплатить парковку (через 55 мин после приезда)', true, true],
     ['fuel', '⛽ Бензин подешевел на вашей АЗС', true, false],
-    ['city', '🎉 События города и перекрытия (раз в неделю)', true, false],
+    ['city', '🎉 Накануне праздников: мероприятия и перекрытия', true, true],
     ['quests', '🎯 Новые квесты рядом', true, false],
-    ['here', '📍 «Где я по ссылке» — время вышло', true, false],
+    ['here', '📍 «Где я по ссылке» — время вышло', true, true],
   ];
   let pushPrefs = { quiet:true, ...Object.fromEntries(PUSH_KINDS.map(([k, , d]) => [k, d])), ...store.get('pushPrefs', {}) };
   const pushOk = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -7855,6 +7855,65 @@ body.night .nav .btn{background:#1d2731;border:0}
   const offTxt = 'Без интернета работают: карта, поиск заведений, последние 8 маршрутов и направление «по прямой».';
   if ($('#offInfo') && !store.get('offlineAt', 0)) $('#offInfo').textContent = 'Карта будет открываться без интернета. ' + offTxt;
   window.__off = { rcLoad, rcFind, bearing };   // для автотестов
+
+  // =====================================================================
+  // ---------- 2.19.0: 🔔 Уведомления, шаг 3 — «дошёл/приехал», парковка через 55 мин, «где я — время вышло», праздники ----------
+  async function pushLater(kind, at, tag){
+    const sub = pushOk && Notification.permission === 'granted' ? await pushSub() : null; if (!sub) return false;
+    try{ const j = await (await fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'later', endpoint:sub.endpoint, kind, at, tag }) })).json(); return !!j.ok; }catch{ return false; }
+  }
+  async function pushLaterCancel(tag){
+    const sub = pushOk && Notification.permission === 'granted' ? await pushSub() : null; if (!sub) return;
+    fetch('/api/push', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ act:'later_cancel', endpoint:sub.endpoint, tag }) }).catch(() => {});
+  }
+  // «где я по ссылке»: когда время выйдет — уведомление, даже если карта закрыта
+  const hereStart219 = hereStart;
+  hereStart = async function(){
+    const out = await hereStart219.apply(this, arguments);
+    try{ if (here && pushPrefs.here !== false) pushLater('here', here.until, 'here'); }catch{}
+    return out;
+  };
+  const hereStop219 = hereStop;
+  hereStop = async function(msg){
+    const timeUp = /Время вышло/.test(msg || '');
+    const out = await hereStop219.apply(this, arguments);
+    if (!timeUp) pushLaterCancel('here');
+    return out;
+  };
+  // парковка: приехали на машине — предложить напомнить об оплате через 55 минут
+  document.body.insertAdjacentHTML('beforeend', `<div class="rulerbar" id="parkAsk" hidden style="z-index:60"><b>🅿️ Напомнить оплатить парковку через 55 мин?</b><button class="btn primary" id="parkYes">Да</button><button class="btn" id="parkNo">Нет</button></div>`);
+  let parkAskT = 0;
+  async function parkRemind(min){
+    const ok = await pushLater('parking', Date.now() + min * 60e3, 'parking');
+    if (ok) return `Напомню через ${min} мин — оплатить парковку. Kaspi: Платежи → Транспорт → Парковки.`;
+    return pushOk ? 'Сначала включите уведомления: ☰ → Настройки → 🔔.' : 'Этот браузер не умеет уведомления.';
+  }
+  $('#parkYes').onclick = async () => { $('#parkAsk').hidden = true; toast(await parkRemind(55)); };
+  $('#parkNo').onclick = () => { $('#parkAsk').hidden = true; };
+  const arrive219 = arrive;
+  arrive = function(){
+    const car = state.mode === 'car' && !demo;
+    const out = arrive219.apply(this, arguments);
+    if (car && pushPrefs.parking !== false && pushOk && Notification.permission === 'granted'){
+      clearTimeout(parkAskT);
+      setTimeout(() => { $('#parkAsk').hidden = false; parkAskT = setTimeout(() => $('#parkAsk').hidden = true, 30000); }, 3500);
+    }
+    return out;
+  };
+  // голосом: «напомни про парковку», «напомни оплатить парковку через 2 часа»
+  const localCmd219 = localCmd;
+  localCmd = function(raw){
+    const t = cleanCmd(raw);
+    if (/напомни.{0,20}парковк|парковк.{0,15}напомни/.test(t)){
+      const h = t.match(/через (\d+|час|полчаса|два часа|2 часа)\s*(мин|час)?/);
+      let min = 55;
+      if (h){ const v = h[1]; min = v === 'час' ? 60 : v === 'полчаса' ? 30 : /два|2 часа/.test(v + (h[2] || '')) && /час/.test(h[0]) ? 120 : /час/.test(h[2] || '') ? +v * 60 : +v; }
+      min = Math.max(5, Math.min(300, min || 55));
+      return () => parkRemind(min);
+    }
+    return localCmd219.apply(this, arguments);
+  };
+  window.__p3 = { pushLater, parkRemind };   // для автотестов
 
   // ---------- Настройки ----------
   function openSettings(){
