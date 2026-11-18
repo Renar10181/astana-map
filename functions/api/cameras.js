@@ -1,4 +1,5 @@
 import { inCities } from '../../lib/cities.js';
+import { ipHash } from '../../lib/guard.js';
 // Отметки камер от водителей. Хранятся в Cloudflare KV (привязка CAMERAS).
 //  list   — камеры, отмеченные водителями (с числом подтверждений от РАЗНЫХ водителей; подтверждённая — от 3)
 //  hidden — камеры из OpenStreetMap, которые водители пометили как «камеры нет»
@@ -52,6 +53,12 @@ export async function onRequestDelete({ request, env }) {
   let body; try { body = await request.json(); } catch { return Response.json({ ok: false }, { status: 400 }); }
   const lat = +body.lat, lng = +body.lng;
   if (!inBox(lat, lng)) return Response.json({ ok: false }, { status: 400 });
+  // убрать камеру — нужны голоса двух разных людей (один человек не может стереть камеры с карты)
+  const votes = JSON.parse((await env.CAMERAS.get('camvotes')) || '{}'), vk = lat.toFixed(4) + ',' + lng.toFixed(4), who = await ipHash(request);
+  const now = Date.now(); for (const k of Object.keys(votes)) if (now - (votes[k].t || 0) > 30 * 864e5) delete votes[k];
+  const v = votes[vk] || { w: [], t: now }; if (!v.w.includes(who)) v.w.push(who); v.t = now; votes[vk] = v;
+  if (v.w.length < 2) { await env.CAMERAS.put('camvotes', JSON.stringify(votes)); return Response.json({ ok: true, pending: true }); }
+  delete votes[vk]; await env.CAMERAS.put('camvotes', JSON.stringify(votes));
   if (body.src === 'user') {
     const items = await read(env, 'list');
     const i = items.findIndex(c => distM(c, { lat, lng }) < 60);

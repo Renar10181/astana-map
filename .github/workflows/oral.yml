@@ -2,7 +2,7 @@ name: Заведения для Орала (OSM + Overture)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '41 3 * * 1'   # каждый понедельник
+    - cron: '41 3 * * *'   # каждый день (выпуск Г)
   push:
     branches: [main, cities]
     paths:

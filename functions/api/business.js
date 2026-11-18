@@ -1,4 +1,5 @@
 import { inCities } from '../../lib/cities.js';
+import { adminKey, sameKey } from '../../lib/guard.js';
 // Организации, которые добавили сами владельцы. Хранится в Cloudflare KV (привязка CAMERAS), ключ «biz».
 // GET  /api/business               — публичный список (без контактов для связи)
 // POST /api/business               — добавить или обновить карточку (до 5 в день с одного адреса)
@@ -20,7 +21,8 @@ async function voter(request) {
   return [...new Uint8Array(d)].slice(0, 6).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 const load = async env => JSON.parse((await env.CAMERAS.get('biz')) || '{"items":[],"day":{"d":"","c":{}}}');
-const isAdmin = (url, env) => env.ADMIN_KEY && new URL(url).searchParams.get('admin') === env.ADMIN_KEY;
+let REQ = null;   // текущий запрос — для ключа в заголовке
+const isAdmin = (url, env) => !!env.ADMIN_KEY && sameKey(REQ ? adminKey(REQ) : new URL(url).searchParams.get('admin'), env.ADMIN_KEY);
 const promoOn = x => x.promo && x.promo !== 'none' && (!x.until || x.until > Date.now());
 // [lng, lat, name, cat, addr, phone, web, "biz", hours, desc, id, promo]
 const FORMATS = ['objav', 'premium', 'navlogo', 'stopbanner', 'routebb', 'billboard', 'stories'];
@@ -34,6 +36,7 @@ const adsOf = items => items.filter(x => !x.hidden && x.ads).flatMap(x => Object
 const pub = x => [x.lng, x.lat, x.name, x.cat, x.addr, x.phone, x.web, 'biz', x.hours, x.desc, x.id, promoOn(x) ? x.promo : ''];
 
 export async function onRequestGet({ request, env }) {
+  REQ = request;
   if (!env.CAMERAS) return json({ ok: false, items: [] });
   const db = await load(env);
   if (isAdmin(request.url, env)) return json({ ok: true, admin: true, items: db.items });
@@ -41,6 +44,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
+  REQ = request;
   if (!env.CAMERAS) return json({ ok: false, error: 'storage not configured' }, 503);
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
   const lat = +b.lat, lng = +b.lng, name = str(b.name, 80);
@@ -73,6 +77,7 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestPatch({ request, env }) {
+  REQ = request;
   if (!env.CAMERAS || !isAdmin(request.url, env)) return json({ ok: false }, 403);
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
   const db = await load(env), x = db.items.find(y => y.id === b.id);
@@ -98,6 +103,7 @@ export async function onRequestPatch({ request, env }) {
 }
 
 export async function onRequestDelete({ request, env }) {
+  REQ = request;
   if (!env.CAMERAS || !isAdmin(request.url, env)) return json({ ok: false }, 403);
   const id = new URL(request.url).searchParams.get('id');
   const db = await load(env), n = db.items.length;

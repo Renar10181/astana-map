@@ -2,7 +2,7 @@ name: Заведения OpenStreetMap для Астаны
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 2 * * 1'   # каждый понедельник
+    - cron: '17 2 * * *'   # каждый день (выпуск Г)
   push:
     branches: [main]
     paths:

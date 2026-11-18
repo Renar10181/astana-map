@@ -1,6 +1,6 @@
 """Все заведения Астаны с названием из OpenStreetMap -> компактный JSON для поиска на карте.
 
-Запуск (делает GitHub Actions раз в неделю):
+Запуск (делает GitHub Actions каждый день):
   python scripts/osm_places.py data/osm-places-astana.json
 
 Формат строки: [lng, lat, name, category, address, phone, website, "osm", opening_hours]

@@ -1,3 +1,4 @@
+import { adminKey, sameKey } from '../../lib/guard.js';
 // Отзывы о местах: оценка 1–5 и текст. Хранится в Cloudflare KV (привязка CAMERAS), ключ «rev:<id места>».
 // Один отзыв от одного человека на место (можно изменить). Ссылки и мат не пропускаем. Удалить — DELETE ?admin=КЛЮЧ&id=&n=.
 const json = (o, status = 200) => Response.json(o, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -37,7 +38,7 @@ export async function onRequestPost({ request, env }) {
 
 export async function onRequestDelete({ request, env }) {
   const u = new URL(request.url), id = u.searchParams.get('id'), ts = +u.searchParams.get('ts');
-  if (!env.CAMERAS || !env.ADMIN_KEY || u.searchParams.get('admin') !== env.ADMIN_KEY || !okId(id)) return json({ ok: false }, 403);
+  if (!env.CAMERAS || !env.ADMIN_KEY || !sameKey(adminKey(request), env.ADMIN_KEY) || !okId(id)) return json({ ok: false }, 403);
   const key = 'rev:' + id, list = JSON.parse((await env.CAMERAS.get(key)) || '[]');
   await env.CAMERAS.put(key, JSON.stringify(list.filter(x => x.ts !== ts)));
   return json({ ok: true });

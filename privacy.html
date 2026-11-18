@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конфиденциальность и условия — Карта Астаны</title>
+<meta name="description" content="Какие данные собирает «Карта Астаны», где они хранятся и как их удалить.">
+<link rel="icon" href="/icons/icon-192.png">
+<style>
+  :root{color-scheme:light dark;--fg:#16181d;--muted:#5b6270;--bg:#fff;--card:#f4f5f7;--acc:#0a7cff}
+  @media (prefers-color-scheme:dark){:root{--fg:#eef0f3;--muted:#a3a9b4;--bg:#121418;--card:#1c1f25;--acc:#4da3ff}}
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--fg);background:var(--bg)}
+  main{max-width:760px;margin:0 auto;padding:24px 18px 60px}
+  h1{font-size:26px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:19px;margin:28px 0 8px}
+  p,li{margin:6px 0}
+  .muted{color:var(--muted);font-size:14px}
+  .card{background:var(--card);border-radius:14px;padding:14px 16px;margin:12px 0}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{text-align:left;vertical-align:top;padding:8px 6px;border-bottom:1px solid rgba(127,127,127,.25)}
+  th{font-weight:600}
+  a{color:var(--acc)}
+  nav{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 18px}
+  nav a{padding:6px 12px;border-radius:999px;background:var(--card);text-decoration:none;color:var(--fg);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <p><a href="/">← К карте</a></p>
+  <h1>🔒 Конфиденциальность и условия</h1>
+  <p class="muted">Редакция от 18 ноября 2026 г. · Казахский и английский варианты — ниже.</p>
+  <nav><a href="#ru">Русский</a><a href="#kk">Қазақша</a><a href="#en">English</a></nav>
+
+  <section id="ru">
+  <div class="card"><b>Коротко.</b> Карта работает без регистрации. Мы не продаём данные, не показываем рекламу по вашим данным и не ставим рекламные cookies. Ваше местоположение остаётся в телефоне, пока вы сами не включите функцию, которой оно нужно (например, «Свои на карте» или «Где я — по ссылке»).</div>
+
+  <h2>Что хранится только в вашем телефоне</h2>
+  <p>Дом и работа, избранное, история поиска, последние маршруты, настройки, очки Барыса, офлайн-карта. Это не уходит на сервер. Удалить: ⚙ Настройки → «Очистить историю поиска» или очистить данные сайта в браузере.</p>
+
+  <h2>Что уходит на сервер и зачем</h2>
+  <table>
+    <tr><th>Данные</th><th>Когда</th><th>Сколько хранится</th></tr>
+    <tr><td>Точка на карте, которую вы ищете или куда строите маршрут</td><td>Поиск и маршрут (сервисы OSRM, Photon, OpenStreetMap)</td><td>Мы не храним</td></tr>
+    <tr><td>Ваше местоположение и время</td><td>Только если вы включили «Свои на карте», «Провожалку» или «Где я — по ссылке»</td><td>Последняя точка; ссылка «Где я» перестаёт работать по истечении выбранного времени</td></tr>
+    <tr><td>Сообщения и фото в «Своих на карте»</td><td>Когда вы их отправляете</td><td>Сообщения — 30 дней; фото — пока не удалите</td></tr>
+    <tr><td>Подписка на уведомления</td><td>Если вы включили 🔔 уведомления</td><td>Пока не выключите</td></tr>
+    <tr><td>Отметки на дороге, цены на АЗС, отзывы, ответы на квесты</td><td>Когда вы их отправляете</td><td>Отметки — несколько часов; отзывы и цены — пока актуальны</td></tr>
+    <tr><td>Анонимные счётчики (сколько раз открыли карту, построили маршрут, город, язык)</td><td>При использовании</td><td>Только суммы по дням, без IP, без cookies, без идентификатора</td></tr>
+  </table>
+  <p>Для защиты от спама сервер на короткое время считает запросы с одного адреса; для голосования по отметкам хранится обезличенный отпечаток адреса (хэш), сам адрес не хранится.</p>
+
+  <h2>Голос и ИИ</h2>
+  <p>Текст команды Барысу и озвучка отправляются в сервисы распознавания и синтеза речи (Microsoft Azure, Cloudflare Workers AI) только в момент запроса. Мы не записываем ваш голос.</p>
+
+  <h2>Где хранятся данные</h2>
+  <p>Сервер — Cloudflare. Мы стремимся хранить персональные данные в соответствии с Законом РК «О персональных данных и их защите»; если вам важно хранение строго в Казахстане — не включайте функции с передачей местоположения.</p>
+
+  <h2>Как удалить свои данные</h2>
+  <ol>
+    <li>«Свои на карте» → «Выключить и удалить все мои данные» — удаляются точка, связи, сообщения и фото.</li>
+    <li>🔔 Уведомления → «Выключить» — подписка удаляется.</li>
+    <li>«Где я — по ссылке» → «Перестать делиться».</li>
+    <li>Остальное — очистите данные сайта в настройках браузера.</li>
+  </ol>
+
+  <h2>Условия использования</h2>
+  <ul>
+    <li>Карта и маршруты строятся по открытым данным (OpenStreetMap и др.) и могут не совпадать с реальной обстановкой. Следуйте дорожным знакам и ПДД.</li>
+    <li>Время в пути — без учёта пробок, если не сказано иное.</li>
+    <li>Не пользуйтесь телефоном за рулём — для этого есть голос и крупные подсказки.</li>
+    <li>Кнопка 112 не звонит за вас и не передаёт данные в службы — звоните сами.</li>
+    <li>Не отправляйте ложные отметки и отзывы — такие записи удаляются.</li>
+  </ul>
+  <p class="muted">Данные: © участники OpenStreetMap, OpenFreeMap, Overture Maps Foundation, Open-Meteo, снимки © Esri.</p>
+  </section>
+
+  <section id="kk">
+  <h2>Қазақша — қысқаша</h2>
+  <p>Карта тіркеусіз жұмыс істейді. Біз деректерді сатпаймыз және жарнамалық cookies қоймаймыз. Үй, жұмыс, таңдаулылар, іздеу тарихы — тек сіздің телефоныңызда. Орналасқан жеріңіз серверге тек өзіңіз «Жақындар картада», «Шығарып салу» немесе «Қайдамын — сілтеме арқылы» функциясын қосқанда ғана жіберіледі. Хабарламалар 30 күн сақталады. Статистика — тек күндік жиынтықтар, IP және идентификаторсыз.</p>
+  <p>Жою: «Жақындар картада» → «Өшіру және барлық деректерімді жою»; 🔔 Хабарландырулар → «Өшіру»; қалғанын браузерде сайт деректерін тазалау арқылы.</p>
+  <p>Бағыттар ашық деректер бойынша құрылады және нақты жағдаймен сәйкес келмеуі мүмкін — жол белгілері мен ЖҚЕ-ні сақтаңыз. 112 батырмасы сіз үшін қоңырау шалмайды.</p>
+  </section>
+
+  <section id="en">
+  <h2>English — summary</h2>
+  <p>No sign-up. We do not sell data or use advertising cookies. Home, work, favourites and search history stay on your phone. Your location is sent only when you turn on “Family on the map”, “Walk me home” or “Share where I am”. Messages are kept for 30 days. Usage statistics are daily totals only — no IP, no cookies, no identifier.</p>
+  <p>To delete: Family on the map → “Turn off and delete all my data”; 🔔 Notifications → “Turn off”; everything else — clear site data in your browser.</p>
+  <p>Routes come from open data and may differ from real conditions — follow road signs and traffic rules. The 112 button does not call for you.</p>
+  </section>
+</main>
+</body>
+</html>

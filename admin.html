@@ -41,7 +41,7 @@ main{max-width:760px;margin:0 auto}
   const WANT = { priority:'выше в поиске 9 900 ₸', logo:'логотип 14 900 ₸', objav:'объявление 14 900 ₸', premium:'премиум-логотип 19 900 ₸', navlogo:'логотип в навигаторе 1 990 ₸',
     stopbanner:'баннер на светофоре 35 900 ₸', routebb:'билборд при маршруте 39 900 ₸', billboard:'билборд 49 900 ₸', stories:'сторис 149 900 ₸', lite:'пакет Лайт 19 900 ₸', start:'пакет Старт 34 900 ₸', media:'пакет Медиа 49 900 ₸' };
   try{ $('#key').value = sessionStorage.getItem('ak') || ''; }catch{}
-  const api = (m, q, body) => fetch(`/api/business?admin=${encodeURIComponent($('#key').value)}${q || ''}`, { method:m, headers:{ 'Content-Type':'application/json' }, body:body && JSON.stringify(body) }).then(r => r.json());
+  const api = (m, q, body) => fetch(`/api/business?x=1${q || ''}`, { method:m, headers:{ 'Content-Type':'application/json', 'X-Admin-Key':$('#key').value }, body:body && JSON.stringify(body) }).then(r => r.json());   // ключ — в заголовке, не в адресе
   async function load(){
     try{ sessionStorage.setItem('ak', $('#key').value); }catch{}
     const j = await api('GET').catch(() => ({}));

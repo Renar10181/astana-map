@@ -1,4 +1,5 @@
 import { inCities } from '../../lib/cities.js';
+import { ipHash } from '../../lib/guard.js';
 // Дорожные события от водителей: ДТП, пробка, ремонт, перекрытие, полиция, яма, опасность, гололёд, снежный занос.
 // Хранятся в том же Cloudflare KV, что и камеры (привязка CAMERAS), ключ "events".
 // У каждого события свой срок жизни; подтверждение «Ещё есть» продлевает его.
@@ -44,7 +45,14 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   if (!env.CAMERAS) return json({ ok: false, error: 'storage not configured' }, 503);
   let b; try { b = await request.json(); } catch { return json({ ok: false }, 400); }
-  const items = (await read(env)).filter(x => x.id !== String(b.id || ''));
-  await env.CAMERAS.put(KEY, JSON.stringify(items));
-  return json({ ok: true });
+  // «Уже нет»: событие убираем, когда так ответили двое разных или подтверждений было одно — один человек не сотрёт чужие отметки
+  const items = await read(env), x = items.find(y => y.id === String(b.id || ''));
+  if (!x) return json({ ok: true, removed: true });
+  const who = await ipHash(request);
+  x.gone = Array.isArray(x.gone) ? x.gone : [];
+  if (!x.gone.includes(who)) x.gone.push(who);
+  const removed = x.gone.length >= 2 || (x.votes || 1) <= 1;
+  const out = removed ? items.filter(y => y !== x) : items;
+  await env.CAMERAS.put(KEY, JSON.stringify(out));
+  return json({ ok: true, removed });
 }
