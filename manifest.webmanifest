@@ -1,6 +1,6 @@
 {
-  "name": "Карта Астаны",
-  "short_name": "Карта Астаны",
+  "name": "QMaps",
+  "short_name": "QMaps",
   "description": "Карта, маршруты и навигатор с голосом по Астане и Оралу — на казахском, русском и английском. Барыс подскажет дорогу, SOS для своих, 112 с адресом.",
   "lang": "ru",
   "start_url": "/",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f161d",
-  "theme_color": "#0a8f8a",
+  "theme_color": "#00AFCA",
   "icons": [
     {
       "src": "/icons/icon-192.png",

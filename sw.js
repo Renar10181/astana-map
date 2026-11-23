@@ -1,6 +1,6 @@
-// Карта Астаны — работа без интернета.
+// QMaps — работа без интернета.
 // Приложение: сначала сеть, без сети — из памяти. Плитки карты, шрифты и библиотеки — из памяти, если уже есть.
-const V = '2.24.0';
+const V = '2.25.0';
 const SHELL = 'shell-' + V, TILES = 'tiles-v1', LIBS = 'libs-v1';
 const MAX_TILES = 2500;   // сколько просмотренных плиток держать (скачанная карта хранится отдельно и не удаляется)
 
@@ -68,8 +68,8 @@ self.addEventListener('push', e => {
       const r = await fetch('/api/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ act: 'inbox', endpoint: sub?.endpoint || '' }) });
       items = (await r.json()).items || [];
     } catch {}
-    if (!items.length) items = [{ title: 'Карта Астаны', body: 'Есть новости — откройте карту', url: '/' }];
-    await Promise.all(items.slice(-3).map(m => self.registration.showNotification(m.title || 'Карта Астаны', {
+    if (!items.length) items = [{ title: 'QMaps', body: 'Есть новости — откройте карту', url: '/' }];
+    await Promise.all(items.slice(-3).map(m => self.registration.showNotification(m.title || 'QMaps', {
       body: m.body || '', icon: '/icons/icon-192.png', badge: '/icons/badge-96.png', tag: m.tag || undefined, renotify: !!m.urgent,
       requireInteraction: !!m.urgent, vibrate: m.urgent ? [300, 120, 300, 120, 300] : [80], data: { url: m.url || '/' } })));
   })());
