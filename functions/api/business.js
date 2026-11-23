@@ -24,7 +24,7 @@ const load = async env => JSON.parse((await env.CAMERAS.get('biz')) || '{"items"
 let REQ = null;   // текущий запрос — для ключа в заголовке
 const isAdmin = (url, env) => !!env.ADMIN_KEY && sameKey(REQ ? adminKey(REQ) : new URL(url).searchParams.get('admin'), env.ADMIN_KEY);
 const promoOn = x => x.promo && x.promo !== 'none' && (!x.until || x.until > Date.now());
-// [lng, lat, name, cat, addr, phone, web, "biz", hours, desc, id, promo]
+// [lng, lat, name, cat, addr, phone, web, "biz", hours, desc, id, promo, book]
 const FORMATS = ['objav', 'premium', 'navlogo', 'stopbanner', 'routebb', 'billboard', 'stories'];
 const PACKS = { lite:['objav'], start:['objav', 'navlogo'], media:['objav', 'navlogo', 'premium', 'stopbanner'] };
 const PACK_PROMO = { lite:'priority', start:'logo', media:'logo' };
@@ -33,7 +33,7 @@ const WANTS = ['priority', 'logo', ...FORMATS, 'lite', 'start', 'media'];
 const adsOf = items => items.filter(x => !x.hidden && x.ads).flatMap(x => Object.entries(x.ads)
   .filter(([f, a]) => FORMATS.includes(f) && a && (!a.until || a.until > Date.now()))
   .map(([f, a]) => ({ id:x.id, f, lng:x.lng, lat:x.lat, name:x.name, cat:x.cat, phone:x.phone, web:x.web, addr:x.addr, text:a.text || x.adText || x.desc || '', img:a.img || '', radius:a.radius || 0 })));
-const pub = x => [x.lng, x.lat, x.name, x.cat, x.addr, x.phone, x.web, 'biz', x.hours, x.desc, x.id, promoOn(x) ? x.promo : ''];
+const pub = x => [x.lng, x.lat, x.name, x.cat, x.addr, x.phone, x.web, 'biz', x.hours, x.desc, x.id, promoOn(x) ? x.promo : '', x.book || ''];
 
 export async function onRequestGet({ request, env }) {
   REQ = request;
@@ -60,7 +60,7 @@ export async function onRequestPost({ request, env }) {
     id: str(b.id, 16) || crypto.randomUUID().slice(0, 10), name, lng: +lng.toFixed(6), lat: +lat.toFixed(6),
     cat: str(b.cat, 40), addr: str(b.addr, 120), phone: str(b.phone, 30), web: str(b.web, 120),
     hours: str(b.hours, 80), desc: str(b.desc, 300), want: WANTS.includes(b.want) ? b.want : '', adText: str(b.adText, 70), adImg: /^https:\/\/\S+$/.test(String(b.adImg || '')) ? str(b.adImg, 300) : '',
-    contact: str(b.contact, 60), owner, ts: Date.now(), promo: 'none',
+    contact: str(b.contact, 60), book: /^(https:\/\/\S+|tel:\+?\d{6,15})$/.test(String(b.book || '').trim()) ? str(b.book, 200) : '', owner, ts: Date.now(), promo: 'none',
   };
   const i = db.items.findIndex(x => x.id === item.id);
   if (i >= 0) {

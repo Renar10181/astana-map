@@ -78,3 +78,19 @@ test('статистика: считает только разрешённые �
   const d = Object.values(j.days)[0];
   assert.equal(d['e:open'], 2); assert.equal(d['e:route'], 1); assert.equal(d['c:oral'], 1); assert.equal(d['pwa:1'], 1);
 });
+
+test('кабинет бизнеса: статистику видит только владелец', async () => {
+  const B = await import('../functions/api/bizstats.js');
+  const { createHash } = await import('node:crypto');
+  const tok = 'x'.repeat(20);
+  const owner = createHash('sha256').update('owner:' + tok).digest('hex').slice(0, 16);
+  const kv = new Map([['biz', JSON.stringify({ items: [{ id: 'abc123', name: 'Кофейня', owner }] })]]);
+  const env = { DB: d1(), CAMERAS: { get: async k => kv.get(k) ?? null } };
+  const hit = b => B.onRequestPost({ request: new Request('http://x', { method: 'POST', body: JSON.stringify(b) }), env });
+  await hit({ id: 'abc123', k: 'view' }); await hit({ id: 'abc123', k: 'view' }); await hit({ id: 'abc123', k: 'call' });
+  assert.equal((await hit({ id: 'abc123', k: 'hack' })).status, 400);
+  const get = t => B.onRequestGet({ request: new Request('http://x/api/bizstats?id=abc123', { headers: { 'X-Biz-Token': t } }), env });
+  assert.equal((await get('y'.repeat(20))).status, 403);
+  const j = await (await get(tok)).json();
+  assert.equal(j.total.view, 2); assert.equal(j.total.call, 1);
+});

@@ -4,7 +4,7 @@ import { limited, foreign, tooMany, forbidden } from '../../lib/guard.js';
 const LIMITS = {
   events: [10, 240], cameras: [10, 240], fuel: [10, 240], corrections: [5, 60], reviews: [6, 240], business: [10, 240],
   probes: [20, 60], trip: [20, 240], friends: [120, 240], push: [60, 120], quests: [20, 240], traffic: [60, 120],
-  tts: [60, 60], assistant: [20, 60], translate: [30, 60], stats: [30, 60],
+  tts: [60, 60], assistant: [20, 60], translate: [30, 60], stats: [30, 60], bizstats: [60, 60],
 };
 export async function onRequest(ctx) {
   const { request } = ctx, url = new URL(request.url), name = url.pathname.split('/')[2] || '';
