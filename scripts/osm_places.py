@@ -65,7 +65,9 @@ def fetch():
             except Exception as e:  # пробуем следующий сервер
                 print("overpass fail", url, e)
         time.sleep(30)
-    raise SystemExit("Overpass недоступен")
+    # Серверы OpenStreetMap иногда перегружены. Не считаем это ошибкой: оставляем вчерашние данные.
+    print("::warning::Overpass недоступен — данные не обновлены, остаются прежние")
+    raise SystemExit(0)
 
 
 def category(t):
